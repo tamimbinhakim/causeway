@@ -30,6 +30,7 @@ from dyadpy import Bytes, Depends, raises, stream
 from quay._methods import delete, get, patch, post, put
 from quay.config import Manifest, Settings
 from quay.middleware import Middleware, guard
+from quay.plugins import register
 from quay.scope import provide
 
 __version__ = "0.1.0a0"
@@ -49,5 +50,6 @@ __all__ = [
     "provide",
     "put",
     "raises",
+    "register",
     "stream",
 ]

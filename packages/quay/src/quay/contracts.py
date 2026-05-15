@@ -1,0 +1,266 @@
+"""Plugin contracts.
+
+Each contract is a ``typing.Protocol`` that a plugin implements. Quay's job
+is to make the contract surface stable, not to ship every backend — most
+real implementations live in sibling repos (``quay-storage-s3``,
+``quay-auth-clerk``, etc.) with their own release cycles.
+
+Every contract has a ``contract_version: ClassVar[str]`` attribute. The
+plugin registry compares it against the version Quay was built against and
+warns on mismatch. Optional methods are marked in docstrings; required
+methods are unannotated and raise ``NotImplementedError`` only if a plugin
+ships a stub.
+
+Lifecycle methods (``startup``, ``shutdown``, ``ready``) are common to
+every contract and live on the :class:`Plugin` base protocol.
+"""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractAsyncContextManager
+from datetime import datetime
+from typing import Any, ClassVar, Protocol, runtime_checkable
+
+AsyncContextManager = AbstractAsyncContextManager
+
+
+@runtime_checkable
+class Plugin(Protocol):
+    """The common lifecycle every plugin observes.
+
+    Implementations may set ``contract_version`` to declare the contract
+    version they target. The registry checks compatibility on boot.
+    """
+
+    contract_version: ClassVar[str]
+
+    async def startup(self, settings: Any) -> None:
+        """Open whatever the adapter needs (DB pools, broker connections)."""
+        ...
+
+    async def shutdown(self) -> None:
+        """Close everything ``startup`` opened. Idempotent."""
+        ...
+
+    async def ready(self) -> bool:
+        """Return True when the plugin is fully usable. ``/readyz`` aggregates this."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Background tasks
+# ---------------------------------------------------------------------------
+
+
+class TaskRef(Protocol):
+    """A handle to a registered ``@task`` function. Adapters call ``.module`` /
+    ``.name`` to identify it on the wire."""
+
+    module: str
+    name: str
+
+
+class TaskStatus(Protocol):
+    state: str  # "pending" | "running" | "complete" | "failed"
+    result: Any | None
+
+
+@runtime_checkable
+class TaskAdapter(Plugin, Protocol):
+    """Background-task broker contract."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def enqueue(self, task: TaskRef, payload: bytes) -> str: ...
+    async def schedule(self, task: TaskRef, when: datetime, payload: bytes) -> str: ...
+    async def cron(self, task: TaskRef, expr: str) -> None: ...
+    def eager(self) -> AsyncContextManager[None]: ...
+    async def status(self, task_id: str) -> TaskStatus: ...
+    async def result(self, task_id: str) -> Any: ...
+
+
+# ---------------------------------------------------------------------------
+# Storage / KV / Sessions
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class Storage(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def put(self, key: str, body: bytes, *, content_type: str | None = None) -> None: ...
+    async def get(self, key: str) -> bytes: ...
+    async def delete(self, key: str) -> None: ...
+    async def signed_url(self, key: str, *, expires: int = 3600) -> str: ...
+    async def list(self, prefix: str = "") -> AsyncIterator[str]: ...
+
+
+@runtime_checkable
+class KV(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def get(self, key: str) -> bytes | None: ...
+    async def set(self, key: str, value: bytes, *, ttl: int | None = None) -> None: ...
+    async def delete(self, key: str) -> None: ...
+    async def incr(self, key: str, by: int = 1) -> int: ...
+    async def expire(self, key: str, ttl: int) -> None: ...
+
+
+@runtime_checkable
+class SessionStore(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def read(self, session_id: str) -> dict[str, Any] | None: ...
+    async def write(self, session_id: str, data: dict[str, Any]) -> None: ...
+    async def destroy(self, session_id: str) -> None: ...
+    async def rotate(self, session_id: str) -> str: ...
+
+
+# ---------------------------------------------------------------------------
+# Communication
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class Mailer(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def send(self, to: str, subject: str, body: str) -> None: ...
+    async def send_template(self, to: str, template: str, data: dict[str, Any]) -> None: ...
+    async def verify_address(self, address: str) -> bool: ...
+
+
+@runtime_checkable
+class PubSub(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def publish(self, topic: str, payload: bytes) -> None: ...
+    async def subscribe(self, topic: str, handler: Callable[[bytes], Awaitable[None]]) -> None: ...
+
+
+# ---------------------------------------------------------------------------
+# Quality of service
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class RateLimiter(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def acquire(self, key: str, cost: int = 1) -> bool: ...
+    async def peek(self, key: str) -> int: ...
+    async def reset(self, key: str) -> None: ...
+
+
+@runtime_checkable
+class FeatureFlags(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def is_on(self, flag: str, user: str | None = None) -> bool: ...
+    async def variant(self, flag: str, user: str | None = None) -> str | None: ...
+    async def refresh(self) -> None: ...
+
+
+# ---------------------------------------------------------------------------
+# Observability sinks
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class MetricsSink(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    def counter(self, name: str, value: float = 1.0, **tags: str) -> None: ...
+    def gauge(self, name: str, value: float, **tags: str) -> None: ...
+    def histogram(self, name: str, value: float, **tags: str) -> None: ...
+    def timer(self, name: str, **tags: str) -> AsyncContextManager[None]: ...
+
+
+@runtime_checkable
+class LogSink(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    def emit(self, record: dict[str, Any]) -> None: ...
+
+
+# ---------------------------------------------------------------------------
+# Search / data access
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class Searchable(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def index(self, doc_id: str, doc: dict[str, Any]) -> None: ...
+    async def search(self, query: str, *, limit: int = 20) -> list[dict[str, Any]]: ...
+    async def delete(self, doc_id: str) -> None: ...
+    async def bulk_index(self, docs: list[tuple[str, dict[str, Any]]]) -> None: ...
+
+
+@runtime_checkable
+class DBSession(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    def session(self) -> AsyncContextManager[Any]: ...
+    def transaction(self) -> AsyncContextManager[Any]: ...
+    async def health(self) -> bool: ...
+
+
+# ---------------------------------------------------------------------------
+# Identity + safety
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class AuthProvider(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def current_user(self, req: Any) -> Any | None: ...
+    async def login(self, creds: dict[str, Any]) -> Any: ...
+    async def logout(self, req: Any) -> None: ...
+    async def verify(self, token: str) -> Any | None: ...
+
+
+@runtime_checkable
+class BlobScanner(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def scan(self, stream: AsyncIterator[bytes]) -> bool: ...
+
+
+# ---------------------------------------------------------------------------
+# Deploy
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class DeployTarget(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    def manifest(self) -> dict[str, Any]: ...
+    def package(self) -> bytes: ...
+    async def push(self, target: str) -> str: ...
+
+
+__all__ = [
+    "KV",
+    "AuthProvider",
+    "BlobScanner",
+    "DBSession",
+    "DeployTarget",
+    "FeatureFlags",
+    "LogSink",
+    "Mailer",
+    "MetricsSink",
+    "Plugin",
+    "PubSub",
+    "RateLimiter",
+    "Searchable",
+    "SessionStore",
+    "Storage",
+    "TaskAdapter",
+    "TaskRef",
+    "TaskStatus",
+]

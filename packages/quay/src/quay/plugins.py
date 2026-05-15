@@ -1,0 +1,173 @@
+"""Plugin registry.
+
+Two discovery paths land into the same registry:
+
+- Entry-point: any installed package declaring ``quay.plugins`` in its
+  ``[project.entry-points]`` is auto-loaded at startup.
+- Explicit: ``src/app/plugins.py`` calls :func:`register` directly, which
+  matters when the adapter needs constructor args (broker URLs, secrets).
+
+The registry knows nothing about specific contracts beyond ``isinstance``
+checks against :mod:`quay.contracts` — adding a contract is a matter of
+exporting a Protocol and a reference adapter; the registry doesn't change.
+"""
+
+from __future__ import annotations
+
+import logging
+import warnings
+from collections import OrderedDict
+from collections.abc import Awaitable, Callable
+from importlib.metadata import entry_points
+from typing import Any
+
+from quay.contracts import Plugin
+
+_log = logging.getLogger("quay.plugins")
+
+# OrderedDict preserves registration order — important because shutdown
+# is reverse-of-registration. Keying by ``id()`` of the adapter would
+# leak references; keying by ``(contract_name, instance_repr)`` would be
+# fragile. We key by sequence number and store the instance.
+_registry: OrderedDict[int, Plugin] = OrderedDict()
+_next_id = 0
+_started = False
+_CURRENT_CONTRACT_VERSION = "v1.0"
+
+
+def register(adapter: Plugin) -> None:
+    """Register a plugin adapter. Order matters: shutdown is reverse-of-register.
+
+    Re-registering a plugin instance is a no-op (the registry deduplicates by
+    Python identity), so calling ``register(x)`` twice doesn't double-fire
+    ``startup``.
+    """
+    global _next_id
+    for existing in _registry.values():
+        if existing is adapter:
+            return
+    _check_version(adapter)
+    _registry[_next_id] = adapter
+    _next_id += 1
+
+
+def registered() -> list[Plugin]:
+    """Snapshot of currently-registered adapters in registration order."""
+    return list(_registry.values())
+
+
+def clear() -> None:
+    """Drop all registrations. For tests only — production code never calls this."""
+    global _started
+    _registry.clear()
+    _started = False
+
+
+def discover(group: str = "quay.plugins") -> list[str]:
+    """Auto-load every installed package that ships a ``quay.plugins`` entry point.
+
+    Each entry point is expected to expose a ``plugin(settings)`` callable that
+    itself calls :func:`register`. We swallow ``ImportError`` per-entry so one
+    broken plugin doesn't take the whole app down — but we log loudly.
+    """
+    discovered: list[str] = []
+    try:
+        eps = entry_points(group=group)
+    except TypeError:  # Python < 3.10 fallback
+        eps = entry_points().get(group, [])  # type: ignore[attr-defined]
+
+    for ep in eps:
+        try:
+            plugin_fn = ep.load()
+        except Exception as exc:
+            _log.warning("plugin %r failed to load: %s", ep.name, exc)
+            continue
+        discovered.append(ep.name)
+        # The plugin's ``plugin(settings)`` callable does its own ``register()``
+        # call. ``settings`` is None here; the lifespan layer re-invokes with
+        # the real Settings object once it's loaded.
+        try:
+            plugin_fn(None)
+        except Exception as exc:
+            _log.warning("plugin %r threw during registration: %s", ep.name, exc)
+    return discovered
+
+
+async def startup_all(settings: Any) -> None:
+    """Fire every registered plugin's ``startup(settings)`` in registration order."""
+    global _started
+    for adapter in list(_registry.values()):
+        await _safe_call(adapter, "startup", settings)
+    _started = True
+
+
+async def shutdown_all() -> None:
+    """Fire shutdowns in reverse-of-registration order. Errors are logged, not raised."""
+    global _started
+    for adapter in reversed(list(_registry.values())):
+        await _safe_call(adapter, "shutdown")
+    _started = False
+
+
+async def all_ready() -> dict[str, bool]:
+    """Snapshot of each plugin's ``ready()`` state.
+
+    Used by ``/readyz``. The map key is ``f"{type(adapter).__name__}"``; if two
+    adapters share a class name we suffix with the registration sequence number.
+    """
+    out: dict[str, bool] = {}
+    seen: dict[str, int] = {}
+    for seq, adapter in _registry.items():
+        base = type(adapter).__name__
+        seen[base] = seen.get(base, 0) + 1
+        key = base if seen[base] == 1 else f"{base}#{seq}"
+        try:
+            ready = adapter.ready()
+            out[key] = bool(await ready) if _is_awaitable(ready) else bool(ready)
+        except Exception:
+            out[key] = False
+    return out
+
+
+def _check_version(adapter: Plugin) -> None:
+    version = getattr(adapter, "contract_version", None)
+    if version is None:
+        warnings.warn(
+            f"{type(adapter).__name__} registered without contract_version; "
+            "future Quay versions may refuse it",
+            stacklevel=3,
+        )
+        return
+    if version != _CURRENT_CONTRACT_VERSION:
+        warnings.warn(
+            f"{type(adapter).__name__} targets contract {version!r}, "
+            f"Quay supports {_CURRENT_CONTRACT_VERSION!r}",
+            stacklevel=3,
+        )
+
+
+async def _safe_call(adapter: Plugin, method: str, *args: Any) -> None:
+    fn: Callable[..., Any] | None = getattr(adapter, method, None)
+    if fn is None:
+        return
+    try:
+        result = fn(*args)
+        if _is_awaitable(result):
+            await result
+    except Exception as exc:
+        _log.warning("plugin %s.%s failed: %s", type(adapter).__name__, method, exc)
+
+
+def _is_awaitable(obj: Any) -> bool:
+    return hasattr(obj, "__await__") or isinstance(obj, Awaitable)
+
+
+__all__ = [
+    "all_ready",
+    "clear",
+    "discover",
+    "register",
+    "registered",
+    "shutdown_all",
+    "startup_all",
+]
