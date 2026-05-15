@@ -8,6 +8,7 @@ calls :func:`register` directly for adapters that need constructor args.
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
@@ -86,9 +87,77 @@ def discover(group: str = "quay.plugins") -> list[str]:
     return discovered
 
 
+def env() -> str:
+    """Read the current deployment environment.
+
+    Checks ``QUAY_ENV`` first, falls back to ``ENV``, defaults to ``"dev"``.
+    Plugins gate themselves on this for per-env activation::
+
+        if env() == "prod":
+            register(SentryObserver(dsn=...))
+    """
+    return os.environ.get("QUAY_ENV") or os.environ.get("ENV") or "dev"
+
+
+def check_required_contracts() -> None:
+    """Raise if any registered plugin declares ``requires`` that aren't met.
+
+    A plugin lists contract class names it depends on via the ``requires``
+    attribute. The registry walks the list at boot, refuses to start if an
+    expected contract has no registered adapter, and emits a clear error.
+    """
+    available: set[str] = set()
+    for adapter in _registry.values():
+        for cls in type(adapter).__mro__:
+            available.add(cls.__name__)
+
+    for adapter in _registry.values():
+        required: list[str] = list(getattr(adapter, "requires", ()) or ())
+        missing = [r for r in required if r not in available]
+        if missing:
+            msg = (
+                f"plugin {type(adapter).__name__} requires {missing!r}; "
+                "no adapter for those contracts is registered"
+            )
+            raise RuntimeError(msg)
+
+
+def merge_settings_fragments(settings: Any) -> Any:
+    """Apply each plugin's ``settings_fragment()`` to the live ``Settings``.
+
+    A plugin may declare a method::
+
+        def settings_fragment(self) -> dict[str, Any]:
+            return {"resend_api_key": SecretStr(...)}
+
+    The returned mapping is shallow-merged onto the settings instance via
+    ``setattr``. This is the escape hatch for plugins that need typed config
+    fields the app didn't declare.
+    """
+    if settings is None:
+        return settings
+    for adapter in _registry.values():
+        fn = getattr(adapter, "settings_fragment", None)
+        if not callable(fn):
+            continue
+        try:
+            fragment = fn()
+        except Exception as exc:
+            _log.warning("plugin %s.settings_fragment failed: %s", type(adapter).__name__, exc)
+            continue
+        if not isinstance(fragment, dict):
+            continue
+        for key, value in fragment.items():
+            if not hasattr(settings, key):
+                setattr(settings, key, value)
+    return settings
+
+
 async def startup_all(settings: Any) -> None:
     """Fire every registered plugin's ``startup(settings)`` in registration order."""
     global _started
+    check_required_contracts()
+    merge_settings_fragments(settings)
     for adapter in list(_registry.values()):
         await _safe_call(adapter, "startup", settings)
     _started = True
@@ -157,8 +226,11 @@ def _is_awaitable(obj: Any) -> bool:
 
 __all__ = [
     "all_ready",
+    "check_required_contracts",
     "clear",
     "discover",
+    "env",
+    "merge_settings_fragments",
     "register",
     "registered",
     "shutdown_all",

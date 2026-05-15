@@ -80,6 +80,7 @@ def discover(routes_root: str | Path) -> Discovered:
     # Outer-most subtree shuts down last.
     result.shutdown_hooks.reverse()
     for r in result.routes:
+        r.handler = _bind_providers(r.handler, r.providers)
         r.handler = _compose_guards(r.handler, r.middleware)
     return result
 
@@ -188,11 +189,20 @@ def _check_method_conflicts(routes: list[DiscoveredRoute]) -> None:
         seen[key] = r.source
 
 
+_module_cache: dict[Path, Any] = {}
+
+
 def _import_path(file: Path) -> Any:
-    """Load a Python file by path. Brackets in the filename are fine here —
-    ``spec_from_file_location`` doesn't care, and the module name we hand it
-    is purely a label that never participates in Python's import system.
+    """Load a Python file by path, cached by resolved physical path.
+
+    Caching matters so the router and any handler that imports a scope file
+    end up with the same module instance — provider identity comparisons
+    in :func:`_bind_providers` rely on it.
     """
+    resolved = file.resolve()
+    cached = _module_cache.get(resolved)
+    if cached is not None:
+        return cached
     label = file.with_suffix("").as_posix().replace("/", ".").replace("[", "_").replace("]", "_")
     module_name = f"_quay_routes_{label}"
     spec = importlib.util.spec_from_file_location(module_name, file)
@@ -201,11 +211,89 @@ def _import_path(file: Path) -> Any:
         raise ImportError(msg)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    _module_cache[resolved] = module
     return module
+
+
+def reset_module_cache() -> None:
+    """Drop the import cache. Hot-reload calls this between scans."""
+    _module_cache.clear()
 
 
 def _decorator_for(app: App, method: HttpMethod) -> Callable[[str], Callable[[Handler], Handler]]:
     return getattr(app, method.lower())  # type: ignore[no-any-return]
+
+
+def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler:
+    """Rewrite ``Annotated[T, provider]`` parameters to use ``Depends(provider)``.
+
+    The docs let route handlers write ``db: Annotated[Session, get_session]``
+    where ``get_session`` is a function decorated with ``@provide`` in a
+    parent ``_scope.py``. The dyadpy runtime expects ``Depends(get_session)``,
+    so we rewrite the signature before handing the function off.
+    """
+    if not providers:
+        return handler
+
+    import inspect as _inspect
+    import typing as _typing
+
+    from dyadpy import Depends
+
+    # Match providers by source location + name so re-imports of the same
+    # ``_scope.py`` (Python creates fresh function objects each time) still
+    # resolve to the same logical provider.
+    def _key(fn: Callable[..., Any]) -> tuple[str, str] | None:
+        code = getattr(fn, "__code__", None)
+        if code is None:
+            return None
+        return (code.co_filename, getattr(code, "co_qualname", code.co_name))
+
+    provider_keys: dict[tuple[str, str], Callable[..., Any]] = {}
+    for p in providers.values():
+        key = _key(p)
+        if key is not None:
+            provider_keys[key] = p
+
+    try:
+        sig = _inspect.signature(handler)
+    except (TypeError, ValueError):
+        return handler
+
+    rewritten = False
+    new_params: list[_inspect.Parameter] = []
+    for param in sig.parameters.values():
+        annotation = param.annotation
+        if annotation is _inspect.Parameter.empty:
+            new_params.append(param)
+            continue
+        if _typing.get_origin(annotation) is not _typing.Annotated:
+            new_params.append(param)
+            continue
+        base, *extras = _typing.get_args(annotation)
+        new_extras: list[Any] = []
+        bound: Callable[..., Any] | None = None
+        for extra in extras:
+            if callable(extra):
+                key = _key(extra)
+                if key is not None and key in provider_keys:
+                    bound = provider_keys[key]
+                    continue
+            new_extras.append(extra)
+        if bound is None:
+            new_params.append(param)
+            continue
+        rewritten_annotation = base if not new_extras else _typing.Annotated[base, *new_extras]
+        new_params.append(
+            param.replace(annotation=rewritten_annotation, default=Depends(bound)),
+        )
+        rewritten = True
+
+    if not rewritten:
+        return handler
+
+    handler.__signature__ = sig.replace(parameters=new_params)  # type: ignore[attr-defined]
+    return handler
 
 
 def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
