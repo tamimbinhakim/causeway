@@ -1,16 +1,9 @@
-"""Background-task contract + decorator + reference adapter.
+"""Background tasks.
 
-The framework owns the *what* (a callable with a payload schema, a queue,
-a retry / backoff policy) and lets you plug in the *how* (Dramatiq, Celery,
-Arq, in-process). This module ships the contract and one reference adapter
-that runs jobs in-process — enough for tests and the dev loop.
-
-Production deployments register a real adapter in ``src/app/plugins.py``::
-
-    from quay import register
-    from quay.tasks.dramatiq import DramatiqAdapter
-
-    register(DramatiqAdapter(broker_url="redis://localhost"))
+The :func:`task` decorator marks a coroutine, the :func:`cron` decorator
+schedules one, and :class:`InMemoryAdapter` is the reference broker. Real
+adapters (Dramatiq, Celery) live in sibling packages and replace the
+in-memory one via the plugin registry.
 """
 
 from __future__ import annotations
@@ -141,11 +134,9 @@ def _clear() -> None:
     _cron_jobs.clear()
 
 
-# ---------------------------------------------------------------------------
 # Adapter selection: a contextvar holds the active adapter so a request can
 # operate against a different adapter (e.g. ``tasks_eager()``) without global
 # mutation.
-# ---------------------------------------------------------------------------
 
 
 _adapter_var: ContextVar[Any] = ContextVar("_quay_task_adapter")
@@ -179,10 +170,8 @@ def _decode(payload: bytes) -> tuple[tuple[Any, ...], dict[str, Any]]:
     return tuple(data.get("args", [])), data.get("kwargs", {})
 
 
-# ---------------------------------------------------------------------------
 # Reference adapter: in-process. Real adapters (Dramatiq, Celery) live in
 # sibling packages.
-# ---------------------------------------------------------------------------
 
 
 @dataclass(slots=True)
@@ -349,10 +338,8 @@ def _backoff_delay(strategy: Backoff, attempt: int) -> float:
     return base * (2**attempt)
 
 
-# ---------------------------------------------------------------------------
 # Public testing entry point: ``tasks_eager()``. Pull the active adapter and
 # enter its ``eager()`` context.
-# ---------------------------------------------------------------------------
 
 
 def tasks_eager() -> contextlib.AbstractAsyncContextManager[None]:

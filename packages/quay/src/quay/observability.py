@@ -1,11 +1,7 @@
-"""Observability: request-id middleware + structlog setup + OTel hooks.
+"""Observability: request-id middleware, structlog setup, OTel hooks.
 
-Quay doesn't pick an exporter — it wires correlation. Each request gets a
-request id (read from ``X-Request-Id`` if the caller sent one, otherwise
-generated). The id flows onto ``request.state.request_id`` for handlers
-and onto structlog's context for every log line. OTel auto-instrumentation
-is opt-in; ``configure_otel()`` is a no-op when ``opentelemetry-api`` isn't
-installed.
+Quay wires correlation; the exporter is the user's choice. OTel setup is
+a no-op when the SDK isn't installed.
 """
 
 from __future__ import annotations

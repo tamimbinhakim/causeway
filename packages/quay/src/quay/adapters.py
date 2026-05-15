@@ -1,9 +1,8 @@
-"""Reference adapters that ship in core.
+"""Reference adapters.
 
-These are in-memory / no-op implementations meant for tests and the dev loop.
-Production deployments swap them out via the plugin registry. Every adapter
-here honors the same contract as its real counterpart so swapping is
-mechanically a one-line change in ``src/app/plugins.py``.
+In-memory / no-op implementations that satisfy the contracts in
+:mod:`quay.contracts`. Tests and the dev loop run on these; production
+swaps them out by registering a real adapter in ``src/app/plugins.py``.
 """
 
 from __future__ import annotations
@@ -16,13 +15,9 @@ from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any, ClassVar
 
-# ---------------------------------------------------------------------------
-# Storage
-# ---------------------------------------------------------------------------
-
 
 class LocalStorage:
-    """In-memory key→bytes store. Reference :class:`quay.contracts.Storage`."""
+    """In-memory blob store; implements :class:`quay.contracts.Storage`."""
 
     contract_version: ClassVar[str] = "v1.0"
 
@@ -59,13 +54,8 @@ class LocalStorage:
                 yield k
 
 
-# ---------------------------------------------------------------------------
-# Key-value store
-# ---------------------------------------------------------------------------
-
-
 class MemoryKV:
-    """In-memory KV with TTL. Reference :class:`quay.contracts.KV`."""
+    """In-memory KV with TTL; implements :class:`quay.contracts.KV`."""
 
     contract_version: ClassVar[str] = "v1.0"
 
@@ -116,11 +106,6 @@ class MemoryKV:
             self._exp[key] = time.monotonic() + ttl
 
 
-# ---------------------------------------------------------------------------
-# Sessions
-# ---------------------------------------------------------------------------
-
-
 class CookieStore:
     """In-memory session store keyed by session id.
 
@@ -159,13 +144,8 @@ class CookieStore:
         return new_id
 
 
-# ---------------------------------------------------------------------------
-# Rate limiting
-# ---------------------------------------------------------------------------
-
-
 class MemoryLimiter:
-    """Token-bucket limiter with default 100 req / 60 s. Reference :class:`quay.contracts.RateLimiter`."""
+    """Token-bucket limiter; implements :class:`quay.contracts.RateLimiter`."""
 
     contract_version: ClassVar[str] = "v1.0"
 
@@ -202,11 +182,6 @@ class MemoryLimiter:
         self._buckets.pop(key, None)
 
 
-# ---------------------------------------------------------------------------
-# Feature flags
-# ---------------------------------------------------------------------------
-
-
 class StaticFlags:
     """Static flag map loaded from ``Settings.feature_flags`` (a ``dict[str, bool]``)."""
 
@@ -235,13 +210,8 @@ class StaticFlags:
     async def refresh(self) -> None: ...
 
 
-# ---------------------------------------------------------------------------
-# Metrics / logs
-# ---------------------------------------------------------------------------
-
-
 class NullSink:
-    """Discards metrics. Reference :class:`quay.contracts.MetricsSink`."""
+    """Discards metrics; implements :class:`quay.contracts.MetricsSink`."""
 
     contract_version: ClassVar[str] = "v1.0"
 
@@ -282,11 +252,6 @@ class StdoutLogSink:
         self._log.info("%s", record)
 
 
-# ---------------------------------------------------------------------------
-# Pub/sub
-# ---------------------------------------------------------------------------
-
-
 class MemoryBus:
     """In-process pub/sub. Subscribers receive a copy of every published payload."""
 
@@ -310,11 +275,6 @@ class MemoryBus:
 
     async def subscribe(self, topic: str, handler: Callable[[bytes], Awaitable[None]]) -> None:
         self._subs[topic].append(handler)
-
-
-# ---------------------------------------------------------------------------
-# Blob scanner
-# ---------------------------------------------------------------------------
 
 
 class NullScanner:

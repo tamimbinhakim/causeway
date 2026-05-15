@@ -1,0 +1,26 @@
+{
+  "venvPath": "packages/quay",
+  "venv": ".venv",
+  "include": [
+    "packages/quay/src",
+    "packages/quay/tests",
+    "examples"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    "**/.ruff_cache",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "**/dist",
+    "**/node_modules"
+  ],
+  "extraPaths": ["packages/quay/src"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnknownParameterType": "none"
+}

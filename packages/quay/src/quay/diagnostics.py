@@ -18,7 +18,7 @@ from quay.plugins import registered
 from quay.tasks import cron_jobs, registered_tasks
 
 if TYPE_CHECKING:
-    from dyadpy.app import App
+    from dyadpy import App
 
 
 def snapshot(*, settings: Any = None, manifest: Manifest | None = None) -> dict[str, Any]:

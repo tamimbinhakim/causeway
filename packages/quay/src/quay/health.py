@@ -18,7 +18,7 @@ from dyadpy import Context
 from quay.plugins import all_ready
 
 if TYPE_CHECKING:
-    from dyadpy.app import App
+    from dyadpy import App
 
 
 async def healthz() -> dict[str, str]:

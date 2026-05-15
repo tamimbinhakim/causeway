@@ -22,7 +22,7 @@ from quay._paths import url_for
 from quay.middleware import Middleware, is_guard
 
 if TYPE_CHECKING:
-    from dyadpy.app import App
+    from dyadpy import App
 
 Handler = Callable[..., Any]
 Provider = Callable[..., Any]
@@ -89,11 +89,6 @@ def register(app: App, found: Discovered) -> None:
     for r in found.routes:
         decorator = _decorator_for(app, r.method)
         decorator(r.path)(r.handler)
-
-
-# ---------------------------------------------------------------------------
-# Internals
-# ---------------------------------------------------------------------------
 
 
 def _walk(routes_root: Path, cur: Path, inherited: _ScopeFrame, out: Discovered) -> None:

@@ -1,18 +1,10 @@
 """Plugin contracts.
 
-Each contract is a ``typing.Protocol`` that a plugin implements. Quay's job
-is to make the contract surface stable, not to ship every backend — most
-real implementations live in sibling repos (``quay-storage-s3``,
-``quay-auth-clerk``, etc.) with their own release cycles.
-
-Every contract has a ``contract_version: ClassVar[str]`` attribute. The
-plugin registry compares it against the version Quay was built against and
-warns on mismatch. Optional methods are marked in docstrings; required
-methods are unannotated and raise ``NotImplementedError`` only if a plugin
-ships a stub.
-
-Lifecycle methods (``startup``, ``shutdown``, ``ready``) are common to
-every contract and live on the :class:`Plugin` base protocol.
+Each contract is a ``typing.Protocol``. The lifecycle methods
+(``startup``, ``shutdown``, ``ready``) live on :class:`Plugin`; concrete
+contracts inherit and add their own. Every contract carries a
+``contract_version`` that the registry checks against the loaded Quay
+version and warns on mismatch.
 """
 
 from __future__ import annotations
@@ -48,11 +40,6 @@ class Plugin(Protocol):
         ...
 
 
-# ---------------------------------------------------------------------------
-# Background tasks
-# ---------------------------------------------------------------------------
-
-
 class TaskRef(Protocol):
     """A handle to a registered ``@task`` function. Adapters call ``.module`` /
     ``.name`` to identify it on the wire."""
@@ -78,11 +65,6 @@ class TaskAdapter(Plugin, Protocol):
     def eager(self) -> AsyncContextManager[None]: ...
     async def status(self, task_id: str) -> TaskStatus: ...
     async def result(self, task_id: str) -> Any: ...
-
-
-# ---------------------------------------------------------------------------
-# Storage / KV / Sessions
-# ---------------------------------------------------------------------------
 
 
 @runtime_checkable
@@ -117,11 +99,6 @@ class SessionStore(Plugin, Protocol):
     async def rotate(self, session_id: str) -> str: ...
 
 
-# ---------------------------------------------------------------------------
-# Communication
-# ---------------------------------------------------------------------------
-
-
 @runtime_checkable
 class Mailer(Plugin, Protocol):
     contract_version: ClassVar[str] = "v1.0"
@@ -137,11 +114,6 @@ class PubSub(Plugin, Protocol):
 
     async def publish(self, topic: str, payload: bytes) -> None: ...
     async def subscribe(self, topic: str, handler: Callable[[bytes], Awaitable[None]]) -> None: ...
-
-
-# ---------------------------------------------------------------------------
-# Quality of service
-# ---------------------------------------------------------------------------
 
 
 @runtime_checkable
@@ -162,11 +134,6 @@ class FeatureFlags(Plugin, Protocol):
     async def refresh(self) -> None: ...
 
 
-# ---------------------------------------------------------------------------
-# Observability sinks
-# ---------------------------------------------------------------------------
-
-
 @runtime_checkable
 class MetricsSink(Plugin, Protocol):
     contract_version: ClassVar[str] = "v1.0"
@@ -182,11 +149,6 @@ class LogSink(Plugin, Protocol):
     contract_version: ClassVar[str] = "v1.0"
 
     def emit(self, record: dict[str, Any]) -> None: ...
-
-
-# ---------------------------------------------------------------------------
-# Search / data access
-# ---------------------------------------------------------------------------
 
 
 @runtime_checkable
@@ -208,11 +170,6 @@ class DBSession(Plugin, Protocol):
     async def health(self) -> bool: ...
 
 
-# ---------------------------------------------------------------------------
-# Identity + safety
-# ---------------------------------------------------------------------------
-
-
 @runtime_checkable
 class AuthProvider(Plugin, Protocol):
     contract_version: ClassVar[str] = "v1.0"
@@ -228,11 +185,6 @@ class BlobScanner(Plugin, Protocol):
     contract_version: ClassVar[str] = "v1.0"
 
     async def scan(self, stream: AsyncIterator[bytes]) -> bool: ...
-
-
-# ---------------------------------------------------------------------------
-# Deploy
-# ---------------------------------------------------------------------------
 
 
 @runtime_checkable

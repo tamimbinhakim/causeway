@@ -1,15 +1,8 @@
 """Plugin registry.
 
-Two discovery paths land into the same registry:
-
-- Entry-point: any installed package declaring ``quay.plugins`` in its
-  ``[project.entry-points]`` is auto-loaded at startup.
-- Explicit: ``src/app/plugins.py`` calls :func:`register` directly, which
-  matters when the adapter needs constructor args (broker URLs, secrets).
-
-The registry knows nothing about specific contracts beyond ``isinstance``
-checks against :mod:`quay.contracts` — adding a contract is a matter of
-exporting a Protocol and a reference adapter; the registry doesn't change.
+Two discovery paths feed one registry: entry-point packages (``quay.plugins``
+in their ``pyproject.toml``) auto-load at startup, and ``src/app/plugins.py``
+calls :func:`register` directly for adapters that need constructor args.
 """
 
 from __future__ import annotations
