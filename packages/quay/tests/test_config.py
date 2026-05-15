@@ -37,9 +37,11 @@ def test_invalid_expose_settings_rejected(tmp_path: Path) -> None:
 
 def test_expose_for_client_skips_secrets() -> None:
     from pydantic import SecretStr
-    from pydantic_settings import BaseSettings, SettingsConfigDict
+    from pydantic_settings import SettingsConfigDict
 
-    class S(BaseSettings):
+    from quay import Settings
+
+    class S(Settings):
         model_config = SettingsConfigDict()
         env: str = "dev"
         api_key: SecretStr = SecretStr("hidden")

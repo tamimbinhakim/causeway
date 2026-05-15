@@ -21,12 +21,16 @@ from typing import Any
 from pydantic_settings import BaseSettings
 
 
+def _empty_app() -> dict[str, Any]:
+    return {}
+
+
 @dataclass(frozen=True, slots=True)
 class Manifest:
     """Parsed ``quay.toml``. Fields default to empty when the file is absent."""
 
     expose_settings: tuple[str, ...] = ()
-    app: dict[str, Any] = field(default_factory=dict)
+    app: dict[str, Any] = field(default_factory=_empty_app)
 
 
 def load_manifest(path: str | Path = "quay.toml") -> Manifest:
@@ -90,7 +94,9 @@ def expose_for_client(settings: BaseSettings | None, manifest: Manifest) -> dict
 
 # Re-export ``BaseSettings`` so apps can ``from quay import Settings`` if they want.
 # A separate name is offered for documentation symmetry with the docs examples.
-Settings = BaseSettings
+# The explicit annotation gives type checkers a complete type for downstream code
+# even when ``pydantic-settings`` ships without a ``py.typed`` marker.
+Settings: type[BaseSettings] = BaseSettings
 
 
 __all__ = [
