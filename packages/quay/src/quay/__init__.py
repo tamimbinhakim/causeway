@@ -1,19 +1,53 @@
 """Quay — a lean backend framework for type-safe Python APIs.
 
-This is the structural boilerplate for the package. Implementation lands
-incrementally per the v0.1 roadmap; see ROADMAP.md.
+Public API surface for v0.1. Anything not listed in ``__all__`` (or imported
+from a private underscore module like ``quay._methods``) is implementation
+detail and may change in any release. See ``docs/semver.md``.
 
-Public API surface (to be populated):
+Slice landed in this release:
 
-- Method decorators: ``get``, ``post``, ``put``, ``patch``, ``delete``
-- Routing helpers: ``Middleware``, ``guard``, ``provide``
-- Errors: ``raises``, ``quay.errors`` namespace
-- Streaming: ``stream``
-- Background tasks: ``task``, ``cron``
-- Plugin registry: ``register``
-- Testing: ``TestApp``
+- File-based routing primitives — :func:`get` / :func:`post` / :func:`put` /
+  :func:`patch` / :func:`delete` decorators, :func:`quay.routing.discover` and
+  :func:`quay.routing.register` for the walker.
+- Scopes — :func:`provide` for ``_scope.py`` providers.
+- Middleware — :class:`Middleware` base class and :func:`guard` decorator.
+- Config — :class:`Settings` (re-export of ``pydantic_settings.BaseSettings``)
+  and :class:`Manifest` (parsed ``quay.toml``).
+
+Re-exported from ``dyadpy`` so app code only depends on ``quay``:
+
+- :func:`Depends` — DI marker for handler parameters.
+- :func:`raises` — declare exception types the handler may raise (flows to
+  the generated TS client's ``Result<T, E>`` union).
+- :func:`stream` — SSE return type marker.
+- :data:`Bytes` — raw-body sentinel.
 """
+
+from __future__ import annotations
+
+from dyadpy import Bytes, Depends, raises, stream
+
+from quay._methods import delete, get, patch, post, put
+from quay.config import Manifest, Settings
+from quay.middleware import Middleware, guard
+from quay.scope import provide
 
 __version__ = "0.1.0a0"
 
-__all__ = ["__version__"]
+__all__ = [
+    "Bytes",
+    "Depends",
+    "Manifest",
+    "Middleware",
+    "Settings",
+    "__version__",
+    "delete",
+    "get",
+    "guard",
+    "patch",
+    "post",
+    "provide",
+    "put",
+    "raises",
+    "stream",
+]
