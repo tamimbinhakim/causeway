@@ -1,18 +1,18 @@
 # Background tasks
 
-Quay defines a **`TaskAdapter` contract** in core and ships **Dramatiq as the reference adapter**. Pick a real implementation (Celery, Arq, TaskIQ, in-process) by changing one line in `plugins.py`.
+Causeway defines a **`TaskAdapter` contract** in core and ships **Dramatiq as the reference adapter**. Pick a real implementation (Celery, Arq, TaskIQ, in-process) by changing one line in `plugins.py`.
 
 ## Why a contract, not a queue
 
 Per 2025 benchmarks: Huey, Dramatiq, and TaskIQ are roughly 10× faster than RQ for high-throughput no-op workloads; Celery remains the workflow-rich incumbent; Dramatiq strikes the best simplicity / reliability balance.
 
-Quay doesn't pick. The framework defines what background jobs **are** (a callable with a payload schema, a queue, retry / backoff policy, and a status surface) and lets you plug in the broker.
+Causeway doesn't pick. The framework defines what background jobs **are** (a callable with a payload schema, a queue, retry / backoff policy, and a status surface) and lets you plug in the broker.
 
 ## The decorator
 
 ```python
 # src/app/tasks/emails.py
-from quay import task
+from causeway import task
 
 @task(queue="emails", retries=5, backoff="exponential")
 async def send_welcome(user_id: str) -> None:
@@ -25,7 +25,7 @@ Calling from a handler:
 ```python
 # src/app/routes/users/index.py
 from app.tasks.emails import send_welcome
-from quay import post
+from causeway import post
 
 @post
 async def create(data: NewUser) -> User:
@@ -40,8 +40,8 @@ async def create(data: NewUser) -> User:
 
 ```python
 # src/app/plugins.py
-from quay import register
-from quay_tasks_dramatiq import DramatiqAdapter  # reference
+from causeway import register
+from causeway_tasks_dramatiq import DramatiqAdapter  # reference
 
 register(DramatiqAdapter(broker_url="redis://localhost"))
 ```
@@ -49,7 +49,7 @@ register(DramatiqAdapter(broker_url="redis://localhost"))
 Want Celery? Change one line:
 
 ```python
-from quay_tasks_celery import CeleryAdapter
+from causeway_tasks_celery import CeleryAdapter
 
 register(CeleryAdapter(broker_url="redis://localhost"))
 ```
@@ -57,7 +57,7 @@ register(CeleryAdapter(broker_url="redis://localhost"))
 Want in-process for tests? Already built in:
 
 ```python
-from quay.tasks import InMemoryAdapter
+from causeway.tasks import InMemoryAdapter
 
 register(InMemoryAdapter())
 ```
@@ -65,7 +65,7 @@ register(InMemoryAdapter())
 ## Cron
 
 ```python
-from quay import cron
+from causeway import cron
 from app.tasks.ingest import refresh_embeddings
 
 @cron("0 * * * *")            # every hour
@@ -80,7 +80,7 @@ Cron delegates to whatever `TaskAdapter` is registered. Dramatiq has its own sch
 Every adapter must support `tasks_eager()`:
 
 ```python
-from quay.testing import tasks_eager
+from causeway.testing import tasks_eager
 
 async def test_create_user(app):
     async with tasks_eager():
@@ -109,5 +109,5 @@ This is small on purpose. Real adapters layer their own features (Dramatiq middl
 ## What's _not_ in the contract
 
 - **Long-running task result streaming** is a separate `Task[T]` route-level primitive, not the queue. The two compose: a `@task` enqueues; a `Task[T]` route polls / streams the result back.
-- **Distributed locks, leader election, semaphores**. Those belong in `quay-locks-*` plugins or in user code.
+- **Distributed locks, leader election, semaphores**. Those belong in `causeway-locks-*` plugins or in user code.
 - **Workflows / DAGs**. Pick Temporal / Prefect / your-DAG-lib-of-choice. We're not reinventing.

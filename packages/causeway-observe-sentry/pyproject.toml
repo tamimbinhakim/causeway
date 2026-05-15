@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "causeway-observe-sentry"
+version = "0.1.0a0"
+description = "Sentry error-tracking integration for Causeway."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = ["causeway>=0.1.0a0", "sentry-sdk>=2.0"]
+
+[project.entry-points."causeway.plugins"]
+observe-sentry = "causeway_observe_sentry:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/causeway_observe_sentry"]

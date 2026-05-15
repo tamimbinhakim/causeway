@@ -13,7 +13,7 @@ import logging
 
 from sqlalchemy import delete
 
-from quay import cron, task
+from causeway import cron, task
 
 from app.db import Comment, SessionFactory
 from app.notifications import record

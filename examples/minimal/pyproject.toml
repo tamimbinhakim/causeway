@@ -1,13 +1,13 @@
 [project]
-name = "quay-example-minimal"
+name = "causeway-example-minimal"
 version = "0.0.0"
 requires-python = ">=3.11"
 dependencies = [
-  "quay>=0.1.0a0",
+  "causeway>=0.1.0a0",
 ]
 
 [tool.uv.sources]
-quay = { path = "../../packages/quay", editable = true }
+causeway = { path = "../../packages/causeway", editable = true }
 
 [dependency-groups]
 dev = [

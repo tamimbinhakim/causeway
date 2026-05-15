@@ -1,29 +1,29 @@
 # Writing a new official plugin
 
-The on-ramp for adding a sibling `quay-<role>-<impl>` package to the monorepo. Aimed at maintainers, not external authors — external plugin authors should read [`docs/plugins.md`](../plugins.md).
+The on-ramp for adding a sibling `causeway-<role>-<impl>` package to the monorepo. Aimed at maintainers, not external authors — external plugin authors should read [`docs/plugins.md`](../plugins.md).
 
 ## Decide on the name
 
-Naming convention is `quay-<role>-<impl>`:
+Naming convention is `causeway-<role>-<impl>`:
 
 - `<role>` is the contract family (`tasks`, `storage`, `cache`, `auth`, `mailer`, `flags`, `observe`, `db`, `deploy`, …).
 - `<impl>` is the concrete implementation (`dramatiq`, `s3`, `redis`, `jwt`, `smtp`, `growthbook`, `sentry`, `sqlmodel`, `fly`, …).
 
-PyPI name uses hyphens: `quay-tasks-dramatiq`. Python import name uses underscores: `quay_tasks_dramatiq`. Class name uses CamelCase: `DramatiqAdapter`, `S3Storage`, `JwtAuth`, `SmtpMailer`.
+PyPI name uses hyphens: `causeway-tasks-dramatiq`. Python import name uses underscores: `causeway_tasks_dramatiq`. Class name uses CamelCase: `DramatiqAdapter`, `S3Storage`, `JwtAuth`, `SmtpMailer`.
 
-If your role is new (no existing `quay-<role>-*` packages), open a Discussion first. Adding a contract family is a bigger decision than adding an implementation.
+If your role is new (no existing `causeway-<role>-*` packages), open a Discussion first. Adding a contract family is a bigger decision than adding an implementation.
 
 ## Scaffold the package
 
 ```bash
-quay plugin new quay-<role>-<impl>
+causeway plugin new causeway-<role>-<impl>
 ```
 
 That generates:
 
 ```
-packages/quay-<role>-<impl>/
-├── src/quay_<role>_<impl>/
+packages/causeway-<role>-<impl>/
+├── src/causeway_<role>_<impl>/
 │   └── __init__.py
 ├── tests/
 │   └── test_smoke.py
@@ -34,18 +34,18 @@ packages/quay-<role>-<impl>/
 The generated `pyproject.toml` declares the entry point:
 
 ```toml
-[project.entry-points."quay.plugins"]
-<role>-<impl> = "quay_<role>_<impl>:plugin"
+[project.entry-points."causeway.plugins"]
+<role>-<impl> = "causeway_<role>_<impl>:plugin"
 ```
 
 ## Implement the contract
 
-Pick the protocol from `quay.contracts` and implement it. Minimum surface:
+Pick the protocol from `causeway.contracts` and implement it. Minimum surface:
 
 ```python
-# packages/quay-<role>-<impl>/src/quay_<role>_<impl>/__init__.py
+# packages/causeway-<role>-<impl>/src/causeway_<role>_<impl>/__init__.py
 from typing import Any, ClassVar
-from quay.contracts import <Role>   # e.g. TaskAdapter, Storage, Mailer
+from causeway.contracts import <Role>   # e.g. TaskAdapter, Storage, Mailer
 
 
 class <Impl><Role>Adapter:
@@ -65,7 +65,7 @@ class <Impl><Role>Adapter:
 
 def plugin(settings: Any) -> None:
     """Entry-point callable. Reads settings, calls register()."""
-    from quay import register
+    from causeway import register
 
     if settings is None:
         return   # discovery pass — Settings isn't loaded yet
@@ -94,7 +94,7 @@ class <Impl><Role>Adapter:
         return {"<your_setting>": SecretStr(...)}
 ```
 
-The registry merges these into `Settings` at startup. Use `SecretStr` / `SecretBytes` for anything secret — those fields are stripped from `/__quay` and the generated TS client automatically.
+The registry merges these into `Settings` at startup. Use `SecretStr` / `SecretBytes` for anything secret — those fields are stripped from `/__causeway` and the generated TS client automatically.
 
 ## Test the adapter
 

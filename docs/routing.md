@@ -90,9 +90,9 @@ src/app/routes/
 
 ## Why brackets / dollars work as filenames
 
-Python doesn't allow `[`, `]`, or `$` in module names, so Quay loads route files via `importlib.util.spec_from_file_location()` rather than ordinary `import` statements. This is well-trodden ground — pytest, fastapi-file-router, and Django's app auto-discovery all rely on the same mechanism. The filename is just a string on disk; the import machinery never sees the dotted parts as package attribute lookups.
+Python doesn't allow `[`, `]`, or `$` in module names, so Causeway loads route files via `importlib.util.spec_from_file_location()` rather than ordinary `import` statements. This is well-trodden ground — pytest, fastapi-file-router, and Django's app auto-discovery all rely on the same mechanism. The filename is just a string on disk; the import machinery never sees the dotted parts as package attribute lookups.
 
-The trade-off: you can't write `from app.routes.users.[id] import ...` or `from app.routes.users.$id import ...`. In practice, route files almost never need to import each other; when they do, Quay provides an explicit alias mechanism.
+The trade-off: you can't write `from app.routes.users.[id] import ...` or `from app.routes.users.$id import ...`. In practice, route files almost never need to import each other; when they do, Causeway provides an explicit alias mechanism.
 
 ## Method handlers inside a route file
 
@@ -101,8 +101,8 @@ The trade-off: you can't write `from app.routes.users.[id] import ...` or `from 
 from typing import Annotated
 from uuid import UUID
 from msgspec import Struct
-from quay import get, patch, delete, raises
-from quay.errors import NotFound
+from causeway import get, patch, delete, raises
+from causeway.errors import NotFound
 
 class User(Struct):
     id: UUID
@@ -130,8 +130,8 @@ Method conflicts (two `@get` decorators in the same file) are caught at boot, no
 
 ```python
 # src/app/routes/_middleware.py
-from quay import Middleware
-from quay.middleware import Request, Response
+from causeway import Middleware
+from causeway.middleware import Request, Response
 
 class RequestId(Middleware):
     async def __call__(self, req: Request, call_next):
@@ -148,7 +148,7 @@ Scoped middleware applies to its subtree only:
 
 ```python
 # src/app/routes/(admin)/_middleware.py
-from quay import guard
+from causeway import guard
 
 @guard
 async def require_admin(req):
@@ -168,7 +168,7 @@ A `_scope.py` is the subtree's DI + lifespan declaration. It does two things:
 
 ```python
 # src/app/routes/users/_scope.py
-from quay import provide
+from causeway import provide
 from app.lib.db import session_factory
 
 @provide("db")
@@ -183,7 +183,7 @@ Providers are request-scoped: a new instance per request, cleaned up on response
 
 ```python
 # src/app/routes/billing/_scope.py
-from quay import provide
+from causeway import provide
 from stripe import StripeClient
 
 _stripe: StripeClient | None = None
@@ -207,8 +207,8 @@ async def get_stripe() -> StripeClient:
 Every discovered handler becomes a route registration in the IR. From the IR you get:
 
 - Generated TypeScript client.
-- Route diagnostics page at `/__quay`.
+- Route diagnostics page at `/__causeway`.
 - Snapshot tests for the route table (a single JSON fixture).
-- Inputs for `quay diff` to flag breaking changes in CI.
+- Inputs for `causeway diff` to flag breaking changes in CI.
 
 The router is the source of truth. Nothing else writes to the IR.

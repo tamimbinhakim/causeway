@@ -8,7 +8,7 @@ export default {
       1,
       "always",
       [
-        "quay",
+        "causeway",
         "routing",
         "config",
         "di",

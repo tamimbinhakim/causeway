@@ -5,7 +5,7 @@ per-package changelog lives alongside the package and is managed automatically
 by [release-please](https://github.com/googleapis/release-please) from
 Conventional Commits.
 
-- [`packages/quay/CHANGELOG.md`](./packages/quay/CHANGELOG.md)
+- [`packages/causeway/CHANGELOG.md`](./packages/causeway/CHANGELOG.md)
 
 This file is for repo-wide notes: governance changes, license changes,
 toolchain migrations, and other things that don't belong to a single package.

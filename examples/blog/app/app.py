@@ -8,6 +8,6 @@ root `routes/_scope.py` then fires plugin + lifespan startup hooks.
 from __future__ import annotations
 
 import app.plugins  # noqa: F401  # side-effect: register adapters
-from quay import create_app
+from causeway import create_app
 
 app = create_app("app/routes")

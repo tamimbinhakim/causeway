@@ -22,12 +22,12 @@
     { "type": "chore", "section": "Chores", "hidden": true }
   ],
   "packages": {
-    "packages/quay": {
+    "packages/causeway": {
       "release-type": "python",
-      "package-name": "quay",
-      "component": "quay",
+      "package-name": "causeway",
+      "component": "causeway",
       "changelog-path": "CHANGELOG.md",
-      "extra-files": ["src/quay/__init__.py"]
+      "extra-files": ["src/causeway/__init__.py"]
     }
   }
 }

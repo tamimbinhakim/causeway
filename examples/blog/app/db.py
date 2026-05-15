@@ -4,7 +4,7 @@ One process-wide async engine, one async sessionmaker. Route handlers
 get a session via `_scope.py`'s `@provide("db")` provider; the
 provider yields a session and rolls back / closes on the way out.
 
-Models are deliberately tiny — the point is to show Quay's wiring, not
+Models are deliberately tiny — the point is to show Causeway's wiring, not
 SQLAlchemy patterns.
 """
 

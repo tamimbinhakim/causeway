@@ -16,7 +16,7 @@ from app.config import settings
 from app.db import create_all, dispose, engine
 from app.notifications import clear as clear_notifications
 from app.notifications import history
-from quay.plugins import shutdown_all, startup_all
+from causeway.plugins import shutdown_all, startup_all
 
 
 @pytest.fixture(autouse=True)

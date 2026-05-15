@@ -1,9 +1,9 @@
-# Releasing Quay
+# Releasing Causeway
 
 A maintainer-facing checklist. Everything in here must be true before
-`quay-v0.1.0` (PyPI) gets published. Run top to bottom, tick boxes as you go.
+`causeway-v0.1.0` (PyPI) gets published. Run top to bottom, tick boxes as you go.
 
-> Quay is a **monorepo with one publishable package**: `quay` on PyPI.
+> Causeway is a **monorepo with one publishable package**: `causeway` on PyPI.
 >
 > Tags follow `release-please-config.json`: `<component>-vX.Y.Z`.
 
@@ -13,7 +13,7 @@ A maintainer-facing checklist. Everything in here must be true before
 
 ```bash
 # Python
-cd packages/quay
+cd packages/causeway
 uv sync --all-extras --dev
 uv run pytest -q
 uv run ruff check .
@@ -37,26 +37,26 @@ pnpm exec prettier --check "**/*.{md,json,yaml,yml}"
 For each publishable package, verify the wheel includes only what should ship.
 
 ```bash
-cd packages/quay
+cd packages/causeway
 rm -rf dist
 uv build
-unzip -l dist/quay-*-py3-none-any.whl
+unzip -l dist/causeway-*-py3-none-any.whl
 ```
 
-- [ ] `quay/py.typed` is present (PEP 561 marker)
+- [ ] `causeway/py.typed` is present (PEP 561 marker)
 - [ ] All public modules included (`__init__`, `routing/*`, `config`,
       `di`, `tasks`, `ai/*`, `plugins`, `observability`, `health`,
       `errors`, `testing`, `cli`)
 - [ ] `METADATA` shows correct version, description, classifiers, license, optional extras
-- [ ] `entry_points.txt` registers the `quay` CLI script and the
-      `quay.plugins` entry-point group
+- [ ] `entry_points.txt` registers the `causeway` CLI script and the
+      `causeway.plugins` entry-point group
 
 ## 3. Versions, changelogs, manifest
 
 - [ ] `.release-please-manifest.json` reflects the version about to ship
 - [ ] `release-please-config.json` `extra-files` entry
-      (`packages/quay/src/quay/__init__.py` `__version__`) is current
-- [ ] `packages/quay/CHANGELOG.md` has a real release section (not
+      (`packages/causeway/src/causeway/__init__.py` `__version__`) is current
+- [ ] `packages/causeway/CHANGELOG.md` has a real release section (not
       just `[Unreleased]`)
 - [ ] Changelog entries are user-facing (not commit-ese); breaking
       changes called out at the top of the section
@@ -67,9 +67,9 @@ unzip -l dist/quay-*-py3-none-any.whl
 - [ ] `README.md` quickstart copy-pastes without edits
 - [ ] `docs/getting-started.md` walks end-to-end from clean install
 - [ ] `docs/reference.md` matches actual exports (`__all__` in
-      `packages/quay/src/quay/__init__.py`)
+      `packages/causeway/src/causeway/__init__.py`)
 - [ ] Package README references the right install command
-      (`uv add quay`)
+      (`uv add causeway`)
 - [ ] `ROADMAP.md` reflects what shipped
 - [ ] Badge URLs in `README.md` point at the correct workflows / registries
 - [ ] No links go to `localhost`, `127.0.0.1`, or local file paths
@@ -87,10 +87,10 @@ unzip -l dist/quay-*-py3-none-any.whl
 
 **PyPI**
 
-- [ ] `quay` project name not taken (check pypi.org/project/quay/) — if
-      taken, pick a fallback (`quay-py`, `quayfw`) and update everything
+- [ ] `causeway` project name not taken (check pypi.org/project/causeway/) — if
+      taken, pick a fallback (`causeway-py`, `causewayfw`) and update everything
       consistently
-- [ ] PyPI Trusted Publisher configured for `tamimbinhakim/quay`,
+- [ ] PyPI Trusted Publisher configured for `tamimbinhakim/causeway`,
       `release.yml`, environment `pypi`
 - [ ] No `PYPI_TOKEN` lying around in old workflows (we use OIDC)
 - [ ] GitHub environment `pypi` exists with deployment protection on `main`
@@ -109,7 +109,7 @@ unzip -l dist/quay-*-py3-none-any.whl
 
 Drafted in GitHub Releases, **NOT** auto-published yet:
 
-- [ ] One release: `quay-v0.1.0`
+- [ ] One release: `causeway-v0.1.0`
 - [ ] The release links its CHANGELOG entry and lists the install command
 - [ ] Top-level "v0.1.0 — initial release" announcement post drafted
       separately if needed
@@ -120,20 +120,20 @@ Run on a fresh checkout / fresh venv. If you can't do this in <10
 minutes, the install path is broken.
 
 ```bash
-mkdir /tmp/quay-smoke && cd /tmp/quay-smoke
-uv init && uv add quay
-quay new my-app
+mkdir /tmp/causeway-smoke && cd /tmp/causeway-smoke
+uv init && uv add causeway
+causeway new my-app
 cd my-app
 uv sync
-uv run quay dev &
+uv run causeway dev &
 sleep 2
 curl -s http://127.0.0.1:8000/healthz
 kill %1
 ```
 
-- [ ] `uv add quay` works
-- [ ] `quay new` scaffolds a runnable app
-- [ ] `quay dev` boots; `/healthz` returns 200
+- [ ] `uv add causeway` works
+- [ ] `causeway new` scaffolds a runnable app
+- [ ] `causeway dev` boots; `/healthz` returns 200
 
 ## 10. Pull the trigger
 
@@ -143,7 +143,7 @@ Once everything above is ticked:
 2. release-please opens / updates a "release PR" with version bumps +
    CHANGELOG diffs. Review and merge.
 3. The merge triggers `release.yml`, which:
-   - Creates a GitHub Release for `quay`.
+   - Creates a GitHub Release for `causeway`.
    - Publishes the Python wheel via PyPI Trusted Publishing.
 4. Verify install from a fresh machine (re-run §9 against PyPI, not source).
 5. Post the announcement.

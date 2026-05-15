@@ -5,8 +5,8 @@ from typing import Annotated
 from msgspec import Struct
 from sqlalchemy import func
 
-from quay import get, raises
-from quay.errors import Unauthorized
+from causeway import get, raises
+from causeway.errors import Unauthorized
 
 from app.db import AsyncSession, Comment, Post, select
 from app.deps import current_admin, db_session

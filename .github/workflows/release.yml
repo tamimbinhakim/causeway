@@ -17,7 +17,7 @@ jobs:
       pull-requests: write
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
-      quay_released: ${{ steps.release.outputs['packages/quay--release_created'] }}
+      causeway_released: ${{ steps.release.outputs['packages/causeway--release_created'] }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
@@ -26,24 +26,24 @@ jobs:
           manifest-file: .release-please-manifest.json
 
   publish-pypi:
-    name: Publish quay to PyPI
+    name: Publish causeway to PyPI
     needs: release-please
-    if: needs.release-please.outputs.quay_released == 'true'
+    if: needs.release-please.outputs.causeway_released == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write # OIDC for PyPI Trusted Publishing
     environment:
       name: pypi
-      url: https://pypi.org/p/quay
+      url: https://pypi.org/p/causeway
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v7.1.1
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
         with:
           python-version: "3.13"
-      - working-directory: packages/quay
+      - working-directory: packages/causeway
         run: uv build
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
-          packages-dir: packages/quay/dist
+          packages-dir: packages/causeway/dist

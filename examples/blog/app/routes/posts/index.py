@@ -5,7 +5,7 @@ from typing import Annotated
 
 from msgspec import Struct
 
-from quay import get
+from causeway import get
 
 from app.db import AsyncSession, Post, select
 from app.deps import db_session

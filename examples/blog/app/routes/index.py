@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from msgspec import Struct
 
-from quay import get
+from causeway import get
 
 from app.config import settings
 

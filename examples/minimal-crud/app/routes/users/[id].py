@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from msgspec import Struct
 
-from quay import delete, get, patch, raises
-from quay.errors import NotFound
+from causeway import delete, get, patch, raises
+from causeway.errors import NotFound
 
 from app.store import User, delete_user, get_user, update_user
 

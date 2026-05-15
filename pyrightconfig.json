@@ -1,9 +1,9 @@
 {
-  "venvPath": "packages/quay",
+  "venvPath": "packages/causeway",
   "venv": ".venv",
   "include": [
-    "packages/quay/src",
-    "packages/quay/tests",
+    "packages/causeway/src",
+    "packages/causeway/tests",
     "examples"
   ],
   "exclude": [
@@ -15,7 +15,7 @@
     "**/dist",
     "**/node_modules"
   ],
-  "extraPaths": ["packages/quay/src"],
+  "extraPaths": ["packages/causeway/src"],
   "pythonVersion": "3.11",
   "typeCheckingMode": "basic",
   "reportMissingTypeStubs": "none",

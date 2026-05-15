@@ -62,7 +62,7 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
         with:
           python-version: "3.13"
-      - working-directory: packages/quay
+      - working-directory: packages/causeway
         run: |
           uv sync --all-extras --dev
           uv run ruff check .
@@ -87,16 +87,16 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
         with:
           python-version: ${{ matrix.python }}
-      - working-directory: packages/quay
+      - working-directory: packages/causeway
         run: |
           uv sync --all-extras --dev
           # Coverage floor will be raised as the suite gains real coverage
           # rather than coverage-padding tests.
-          uv run pytest --cov=quay --cov-report=xml --cov-fail-under=0 -q
+          uv run pytest --cov=causeway --cov-report=xml --cov-fail-under=0 -q
       - if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
-          files: packages/quay/coverage.xml
+          files: packages/causeway/coverage.xml
           flags: python
           token: ${{ secrets.CODECOV_TOKEN }}
 

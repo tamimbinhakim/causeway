@@ -5,8 +5,8 @@ from typing import Annotated
 
 from msgspec import Struct
 
-from quay import post, raises
-from quay.errors import BadRequest, NotFound
+from causeway import post, raises
+from causeway.errors import BadRequest, NotFound
 
 from app.db import AsyncSession, Comment, Post, select
 from app.deps import db_session

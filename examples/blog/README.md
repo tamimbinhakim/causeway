@@ -1,6 +1,6 @@
 # blog — the deep example
 
-A full blog API in ~500 LOC that exercises every primitive Quay ships in
+A full blog API in ~500 LOC that exercises every primitive Causeway ships in
 v0.1: file routing with `[id].py` and nested subtrees, scoped DI via
 `_scope.py`, per-subtree middleware, typed errors, background tasks,
 cron, lifespan hooks, plugin registration, typed settings, and an
@@ -26,7 +26,7 @@ isolated test suite that drives the whole thing through `httpx`.
 ```
 blog/
 ├── pyproject.toml
-├── quay.toml
+├── causeway.toml
 ├── .env.example
 ├── app/
 │   ├── config.py             # Settings(BaseSettings)
@@ -95,7 +95,7 @@ curl -H "authorization: Bearer $TOKEN" http://127.0.0.1:8000/admin/stats
 # → {"ok":true,"data":{"posts":1,"published":1,"comments":1,"recent_notifications":1}}
 ```
 
-The diagnostics page at `http://127.0.0.1:8000/__quay` shows the
+The diagnostics page at `http://127.0.0.1:8000/__causeway` shows the
 discovered route tree, the registered plugins, the current settings
 (secrets redacted), and the registered `@task`/`@cron` jobs.
 
@@ -134,7 +134,7 @@ from app.deps import db_session  # noqa: F401  # discovered by name
 ```
 
 The router scans the module namespace for callables stamped with
-`__quay_provide__` and registers them.
+`__causeway_provide__` and registers them.
 
 ### 3. Handlers consume providers via `Annotated`
 
@@ -175,7 +175,7 @@ async def stats(
 `@task` registers a coroutine with the active adapter. Calling
 `my_task.enqueue(...)` queues it. `@cron` schedules a task on a
 crontab expression. `app/plugins.py` wires the in-process
-`InMemoryAdapter`; swap it for `quay-tasks-dramatiq` / Celery / Arq
+`InMemoryAdapter`; swap it for `causeway-tasks-dramatiq` / Celery / Arq
 without touching any handler code.
 
 ```python
@@ -193,7 +193,7 @@ await notify_new_comment.enqueue(id, data.author)
 
 The root `routes/_scope.py` is the only place that runs once per
 process. It calls `app.lifespan.startup` (which creates DB tables)
-and `quay.plugins.startup_all(settings)` (which starts the task
+and `causeway.plugins.startup_all(settings)` (which starts the task
 adapter). Shutdown runs in reverse.
 
 ```python

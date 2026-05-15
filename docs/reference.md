@@ -23,7 +23,7 @@ Every primitive in one page. This is the page you keep open in a tab.
 ### Method decorators
 
 ```python
-from quay import get, post, put, patch, delete
+from causeway import get, post, put, patch, delete
 
 @get
 async def show(id: UUID) -> User: ...
@@ -41,8 +41,8 @@ Bracketed segments bind by **name**: `[id].py` requires the handler to take `id`
 ### Typed errors
 
 ```python
-from quay import raises
-from quay.errors import NotFound
+from causeway import raises
+from causeway.errors import NotFound
 
 @get
 @raises(NotFound)
@@ -54,7 +54,7 @@ async def show(id: UUID) -> User: ...
 ### Streaming
 
 ```python
-from quay import get, stream
+from causeway import get, stream
 
 @get
 async def watch(thread_id: str) -> stream[Event]: ...
@@ -66,8 +66,8 @@ A `stream[T]` return becomes typed SSE on the wire and an `AsyncIterable<T>` on 
 
 ```python
 # src/app/routes/_middleware.py
-from quay import Middleware
-from quay.middleware import Request, Response
+from causeway import Middleware
+from causeway.middleware import Request, Response
 
 class RequestId(Middleware):
     async def __call__(self, req: Request, call_next):
@@ -79,7 +79,7 @@ middleware = [RequestId()]
 Guards (lightweight, function-style):
 
 ```python
-from quay import guard
+from causeway import guard
 
 @guard
 async def require_admin(req): ...
@@ -91,7 +91,7 @@ middleware = [require_admin]
 
 ```python
 # src/app/routes/users/_scope.py
-from quay import provide
+from causeway import provide
 
 @provide("db")
 async def get_session():
@@ -119,7 +119,7 @@ settings = Settings()
 ```
 
 ```toml
-# quay.toml
+# causeway.toml
 [client]
 expose_settings = ["env", "feature_flags"]   # secrets never exposed
 ```
@@ -127,7 +127,7 @@ expose_settings = ["env", "feature_flags"]   # secrets never exposed
 ## Background tasks
 
 ```python
-from quay import task
+from causeway import task
 
 @task(queue="emails", retries=5, backoff="exponential")
 async def send_welcome(user_id: str) -> None: ...
@@ -140,7 +140,7 @@ await send_welcome.enqueue(user_id)
 Cron:
 
 ```python
-from quay import cron
+from causeway import cron
 
 @cron("0 * * * *")
 async def hourly() -> None:
@@ -151,8 +151,8 @@ Adapter swap (one line):
 
 ```python
 # src/app/plugins.py
-from quay import register
-from quay_tasks_dramatiq import DramatiqAdapter
+from causeway import register
+from causeway_tasks_dramatiq import DramatiqAdapter
 
 register(DramatiqAdapter(broker_url=settings.redis_url.get_secret_value()))
 ```
@@ -161,16 +161,16 @@ register(DramatiqAdapter(broker_url=settings.redis_url.get_secret_value()))
 
 ```python
 # src/app/plugins.py
-from quay import register
-from quay_tasks_dramatiq import DramatiqAdapter
-from quay_storage_s3 import S3Storage
+from causeway import register
+from causeway_tasks_dramatiq import DramatiqAdapter
+from causeway_storage_s3 import S3Storage
 from app.config import settings
 
 register(DramatiqAdapter(broker_url=settings.redis_url.get_secret_value()))
 register(S3Storage(bucket="uploads"))
 ```
 
-Entry-point discovery is automatic for any installed package that exposes a `quay.plugins` entry point.
+Entry-point discovery is automatic for any installed package that exposes a `causeway.plugins` entry point.
 
 ## Health endpoints
 
@@ -186,13 +186,13 @@ Both are built in; override by adding `routes/healthz.py` / `routes/readyz.py`.
 # every request has a request id, span, and structured log line
 ```
 
-Quay ships OTel auto-instrumentation hooks; pick your exporter via env (SigNoz, Tempo, Honeycomb, Datadog).
+Causeway ships OTel auto-instrumentation hooks; pick your exporter via env (SigNoz, Tempo, Honeycomb, Datadog).
 
 ## Testing
 
 ```python
 import pytest
-from quay.testing import TestApp, tasks_eager
+from causeway.testing import TestApp, tasks_eager
 
 @pytest.fixture
 async def app():
@@ -215,11 +215,11 @@ async def test_task_runs_inline(app):
 
 | Command                | What it does                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------- |
-| `quay new <name>`      | Scaffold a new app — `pyproject.toml`, `quay.toml`, `src/app/`, sensible defaults.                |
-| `quay dev`             | Boot uvicorn + watcher + TypeScript client codegen + `/__quay` diagnostics page.                  |
-| `quay build`           | Emit the IR, the generated `client.ts`, and a deployable wheel.                                   |
-| `quay deploy <target>` | Invoke the relevant deploy plugin (`quay-deploy-docker`, `quay-deploy-fly`, `quay-deploy-modal`).  |
-| `quay diff <a> <b>`    | Compare two IR snapshots and flag breaking changes (delegates to `dyadpy diff`).                  |
-| `quay plugins`         | List currently-registered plugin adapters.                                                        |
-| `quay plugin new <n>`  | Scaffold a new Quay plugin package.                                                               |
-| `quay --version`       | Print the installed version.                                                                      |
+| `causeway new <name>`      | Scaffold a new app — `pyproject.toml`, `causeway.toml`, `src/app/`, sensible defaults.                |
+| `causeway dev`             | Boot uvicorn + watcher + TypeScript client codegen + `/__causeway` diagnostics page.                  |
+| `causeway build`           | Emit the IR, the generated `client.ts`, and a deployable wheel.                                   |
+| `causeway deploy <target>` | Invoke the relevant deploy plugin (`causeway-deploy-docker`, `causeway-deploy-fly`, `causeway-deploy-modal`).  |
+| `causeway diff <a> <b>`    | Compare two IR snapshots and flag breaking changes (delegates to `dyadpy diff`).                  |
+| `causeway plugins`         | List currently-registered plugin adapters.                                                        |
+| `causeway plugin new <n>`  | Scaffold a new Causeway plugin package.                                                               |
+| `causeway --version`       | Print the installed version.                                                                      |

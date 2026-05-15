@@ -1,6 +1,6 @@
 # Governance
 
-Quay is a personal project maintained by
+Causeway is a personal project maintained by
 [@tamimbinhakim](https://github.com/tamimbinhakim). That's the whole
 governance story today. This document is honest about that rather than
 pretending there's a foundation behind it.
@@ -14,7 +14,7 @@ roadmap, what's out of scope. I try to make those calls in public — in
 PR threads, in issues, in [Discussions][disc] — so you can see the
 reasoning and push back. When I'm wrong, I want to know about it.
 
-[disc]: https://github.com/tamimbinhakim/quay/discussions
+[disc]: https://github.com/tamimbinhakim/causeway/discussions
 
 ## How decisions get made
 
@@ -29,7 +29,7 @@ reasoning and push back. When I'm wrong, I want to know about it.
 ## How you can help shape it
 
 The highest-leverage thing you can do is **open an issue that starts
-with "I tried to use Quay for X and got stuck because Y."** That's
+with "I tried to use Causeway for X and got stuck because Y."** That's
 worth more than a feature request, more than a PR for a feature I
 didn't ask for, more than a vote on a GitHub poll.
 

@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import time
 
-from quay import Middleware
-from quay.middleware import CallNext, Request, Response
+from causeway import Middleware
+from causeway.middleware import CallNext, Request, Response
 
 
 class TimingHeader(Middleware):

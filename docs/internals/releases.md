@@ -50,7 +50,7 @@ It watches `main` for commits since the last tag. As soon as one of them is a `f
 
 - A `CHANGELOG.md` patch that groups the commits by section (Features / Bug Fixes / Performance / etc.).
 - A bump to the version in `pyproject.toml`.
-- A bump to the version constant in `quay/__init__.py` (if applicable).
+- A bump to the version constant in `causeway/__init__.py` (if applicable).
 
 You **review the release PR like any other PR**. If something looks wrong — a `feat:` that should have been a `fix:`, a `BREAKING CHANGE:` you didn't realize you wrote — you fix the underlying commit (revert + recommit with the right prefix) and release-please will rebuild the PR.
 
@@ -90,7 +90,7 @@ The hotfix branch is named `release/<major>.<minor>.x`. release-please knows tha
 
 ## Plugin packages
 
-Each `packages/quay-*` package is its own publishable Python package and gets its own release PR / changelog / tag. The plugin's contract version (`v1.0`, etc.) is independent of its package version — package version follows semver against the package's own surface, contract version follows the framework's contract surface.
+Each `packages/causeway-*` package is its own publishable Python package and gets its own release PR / changelog / tag. The plugin's contract version (`v1.0`, etc.) is independent of its package version — package version follows semver against the package's own surface, contract version follows the framework's contract surface.
 
 Plugins use the same flow: Conventional Commits scope the bump, release-please opens the PR, the publish workflow ships to PyPI.
 

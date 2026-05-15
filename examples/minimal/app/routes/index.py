@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from msgspec import Struct
 
-from quay import get
+from causeway import get
 
 
 class Hello(Struct):
@@ -13,4 +13,4 @@ class Hello(Struct):
 
 @get
 async def root() -> Hello:
-    return Hello(message="hello from quay")
+    return Hello(message="hello from causeway")

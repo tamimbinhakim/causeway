@@ -4,8 +4,8 @@ from typing import Annotated
 
 from msgspec import Struct
 
-from quay import delete, patch, raises
-from quay.errors import NotFound, Unauthorized
+from causeway import delete, patch, raises
+from causeway.errors import NotFound, Unauthorized
 
 from app.db import AsyncSession, Post, select
 from app.deps import current_admin, db_session

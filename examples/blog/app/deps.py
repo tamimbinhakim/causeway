@@ -13,8 +13,8 @@ from collections.abc import AsyncIterator
 
 from starlette.requests import Request
 
-from quay import provide
-from quay.errors import Unauthorized
+from causeway import provide
+from causeway.errors import Unauthorized
 
 from app.config import settings
 from app.db import AsyncSession, SessionFactory

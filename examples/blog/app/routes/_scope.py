@@ -7,7 +7,7 @@ providers and lifecycle hooks; those compose with this one.
 
 from __future__ import annotations
 
-from quay.plugins import shutdown_all, startup_all
+from causeway.plugins import shutdown_all, startup_all
 
 from app.config import settings
 from app.lifespan import shutdown as _lifespan_shutdown

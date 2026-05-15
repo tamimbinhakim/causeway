@@ -1,33 +1,33 @@
 {
-  "name": "quay-monorepo",
+  "name": "causeway-monorepo",
   "version": "0.0.0",
   "private": true,
   "description": "A lean backend framework for type-safe Python APIs — file-based routing, typed config/DI, scoped providers, plugin registry, and background tasks.",
-  "homepage": "https://github.com/tamimbinhakim/quay#readme",
+  "homepage": "https://github.com/tamimbinhakim/causeway#readme",
   "bugs": {
-    "url": "https://github.com/tamimbinhakim/quay/issues"
+    "url": "https://github.com/tamimbinhakim/causeway/issues"
   },
   "license": "MIT",
   "author": "Tamim Bin Hakim (@tamimbinhakim)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tamimbinhakim/quay.git"
+    "url": "git+https://github.com/tamimbinhakim/causeway.git"
   },
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "lint": "pnpm lint:py && pnpm lint:docs",
-    "lint:py": "uv run --directory packages/quay ruff check .",
+    "lint:py": "uv run --directory packages/causeway ruff check .",
     "lint:docs": "prettier --check \"**/*.{md,json,yaml,yml}\"",
     "format": "pnpm format:py && pnpm format:docs",
-    "format:py": "uv run --directory packages/quay ruff format .",
+    "format:py": "uv run --directory packages/causeway ruff format .",
     "format:docs": "prettier --write \"**/*.{md,json,yaml,yml}\"",
     "format:check": "pnpm format:check:py && pnpm format:check:docs",
-    "format:check:py": "uv run --directory packages/quay ruff format --check .",
+    "format:check:py": "uv run --directory packages/causeway ruff format --check .",
     "format:check:docs": "prettier --check \"**/*.{md,json,yaml,yml}\"",
-    "typecheck": "uv run --directory packages/quay mypy src",
-    "test": "uv run --directory packages/quay pytest",
+    "typecheck": "uv run --directory packages/causeway mypy src",
+    "test": "uv run --directory packages/causeway pytest",
     "clean": "rimraf node_modules .turbo packages/*/dist packages/*/.venv",
     "prepare": "husky",
     "commitlint": "commitlint --edit"
@@ -41,9 +41,9 @@
     "rimraf": "6.1.3"
   },
   "lint-staged": {
-    "packages/quay/**/*.py": [
-      "uv run --directory packages/quay ruff check --fix",
-      "uv run --directory packages/quay ruff format"
+    "packages/causeway/**/*.py": [
+      "uv run --directory packages/causeway ruff check --fix",
+      "uv run --directory packages/causeway ruff format"
     ],
     "*.{md,json,yaml,yml}": [
       "prettier --write"

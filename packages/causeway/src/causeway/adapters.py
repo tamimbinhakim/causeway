@@ -1,0 +1,305 @@
+"""Reference adapters.
+
+In-memory / no-op implementations that satisfy the contracts in
+:mod:`causeway.contracts`. Tests and the dev loop run on these; production
+swaps them out by registering a real adapter in ``src/app/plugins.py``.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import logging
+import time
+from collections import defaultdict
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any, ClassVar
+
+
+class LocalStorage:
+    """In-memory blob store; implements :class:`causeway.contracts.Storage`."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    def __init__(self) -> None:
+        self._blobs: dict[str, bytes] = {}
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None:
+        self._blobs.clear()
+
+    async def ready(self) -> bool:
+        return True
+
+    async def put(self, key: str, body: bytes, *, content_type: str | None = None) -> None:
+        del content_type
+        self._blobs[key] = body
+
+    async def get(self, key: str) -> bytes:
+        try:
+            return self._blobs[key]
+        except KeyError as exc:
+            raise FileNotFoundError(key) from exc
+
+    async def delete(self, key: str) -> None:
+        self._blobs.pop(key, None)
+
+    async def signed_url(self, key: str, *, expires: int = 3600) -> str:
+        del expires
+        return f"memory://{key}"
+
+    async def list(self, prefix: str = "") -> AsyncIterator[str]:
+        for k in sorted(self._blobs):
+            if k.startswith(prefix):
+                yield k
+
+
+class MemoryKV:
+    """In-memory KV with TTL; implements :class:`causeway.contracts.KV`."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    def __init__(self) -> None:
+        self._data: dict[str, bytes] = {}
+        self._exp: dict[str, float] = {}
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None:
+        self._data.clear()
+        self._exp.clear()
+
+    async def ready(self) -> bool:
+        return True
+
+    def _expired(self, key: str) -> bool:
+        exp = self._exp.get(key)
+        if exp is not None and exp <= time.monotonic():
+            self._data.pop(key, None)
+            self._exp.pop(key, None)
+            return True
+        return False
+
+    async def get(self, key: str) -> bytes | None:
+        if self._expired(key):
+            return None
+        return self._data.get(key)
+
+    async def set(self, key: str, value: bytes, *, ttl: int | None = None) -> None:
+        self._data[key] = value
+        if ttl is not None:
+            self._exp[key] = time.monotonic() + ttl
+        else:
+            self._exp.pop(key, None)
+
+    async def delete(self, key: str) -> None:
+        self._data.pop(key, None)
+        self._exp.pop(key, None)
+
+    async def incr(self, key: str, by: int = 1) -> int:
+        cur = int(self._data.get(key, b"0").decode() or "0")
+        cur += by
+        self._data[key] = str(cur).encode()
+        return cur
+
+    async def expire(self, key: str, ttl: int) -> None:
+        if key in self._data:
+            self._exp[key] = time.monotonic() + ttl
+
+
+class CookieStore:
+    """In-memory session store keyed by session id.
+
+    Production session stores back this with Redis / Postgres; the in-memory
+    version is enough for unit tests and demos.
+    """
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    def __init__(self) -> None:
+        self._sessions: dict[str, dict[str, Any]] = {}
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None:
+        self._sessions.clear()
+
+    async def ready(self) -> bool:
+        return True
+
+    async def read(self, session_id: str) -> dict[str, Any] | None:
+        return self._sessions.get(session_id)
+
+    async def write(self, session_id: str, data: dict[str, Any]) -> None:
+        self._sessions[session_id] = dict(data)
+
+    async def destroy(self, session_id: str) -> None:
+        self._sessions.pop(session_id, None)
+
+    async def rotate(self, session_id: str) -> str:
+        import secrets
+
+        new_id = secrets.token_urlsafe(32)
+        data = self._sessions.pop(session_id, None)
+        if data is not None:
+            self._sessions[new_id] = data
+        return new_id
+
+
+class MemoryLimiter:
+    """Token-bucket limiter; implements :class:`causeway.contracts.RateLimiter`."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    def __init__(self, *, capacity: int = 100, refill_per_sec: float = 100 / 60) -> None:
+        self.capacity = capacity
+        self.refill_per_sec = refill_per_sec
+        self._buckets: dict[str, tuple[float, float]] = {}  # key → (tokens, last_refill)
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None:
+        self._buckets.clear()
+
+    async def ready(self) -> bool:
+        return True
+
+    def _refill(self, key: str) -> float:
+        now = time.monotonic()
+        tokens, last = self._buckets.get(key, (float(self.capacity), now))
+        tokens = min(float(self.capacity), tokens + (now - last) * self.refill_per_sec)
+        self._buckets[key] = (tokens, now)
+        return tokens
+
+    async def acquire(self, key: str, cost: int = 1) -> bool:
+        tokens = self._refill(key)
+        if tokens < cost:
+            return False
+        self._buckets[key] = (tokens - cost, self._buckets[key][1])
+        return True
+
+    async def peek(self, key: str) -> int:
+        return int(self._refill(key))
+
+    async def reset(self, key: str) -> None:
+        self._buckets.pop(key, None)
+
+
+class StaticFlags:
+    """Static flag map loaded from ``Settings.feature_flags`` (a ``dict[str, bool]``)."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    def __init__(self, flags: dict[str, bool] | None = None) -> None:
+        self._flags = dict(flags or {})
+
+    async def startup(self, settings: Any) -> None:
+        flags = getattr(settings, "feature_flags", None)
+        if isinstance(flags, dict):
+            self._flags.update({str(k): bool(v) for k, v in flags.items()})
+
+    async def shutdown(self) -> None: ...
+    async def ready(self) -> bool:
+        return True
+
+    async def is_on(self, flag: str, user: str | None = None) -> bool:
+        del user
+        return bool(self._flags.get(flag, False))
+
+    async def variant(self, flag: str, user: str | None = None) -> str | None:
+        del user
+        return None
+
+    async def refresh(self) -> None: ...
+
+
+class NullSink:
+    """Discards metrics; implements :class:`causeway.contracts.MetricsSink`."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None: ...
+    async def ready(self) -> bool:
+        return True
+
+    def counter(self, name: str, value: float = 1.0, **tags: str) -> None:
+        del name, value, tags
+
+    def gauge(self, name: str, value: float, **tags: str) -> None:
+        del name, value, tags
+
+    def histogram(self, name: str, value: float, **tags: str) -> None:
+        del name, value, tags
+
+    @contextlib.asynccontextmanager
+    async def timer(self, name: str, **tags: str) -> AsyncIterator[None]:
+        del name, tags
+        yield
+
+
+class StdoutLogSink:
+    """Forwards structured records to ``logging`` at INFO level."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    def __init__(self) -> None:
+        self._log = logging.getLogger("causeway.app")
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None: ...
+    async def ready(self) -> bool:
+        return True
+
+    def emit(self, record: dict[str, Any]) -> None:
+        self._log.info("%s", record)
+
+
+class MemoryBus:
+    """In-process pub/sub. Subscribers receive a copy of every published payload."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    def __init__(self) -> None:
+        self._subs: dict[str, list[Callable[[bytes], Awaitable[None]]]] = defaultdict(list)
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None:
+        self._subs.clear()
+
+    async def ready(self) -> bool:
+        return True
+
+    async def publish(self, topic: str, payload: bytes) -> None:
+        handlers = list(self._subs.get(topic, ()))
+        if handlers:
+            await asyncio.gather(*(h(payload) for h in handlers), return_exceptions=True)
+
+    async def subscribe(self, topic: str, handler: Callable[[bytes], Awaitable[None]]) -> None:
+        self._subs[topic].append(handler)
+
+
+class NullScanner:
+    """No-op blob scanner — every payload is "clean"."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None: ...
+    async def ready(self) -> bool:
+        return True
+
+    async def scan(self, stream: AsyncIterator[bytes]) -> bool:
+        async for _ in stream:
+            pass
+        return True
+
+
+__all__ = [
+    "CookieStore",
+    "LocalStorage",
+    "MemoryBus",
+    "MemoryKV",
+    "MemoryLimiter",
+    "NullScanner",
+    "NullSink",
+    "StaticFlags",
+    "StdoutLogSink",
+]

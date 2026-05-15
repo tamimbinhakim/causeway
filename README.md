@@ -1,15 +1,15 @@
 <div align="center">
 
-# Quay
+# Causeway
 
 **A lean backend framework for type-safe Python APIs.**
 **Your function signature is the API contract; the typed TypeScript client comes free.**
 
-[![CI](https://github.com/tamimbinhakim/quay/actions/workflows/ci.yml/badge.svg)](https://github.com/tamimbinhakim/quay/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/quay.svg)](https://pypi.org/project/quay/)
+[![CI](https://github.com/tamimbinhakim/causeway/actions/workflows/ci.yml/badge.svg)](https://github.com/tamimbinhakim/causeway/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/causeway.svg)](https://pypi.org/project/causeway/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-[**Quickstart**](./docs/getting-started.md) · [**Why Quay**](./docs/why-quay.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
+[**Quickstart**](./docs/getting-started.md) · [**Why Causeway**](./docs/why-causeway.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
 
 </div>
 
@@ -25,9 +25,9 @@ So I built **[dyadpy](https://github.com/tamimbinhakim/dyadpy)** — a typed-RPC
 
 dyadpy is the right primitive but it's deliberately low-level — it knows nothing about routing, config, DI, background jobs, middleware, or plugins. I needed a layer on top that would let me ship a real backend without writing the same scaffolding for the tenth time.
 
-That layer is **Quay.**
+That layer is **Causeway.**
 
-## What Quay is
+## What Causeway is
 
 A backend-only, Python-native framework that contributes exactly five things to your application surface:
 
@@ -35,27 +35,27 @@ A backend-only, Python-native framework that contributes exactly five things to 
 2. **Typed config & DI** — a `pydantic-settings` wrapper with request-scoped providers. No DI container boilerplate.
 3. **Middleware & scope composition** — one file at the root of a subtree wraps every route below it.
 4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery / Arq / TaskIQ with one line.
-5. **Plugin registry** — entry-point discovery so `quay-auth-jwt`, `quay-storage-s3`, `quay-sqlmodel`, etc. install cleanly.
+5. **Plugin registry** — entry-point discovery so `causeway-auth-jwt`, `causeway-storage-s3`, `causeway-db-sqlmodel`, etc. install cleanly.
 
-Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by [`dyadpy`](https://github.com/tamimbinhakim/dyadpy). From an application author's perspective it's all just Quay — you write Python handlers; Quay registers them, validates them, and emits a TypeScript client alongside the running app.
+Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by [`dyadpy`](https://github.com/tamimbinhakim/dyadpy). From an application author's perspective it's all just Causeway — you write Python handlers; Causeway registers them, validates them, and emits a TypeScript client alongside the running app.
 
 Everything outside those five things (ORM, auth, mailer, storage, cache, search, …) is a **plugin contract with reference adapters** — not in core.
 
-## What Quay is not
+## What Causeway is not
 
-- Not an ORM. Use SQLModel / SQLAlchemy / Tortoise / your choice via the `quay-sqlmodel` plugin.
+- Not an ORM. Use SQLModel / SQLAlchemy / Tortoise / your choice via the `causeway-db-sqlmodel` plugin.
 - Not an admin panel.
 - Not an HTML / template engine. The TypeScript client is generated; the frontend is yours.
 - Not an infrastructure provisioner. That's Terraform / Pulumi / Modal.
 
-The full design philosophy and the explicit non-goals live in [`docs/why-quay.md`](./docs/why-quay.md).
+The full design philosophy and the explicit non-goals live in [`docs/why-causeway.md`](./docs/why-causeway.md).
 
 ## 30-second example
 
 ```
 my-app/
 ├── pyproject.toml
-├── quay.toml
+├── causeway.toml
 └── src/app/
     ├── config.py            # Settings(BaseSettings)
     ├── plugins.py           # register(DramatiqAdapter(...))
@@ -73,8 +73,8 @@ my-app/
 from typing import Annotated
 from uuid import UUID
 from msgspec import Struct
-from quay import get, patch, raises
-from quay.errors import NotFound
+from causeway import get, patch, raises
+from causeway.errors import NotFound
 
 class User(Struct):
     id: UUID
@@ -91,14 +91,14 @@ async def show(id: UUID, db: Annotated[Session, get_session]) -> User:
 ```
 
 ```bash
-quay dev
+causeway dev
 ```
 
 What that does:
 
 1. Discovers `src/app/routes/` → registers handlers → emits a typed `client.ts` for your frontend.
 2. Boots uvicorn on `http://127.0.0.1:8000`.
-3. Serves `/__quay` — route tree, registered tasks, current config (secrets redacted), plugin list.
+3. Serves `/__causeway` — route tree, registered tasks, current config (secrets redacted), plugin list.
 4. Hot-reloads `_middleware.py` and `_scope.py` on change.
 
 Prefer the TanStack-Router-style flat layout? Same routes, dot-flat:
@@ -122,7 +122,7 @@ You can mix the two freely in the same tree. Details: [`docs/routing.md`](./docs
 
 ## How it compares
 
-|                     | **Quay**          | FastAPI        | Django + Ninja | Encore.ts        | NestJS          |
+|                     | **Causeway**          | FastAPI        | Django + Ninja | Encore.ts        | NestJS          |
 | ------------------- | ----------------- | -------------- | -------------- | ---------------- | --------------- |
 | Scope               | Backend framework | Router lib     | Full framework | Backend + infra  | Structural      |
 | Owns ORM?           | **No**            | No             | Yes            | Declarative      | No              |
@@ -131,15 +131,15 @@ You can mix the two freely in the same tree. Details: [`docs/routing.md`](./docs
 | Cloud lock-in?      | **None**          | None           | None           | Medium           | None            |
 | Closest comparison  | —                 | Building block | Heavy alt      | Closest ambition | Structural peer |
 
-Full positioning matrix and the trade-offs in [`docs/why-quay.md`](./docs/why-quay.md).
+Full positioning matrix and the trade-offs in [`docs/why-causeway.md`](./docs/why-causeway.md).
 
 ## Install
 
-> Quay is in **alpha** (`0.1.0a0`). The version pin opts you into the
+> Causeway is in **alpha** (`0.1.0a0`). The version pin opts you into the
 > prerelease channel. Once v0.1.0 ships, drop the pin.
 
 ```bash
-uv add 'quay==0.1.0a0'
+uv add 'causeway==0.1.0a0'
 ```
 
 ## Stability
@@ -156,13 +156,13 @@ Details in [`docs/stability/`](./docs/stability) — semver, IR stability, LTS.
 
 | Package                          | What it is                                                   | Status |
 | -------------------------------- | ------------------------------------------------------------ | ------ |
-| [`quay`](./packages/quay) (PyPI) | Core framework: routing, config, DI, tasks, plugin registry. | v0.1 α |
+| [`causeway`](./packages/causeway) (PyPI) | Core framework: routing, config, DI, tasks, plugin registry. | v0.1 α |
 
-The official plugin set (`quay-tasks-dramatiq`, `quay-storage-s3`, `quay-auth-jwt`, `quay-sqlmodel`, etc.) lives under [`packages/`](./packages). Full inventory and roadmap in [`ROADMAP.md`](./ROADMAP.md#plugin-ecosystem).
+The official plugin set (`causeway-tasks-dramatiq`, `causeway-storage-s3`, `causeway-auth-jwt`, `causeway-db-sqlmodel`, etc.) lives under [`packages/`](./packages). Full inventory and roadmap in [`ROADMAP.md`](./ROADMAP.md#plugin-ecosystem).
 
 ## Contributing
 
-Issues that start with "I tried to use Quay for X and got confused" are the most valuable kind. Skim [CONTRIBUTING.md](./CONTRIBUTING.md) for the on-ramp, and if you're going deep, [`docs/internals/`](./docs/internals) is the contributor's tour of the codebase.
+Issues that start with "I tried to use Causeway for X and got confused" are the most valuable kind. Skim [CONTRIBUTING.md](./CONTRIBUTING.md) for the on-ramp, and if you're going deep, [`docs/internals/`](./docs/internals) is the contributor's tour of the codebase.
 
 ## License
 

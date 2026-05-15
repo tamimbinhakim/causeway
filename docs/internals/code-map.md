@@ -1,6 +1,6 @@
 # Code map
 
-Every module in `packages/quay/src/quay/`, in roughly the order you'd read them on a first pass. Line counts are the actual size, not target sizes — the framework is small on purpose, but nobody's chasing a number.
+Every module in `packages/causeway/src/causeway/`, in roughly the order you'd read them on a first pass. Line counts are the actual size, not target sizes — the framework is small on purpose, but nobody's chasing a number.
 
 Underscore-prefixed modules are internal (`_paths.py`, `_methods.py`, etc.) — they're allowed to break across patches. Anything without an underscore prefix is part of the stable surface after 1.0.
 
@@ -10,7 +10,7 @@ Underscore-prefixed modules are internal (`_paths.py`, `_methods.py`, etc.) — 
 
 ### `__init__.py` — 68 lines
 
-The public API re-export wall. Everything an application author types `from quay import ...` for lives here:
+The public API re-export wall. Everything an application author types `from causeway import ...` for lives here:
 
 - HTTP method decorators (`get`, `post`, `put`, `patch`, `delete`) — re-exported from `_methods.py`.
 - `Middleware`, `guard` — from `middleware.py`.
@@ -25,11 +25,11 @@ When you add a new public symbol, **add it here too**. That's the contract.
 
 ### `app.py` — 98 lines
 
-`create_app(routes_root, *, plugins=None, settings=None, manifest=None)` — the factory. Walks the routes tree, registers handlers, wires lifespan hooks, attaches health endpoints, returns a `dyadpy.App`. This is the thing `quay dev` and your `pytest` fixtures both call.
+`create_app(routes_root, *, plugins=None, settings=None, manifest=None)` — the factory. Walks the routes tree, registers handlers, wires lifespan hooks, attaches health endpoints, returns a `dyadpy.App`. This is the thing `causeway dev` and your `pytest` fixtures both call.
 
 ### `config.py` — 107 lines
 
-`Settings` is a re-export of `pydantic_settings.BaseSettings` (with an explicit annotation so type checkers see a complete type even when pydantic-settings ships without a `py.typed`). `Manifest` reads `quay.toml` and exposes `[client] expose_settings = [...]` — the allowlist for fields surfaced to the generated TS client. `expose_for_client(settings, manifest)` does the filtering, also dropping any `SecretStr` / `SecretBytes` fields so secrets can't leak even if you list them.
+`Settings` is a re-export of `pydantic_settings.BaseSettings` (with an explicit annotation so type checkers see a complete type even when pydantic-settings ships without a `py.typed`). `Manifest` reads `causeway.toml` and exposes `[client] expose_settings = [...]` — the allowlist for fields surfaced to the generated TS client. `expose_for_client(settings, manifest)` does the filtering, also dropping any `SecretStr` / `SecretBytes` fields so secrets can't leak even if you list them.
 
 ---
 
@@ -55,7 +55,7 @@ Three phases:
 
 Three subtleties worth knowing if you're touching this file:
 
-- Modules are loaded with `importlib.util.spec_from_file_location`. The synthetic module name is `quay._routes.<hash>` so dotted / bracketed filenames don't confuse Python's import system.
+- Modules are loaded with `importlib.util.spec_from_file_location`. The synthetic module name is `causeway._routes.<hash>` so dotted / bracketed filenames don't confuse Python's import system.
 - Provider matching is by `(source_location, name)` — `[id]` files can be reloaded without losing provider identity.
 - The handler wrapper preserves dyadpy's view of the original signature (`__wrapped__`, `__annotations__`, `__globals__`) so string forward-refs resolve correctly when dyadpy inspects the wrapper.
 
@@ -85,14 +85,14 @@ If you're adding a new official contract, **start here**. Then add a reference a
 
 The registry. Two discovery paths feed one ordered dict:
 
-- **Entry-point discovery** (`discover("quay.plugins")`) — auto-loads any installed package that declares a `quay.plugins` entry point.
+- **Entry-point discovery** (`discover("causeway.plugins")`) — auto-loads any installed package that declares a `causeway.plugins` entry point.
 - **Explicit `register(adapter)`** — for adapters that need constructor args.
 
 Lifecycle: `startup_all(settings)` fires every plugin's `startup` in registration order; `shutdown_all()` fires `shutdown` in reverse. `check_required_contracts()` walks `requires` lists and refuses to boot if a dependency is missing. `merge_settings_fragments(settings)` applies each plugin's optional `settings_fragment()` to the `Settings` instance.
 
 ### `adapters.py` — 305 lines
 
-Reference adapters shipped in core: `MemoryKV`, `LocalStorage`, `MemoryLimiter`, `StaticFlags`, `NullSink`, `MemoryBus`, `NullScanner`. These exist so the framework boots out of the box; production users swap them via a sibling `quay-*` package.
+Reference adapters shipped in core: `MemoryKV`, `LocalStorage`, `MemoryLimiter`, `StaticFlags`, `NullSink`, `MemoryBus`, `NullScanner`. These exist so the framework boots out of the box; production users swap them via a sibling `causeway-*` package.
 
 ---
 
@@ -124,7 +124,7 @@ Reference adapters shipped in core: `MemoryKV`, `LocalStorage`, `MemoryLimiter`,
 
 ### `diagnostics.py` — 93 lines
 
-The `/__quay` endpoint. Builds a JSON snapshot — route tree, registered tasks, cron jobs, plugins, non-secret config — for the dev panel.
+The `/__causeway` endpoint. Builds a JSON snapshot — route tree, registered tasks, cron jobs, plugins, non-secret config — for the dev panel.
 
 ### `testing.py` — 124 lines
 
@@ -132,11 +132,11 @@ The `/__quay` endpoint. Builds a JSON snapshot — route tree, registered tasks,
 
 ### `cli.py` — 227 lines
 
-The `quay` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (uvicorn + watcher), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `dyadpy diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
+The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (uvicorn + watcher), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `dyadpy diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
 
 ### `_scaffold.py` — 261 lines
 
-Templates for `quay new` and `quay plugin new`. The longest non-routing module, almost entirely string literals.
+Templates for `causeway new` and `causeway plugin new`. The longest non-routing module, almost entirely string literals.
 
 ---
 

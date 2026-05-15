@@ -6,8 +6,8 @@ from typing import Annotated
 from app.db import AsyncSession, Post, select
 from app.deps import current_admin, db_session
 from msgspec import Struct
-from quay import get, post, raises
-from quay.errors import BadRequest, Unauthorized
+from causeway import get, post, raises
+from causeway.errors import BadRequest, Unauthorized
 
 
 class AdminPostRow(Struct):

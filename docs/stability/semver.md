@@ -1,6 +1,6 @@
 # Versioning policy
 
-Quay follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html). Releases are managed by `release-please` off the manifest at `.release-please-manifest.json`.
+Causeway follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html). Releases are managed by `release-please` off the manifest at `.release-please-manifest.json`.
 
 ## What semver means here
 
@@ -20,7 +20,7 @@ Anything below is breaking by default, regardless of how small it looks:
 - Adding a required parameter to a public function or a plugin contract.
 - Tightening a type annotation in a way that rejects previously valid inputs.
 - Changing default behavior (e.g. flipping a default from `False` to `True`).
-- Removing or renaming a `quay.toml` key.
+- Removing or renaming a `causeway.toml` key.
 
 If you're unsure, treat it as breaking.
 
@@ -38,12 +38,12 @@ After 1.0:
 
 ## How CI enforces it
 
-- **`quay diff`** in CI compares the route + task registrations snapshot from `main` to the snapshot built from each PR. Breaking changes annotate the PR with GitHub error annotations and fail the required check.
+- **`causeway diff`** in CI compares the route + task registrations snapshot from `main` to the snapshot built from each PR. Breaking changes annotate the PR with GitHub error annotations and fail the required check.
 - **release-please** classifies commits via Conventional Commits. A `feat!:` or `BREAKING CHANGE:` footer triggers a major bump in the release PR. A plain `feat:` triggers minor. `fix:` triggers patch. `chore:`, `docs:`, `ci:`, `test:`, `build:`, `refactor:` are hidden from the changelog and do not bump versions.
 
 ## What you can rely on
 
-Once a name appears in `__all__` (`packages/quay/src/quay/__init__.py`), it is public and follows the rules above. Anything imported via a private underscore-prefixed module (`quay._routing_internals`, `quay._idents`, …) is not part of the contract and may change in any release.
+Once a name appears in `__all__` (`packages/causeway/src/causeway/__init__.py`), it is public and follows the rules above. Anything imported via a private underscore-prefixed module (`causeway._routing_internals`, `causeway._idents`, …) is not part of the contract and may change in any release.
 
 ## What is _not_ semver-governed
 
@@ -51,4 +51,4 @@ Once a name appears in `__all__` (`packages/quay/src/quay/__init__.py`), it is p
 - **Performance characteristics.** A measurable regression in p99 latency is a bug to be fixed, not a semver event.
 - **Dev dependencies.** Bumping ruff or pytest versions is never a breaking change for downstream consumers.
 - **Examples (`examples/*`).** Examples are reference material, not API.
-- **Third-party plugins.** Quay versions independently from `quay-*` plugins; their authors set their own version policy.
+- **Third-party plugins.** Causeway versions independently from `causeway-*` plugins; their authors set their own version policy.

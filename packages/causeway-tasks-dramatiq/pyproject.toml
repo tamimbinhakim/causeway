@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "causeway-tasks-dramatiq"
+version = "0.1.0a0"
+description = "Dramatiq adapter for Causeway's background-task contract."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Tamim Bin Hakim" }]
+dependencies = [
+  "causeway>=0.1.0a0",
+  "dramatiq[redis]>=2.1.0",
+]
+
+[project.entry-points."causeway.plugins"]
+tasks-dramatiq = "causeway_tasks_dramatiq:plugin"
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0.3", "pytest-asyncio>=1.3.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/causeway_tasks_dramatiq"]

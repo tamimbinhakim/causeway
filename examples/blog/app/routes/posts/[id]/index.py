@@ -6,8 +6,8 @@ from typing import Annotated
 from msgspec import Struct
 from sqlalchemy.orm import selectinload
 
-from quay import get, raises
-from quay.errors import NotFound
+from causeway import get, raises
+from causeway.errors import NotFound
 
 from app.db import AsyncSession, Post, select
 from app.deps import db_session

@@ -1,21 +1,21 @@
 # Registration stability
 
-Quay registers three kinds of things into its IR: **routes**,
+Causeway registers three kinds of things into its IR: **routes**,
 **middleware**, and **background tasks**. The IR is the contract
-between Quay and every downstream consumer (the generated TypeScript
-client, the diagnostics page, `quay diff`, snapshot tests, deploy
+between Causeway and every downstream consumer (the generated TypeScript
+client, the diagnostics page, `causeway diff`, snapshot tests, deploy
 adapters).
 
 This page describes what's frozen in those registrations and how the
 surface evolves.
 
-> The IR format itself is provided by the lower-level RPC layer Quay
-> depends on. The stability rules here are about Quay's **registrations**
+> The IR format itself is provided by the lower-level RPC layer Causeway
+> depends on. The stability rules here are about Causeway's **registrations**
 > into it — what we put in, not the file format itself.
 
 ## What lives in the IR
 
-For each Quay app:
+For each Causeway app:
 
 - **Routes** — path + method + handler input/output schemas + declared
   raises + middleware chain.
@@ -25,7 +25,7 @@ For each Quay app:
   `Storage`, `KV`, `AuthProvider`, …). Informational; not part of the
   wire contract.
 
-If `quay.toml` exposes config keys (`[client] expose_settings = [...]`),
+If `causeway.toml` exposes config keys (`[client] expose_settings = [...]`),
 those keys also land in the IR — secrets are explicitly excluded.
 
 ## Stability invariants (post-1.0)
@@ -61,9 +61,9 @@ A breaking change goes through:
 That's one full minor of warnings before removal. Long enough for
 downstream users to migrate; short enough to keep moving.
 
-## What `quay diff` checks
+## What `causeway diff` checks
 
-`quay diff <baseline> <candidate>` flags:
+`causeway diff <baseline> <candidate>` flags:
 
 - Removed routes.
 - Renamed route handlers (same path + method, different function
@@ -74,7 +74,7 @@ downstream users to migrate; short enough to keep moving.
 - Removed tasks.
 - Changed task queue / retry policy defaults.
 
-CI runs `quay diff` against `main` on every PR. Breaking changes
+CI runs `causeway diff` against `main` on every PR. Breaking changes
 annotate the PR with GitHub error annotations and require a `feat!:` or
 `BREAKING CHANGE:` footer to land.
 
@@ -89,7 +89,7 @@ annotate the PR with GitHub error annotations and require a `feat!:` or
 
 ## Versioning the IR itself
 
-The IR schema versions independently from Quay. A Quay `1.x` always
+The IR schema versions independently from Causeway. A Causeway `1.x` always
 emits an IR that conforms to its declared IR-schema version. IR schema
 changes themselves follow the same deprecation cycle.
 
@@ -99,14 +99,14 @@ The IR is consumed by:
 
 - **The typed-client codegen** — generates the TypeScript client off the
   IR snapshot.
-- **`/__quay`** — the dev diagnostics page.
-- **`quay diff`** — the CI breaking-change checker.
-- **`quay-deploy-*`** — deploy adapters that need to know "which routes
+- **`/__causeway`** — the dev diagnostics page.
+- **`causeway diff`** — the CI breaking-change checker.
+- **`causeway-deploy-*`** — deploy adapters that need to know "which routes
   are streaming", "which tasks are long-running" to set timeouts
   correctly.
-- **Third-party tools** — anything that wants to introspect a Quay app
+- **Third-party tools** — anything that wants to introspect a Causeway app
   (admin generators, monitoring sidecars, …).
 
 If you're writing a consumer, the IR schema is your contract. The
-Python `quay.ir` module is **not** the contract — that's an
+Python `causeway.ir` module is **not** the contract — that's an
 implementation detail and may change.

@@ -19,7 +19,7 @@ updates:
         patterns: ["*"]
 
   - package-ecosystem: "pip"
-    directory: "/packages/quay"
+    directory: "/packages/causeway"
     schedule: { interval: "weekly" }
     open-pull-requests-limit: 10
     groups:

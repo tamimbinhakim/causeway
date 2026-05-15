@@ -68,12 +68,12 @@ Post-1.0: see [`docs/stability/semver.md`](../stability/semver.md). Short versio
 
 ## Public-API rules
 
-A symbol is **public** if it's re-exported from `quay/__init__.py`. Everything else is internal and can break across patches.
+A symbol is **public** if it's re-exported from `causeway/__init__.py`. Everything else is internal and can break across patches.
 
 When you add a public symbol:
 
-1. Implement it in its module (e.g. `quay/middleware.py`).
-2. Re-export it from `quay/__init__.py`.
+1. Implement it in its module (e.g. `causeway/middleware.py`).
+2. Re-export it from `causeway/__init__.py`.
 3. Add it to that module's `__all__`.
 4. Document it in [`docs/reference.md`](../reference.md).
 5. Write at least one test.
@@ -98,11 +98,11 @@ Is it a "TODO: implement X" without a tracked issue?     → delete or open the 
 
 ## Plugin packages
 
-The official plugin set lives in `packages/quay-<role>-<impl>/`. They follow a shared layout:
+The official plugin set lives in `packages/causeway-<role>-<impl>/`. They follow a shared layout:
 
 ```
-packages/quay-tasks-dramatiq/
-├── src/quay_tasks_dramatiq/
+packages/causeway-tasks-dramatiq/
+├── src/causeway_tasks_dramatiq/
 │   └── __init__.py         # the entire adapter, plus plugin(settings)
 ├── tests/
 ├── pyproject.toml
@@ -111,9 +111,9 @@ packages/quay-tasks-dramatiq/
 
 Conventions:
 
-- The package name is `quay-<role>-<impl>` on PyPI, importable as `quay_<role>_<impl>` (Python's name-normalization rule).
+- The package name is `causeway-<role>-<impl>` on PyPI, importable as `causeway_<role>_<impl>` (Python's name-normalization rule).
 - The class is `<Impl><Role>Adapter` (e.g. `DramatiqAdapter`, `S3Storage`, `JwtAuth`).
-- The package exposes a `plugin(settings)` function as a `quay.plugins` entry point. That function is the auto-load path; it reads from `settings.<field>` and calls `quay.register(<adapter>)`.
+- The package exposes a `plugin(settings)` function as a `causeway.plugins` entry point. That function is the auto-load path; it reads from `settings.<field>` and calls `causeway.register(<adapter>)`.
 - If the package needs settings fields the app didn't declare, expose a `settings_fragment()` method on the adapter that returns the field dict. The framework's `merge_settings_fragments` pass picks it up.
 - Declare `contract_version: ClassVar[str] = "v1.0"` on the adapter class. The registry warns on mismatch.
 
@@ -121,9 +121,9 @@ Full walkthrough: [`plugin-authoring.md`](./plugin-authoring.md).
 
 ## When you don't know whether something is "official"
 
-If the change is in `packages/quay/src/quay/`, it's the core framework — held to the strict surface rules above.
+If the change is in `packages/causeway/src/causeway/`, it's the core framework — held to the strict surface rules above.
 
-If the change is in `packages/quay-*/`, it's an official plugin — same shape, but the contract version is what's load-bearing for users, not the package version.
+If the change is in `packages/causeway-*/`, it's an official plugin — same shape, but the contract version is what's load-bearing for users, not the package version.
 
 If the change is in `examples/`, it's pedagogical — the only rule is "it actually runs."
 

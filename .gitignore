@@ -71,8 +71,8 @@ htmlcov/
 !.claude/settings.json
 !.claude/commands/
 
-# ---- Quay ----
-.quay/
+# ---- Causeway ----
+.causeway/
 
 # ---- Benchmarks ----
 benchmarks/results/

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Until Quay hits `1.0`, only the latest minor receives security fixes.
+Until Causeway hits `1.0`, only the latest minor receives security fixes.
 
 | Version        | Supported           |
 | -------------- | ------------------- |
@@ -25,15 +25,15 @@ I aim to acknowledge reports within **72 hours** and work with you on a
 fix and a coordinated disclosure timeline (usually 7–30 days depending on
 severity).
 
-[report]: https://github.com/tamimbinhakim/quay/security/advisories/new
+[report]: https://github.com/tamimbinhakim/causeway/security/advisories/new
 
 ## Scope
 
 In scope:
 
-- The `quay` Python package
+- The `causeway` Python package
 - The official plugin contracts published from this repo
-- The `quay` CLI
+- The `causeway` CLI
 
 Out of scope:
 
@@ -43,7 +43,7 @@ Out of scope:
   developer's machine
 - Bugs in example apps under `examples/` — these are illustrative, not
   production-ready
-- Third-party `quay-*` plugins not maintained from this repository
+- Third-party `causeway-*` plugins not maintained from this repository
 
 ## Credit
 

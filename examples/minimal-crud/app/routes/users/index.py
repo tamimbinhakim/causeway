@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from msgspec import Struct
 
-from quay import get, post, raises
-from quay.errors import BadRequest
+from causeway import get, post, raises
+from causeway.errors import BadRequest
 
 from app.store import User, all_users, create_user
 

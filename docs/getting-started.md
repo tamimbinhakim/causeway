@@ -1,28 +1,28 @@
 # Getting started
 
-The point of this page is to get you from "I've heard of Quay" to "I have a typed handler running and a TypeScript client falling out the other end" in about five minutes. No yak-shaving.
+The point of this page is to get you from "I've heard of Causeway" to "I have a typed handler running and a TypeScript client falling out the other end" in about five minutes. No yak-shaving.
 
-If you'd rather understand **why** Quay exists before you try it, read [Why Quay](./why-quay.md) first — it's the warmest place to start.
+If you'd rather understand **why** Causeway exists before you try it, read [Why Causeway](./why-causeway.md) first — it's the warmest place to start.
 
 ## What you'll need
 
 | Tool   | Version | Why                                        |
 | ------ | ------- | ------------------------------------------ |
-| Python | ≥ 3.11  | Quay uses modern type-hint syntax. `X \| Y`, `Annotated[T, …]`, the works. |
+| Python | ≥ 3.11  | Causeway uses modern type-hint syntax. `X \| Y`, `Annotated[T, …]`, the works. |
 | `uv`   | latest  | Python package manager. Way faster than pip; `brew install uv` on macOS. |
 
 ## 1. Install
 
-> Quay is in **alpha**. The version pin below opts you into the prerelease channel; once `v0.1.0` ships, you can drop it.
+> Causeway is in **alpha**. The version pin below opts you into the prerelease channel; once `v0.1.0` ships, you can drop it.
 
 ```bash
-uv add 'quay==0.1.0a0'
+uv add 'causeway==0.1.0a0'
 ```
 
 ## 2. Scaffold a new app
 
 ```bash
-quay new my-app
+causeway new my-app
 cd my-app
 uv sync
 ```
@@ -32,7 +32,7 @@ What you get:
 ```
 my-app/
 ├── pyproject.toml
-├── quay.toml                 # framework manifest — what the TS client sees
+├── causeway.toml                 # framework manifest — what the TS client sees
 ├── .env / .env.example       # local secrets
 └── src/app/
     ├── config.py             # Settings(BaseSettings) — typed config
@@ -52,8 +52,8 @@ Nothing in that tree is sacred — delete files you don't need, add the ones you
 from typing import Annotated
 from uuid import UUID
 from msgspec import Struct
-from quay import get, raises
-from quay.errors import NotFound
+from causeway import get, raises
+from causeway.errors import NotFound
 
 class User(Struct):
     id: UUID
@@ -81,14 +81,14 @@ And you can mix folders and dotted leaves: `routes/api/v1.$version.posts.py` →
 ## 4. Run the dev loop
 
 ```bash
-quay dev
+causeway dev
 ```
 
 What that does, in one process:
 
 1. Walks `src/app/routes/` → registers every handler → emits a typed `client.ts` ready for your frontend.
 2. Boots uvicorn on `http://127.0.0.1:8000`.
-3. Serves a diagnostics page at **`/__quay`** — route tree, registered tasks, current config (secrets redacted), plugin list, OTel trace tail. Open it. It's the fastest way to know what Quay thinks of your app.
+3. Serves a diagnostics page at **`/__causeway`** — route tree, registered tasks, current config (secrets redacted), plugin list, OTel trace tail. Open it. It's the fastest way to know what Causeway thinks of your app.
 4. Hot-reloads `_middleware.py` and `_scope.py` on save, without losing in-memory state where it can preserve it.
 
 Hit `http://127.0.0.1:8000/users/some-uuid` to see the handler respond.
@@ -97,8 +97,8 @@ Hit `http://127.0.0.1:8000/users/some-uuid` to see the handler respond.
 
 ```python
 # src/app/routes/_middleware.py
-from quay import Middleware
-from quay.middleware import Request, Response
+from causeway import Middleware
+from causeway.middleware import Request, Response
 
 class RequestId(Middleware):
     async def __call__(self, req: Request, call_next):
@@ -119,7 +119,7 @@ That subtree-scoped composition is the trick that lets you avoid the "decorator 
 
 ```python
 # src/app/routes/users/_scope.py
-from quay import provide
+from causeway import provide
 from app.lib.db import session_factory
 
 @provide("db")
@@ -128,13 +128,13 @@ async def get_session():
         yield s
 ```
 
-Now any handler under `routes/users/` can take `db: Annotated[Session, get_session]` and Quay will inject a fresh, request-scoped session for each call. Nested scopes inherit and can override by name — the inner-most wins.
+Now any handler under `routes/users/` can take `db: Annotated[Session, get_session]` and Causeway will inject a fresh, request-scoped session for each call. Nested scopes inherit and can override by name — the inner-most wins.
 
 ## 7. Background tasks
 
 ```python
 # src/app/tasks/emails.py
-from quay import task
+from causeway import task
 
 @task(queue="emails", retries=5, backoff="exponential")
 async def send_welcome(user_id: str) -> None:
@@ -144,7 +144,7 @@ async def send_welcome(user_id: str) -> None:
 ```python
 # src/app/routes/users/index.py
 from app.tasks.emails import send_welcome
-from quay import post
+from causeway import post
 
 @post
 async def create(data: NewUser) -> User:
@@ -156,7 +156,7 @@ async def create(data: NewUser) -> User:
 In tests, swap to inline execution:
 
 ```python
-from quay.testing import tasks_eager
+from causeway.testing import tasks_eager
 
 async def test_signup_sends_welcome(app):
     async with tasks_eager():
@@ -168,8 +168,8 @@ You pick the broker in `plugins.py`:
 
 ```python
 # src/app/plugins.py
-from quay import register
-from quay_tasks_dramatiq import DramatiqAdapter
+from causeway import register
+from causeway_tasks_dramatiq import DramatiqAdapter
 
 register(DramatiqAdapter(broker_url=settings.redis_url.get_secret_value()))
 ```
@@ -187,7 +187,7 @@ Want Celery, Arq, or in-process? Replace the import and the class. The `@task` a
 
 ## Troubleshooting
 
-**The route doesn't show up in `/__quay`.**
+**The route doesn't show up in `/__causeway`.**
 Make sure the file is under `src/app/routes/`, the filename matches a convention (`index.py`, `foo.py`, `[param].py`, or any of the dot-flat forms), and it doesn't start with `_` (those are private — `_middleware.py` and `_scope.py` are special, anything else underscore-prefixed is colocated helper code).
 
 **A `[id].py` segment isn't binding to my handler parameter.**
@@ -197,6 +197,6 @@ The parameter name has to match the bracketed segment name **exactly**. `[id].py
 Composition order is app-level → root `_middleware.py` → … → leaf `_middleware.py` → handler. Response unwinds in reverse. If you want a guard to run before everything, put it at the root; if you want it to be the last thing before the handler, put it at the leaf.
 
 **My TypeScript client is empty / missing types.**
-Check `quay.toml` — the IR only emits what's exposed there. For settings, that's the `[client] expose_settings = [...]` allowlist (secrets are never exposed, even if you list them). For routes, that's everything the router discovered.
+Check `causeway.toml` — the IR only emits what's exposed there. For settings, that's the `[client] expose_settings = [...]` allowlist (secrets are never exposed, even if you list them). For routes, that's everything the router discovered.
 
-Anything else surprising or unclear? Open a [doc issue](https://github.com/tamimbinhakim/quay/issues/new?labels=docs). "I tried to use Quay for X and got confused" issues are the most valuable kind — they're how the docs get less confusing.
+Anything else surprising or unclear? Open a [doc issue](https://github.com/tamimbinhakim/causeway/issues/new?labels=docs). "I tried to use Causeway for X and got confused" issues are the most valuable kind — they're how the docs get less confusing.

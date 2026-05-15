@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "causeway-flags-growthbook"
+version = "0.1.0a0"
+description = "GrowthBook FeatureFlags adapter for Causeway."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = ["causeway>=0.1.0a0", "growthbook>=1.0", "httpx>=0.28"]
+
+[project.entry-points."causeway.plugins"]
+flags-growthbook = "causeway_flags_growthbook:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/causeway_flags_growthbook"]

@@ -5,7 +5,7 @@ What we test, what we don't, and where the bar is.
 ## The shape
 
 ```
-packages/quay/tests/
+packages/causeway/tests/
 ├── __init__.py
 ├── test_adapters.py             # MemoryKV / LocalStorage / NullSink / etc.
 ├── test_app_factory.py          # create_app() composition
@@ -86,8 +86,8 @@ GitHub Actions runs the full suite on every push:
 
 ```yaml
 - uv sync
-- uv run ruff check packages/quay/src packages/quay/tests
-- uv run mypy packages/quay/src
+- uv run ruff check packages/causeway/src packages/causeway/tests
+- uv run mypy packages/causeway/src
 - uv run pyright           # root pyrightconfig.json
 - uv run pytest -q
 ```

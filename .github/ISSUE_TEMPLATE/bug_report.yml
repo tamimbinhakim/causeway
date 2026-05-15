@@ -26,10 +26,10 @@ body:
     validations: { required: true }
 
   - type: input
-    id: quay-version
+    id: causeway-version
     attributes:
-      label: Quay version
-      placeholder: "0.1.0a0 (run `quay --version`)"
+      label: Causeway version
+      placeholder: "0.1.0a0 (run `causeway --version`)"
     validations: { required: true }
 
   - type: input
@@ -58,4 +58,4 @@ body:
       label: Pre-flight
       options:
         - { label: "I searched existing issues and discussions", required: true }
-        - { label: "I'm on the latest version of `quay`", required: false }
+        - { label: "I'm on the latest version of `causeway`", required: false }

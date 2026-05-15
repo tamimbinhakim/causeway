@@ -1,15 +1,15 @@
 # Architecture
 
-This is what's actually happening when you type `quay dev`. It's not magic,
+This is what's actually happening when you type `causeway dev`. It's not magic,
 and the parts are small enough that you can read the whole thing in a
 weekend.
 
-> **One-line acknowledgement.** Quay's typed-RPC layer — the IR format,
+> **One-line acknowledgement.** Causeway's typed-RPC layer — the IR format,
 > the TypeScript codegen, the streaming envelope — is provided by `dyadpy`,
-> a lower-level primitive that Quay depends on. Everything below
-> describes Quay's surface; the IR / codegen plumbing under it is mostly
+> a lower-level primitive that Causeway depends on. Everything below
+> describes Causeway's surface; the IR / codegen plumbing under it is mostly
 > Dyadpy doing its job. From an application author's perspective: it's
-> all Quay.
+> all Causeway.
 
 ## The 30-second mental model
 
@@ -23,7 +23,7 @@ src/app/routes/**/*.py
    Route registrations  ──►  IR  ──►  ASGI runtime  ──►  HTTP / SSE
         │                    │
         ▼                    ▼
-  _middleware.py          quay.toml manifest
+  _middleware.py          causeway.toml manifest
   _scope.py                    │
         │                      ▼
         ▼                  Generated client.ts
@@ -36,7 +36,7 @@ middleware + scopes + handler from the precomputed graph.
 
 ## Layer by layer
 
-### 1. File-based router (`quay.routing`)
+### 1. File-based router (`causeway.routing`)
 
 The router walks `src/app/routes/**/*.py`, ignoring underscore-prefixed
 files (those are private). For each file:
@@ -57,24 +57,24 @@ Two file conventions are special:
   handler in the subtree, request-scoped, plus optional `startup()` /
   `shutdown()` hooks.
 
-### 2. Config + DI (`quay.config`, `quay.di`)
+### 2. Config + DI (`causeway.config`, `causeway.di`)
 
 `Settings` is a thin wrapper around `pydantic-settings`. It:
 
 - Loads once at startup, re-validates on dev hot-reload.
-- Exposes non-secret fields to the IR per `quay.toml`'s
+- Exposes non-secret fields to the IR per `causeway.toml`'s
   `[client] expose_settings = [...]` allowlist, so the generated TS
   client can know about feature flags without leaking secrets.
 
-DI uses `Annotated[T, provider]`. Quay's addition is **scope**:
+DI uses `Annotated[T, provider]`. Causeway's addition is **scope**:
 `_scope.py` providers attach to a subtree, so a provider declared in
 `routes/users/_scope.py` is only resolved for routes under `/users/*`.
 
-### 3. Plugin registry (`quay.plugins`)
+### 3. Plugin registry (`causeway.plugins`)
 
 Two discovery paths:
 
-- **Entry points.** Anything declaring `quay.plugins` in its
+- **Entry points.** Anything declaring `causeway.plugins` in its
   `[project.entry-points]` is auto-loaded at startup.
 - **Explicit `register()`.** `src/app/plugins.py` can register adapters
   directly — useful when an extra `__init__` arg is needed (broker URL,
@@ -88,7 +88,7 @@ in a sibling repo for plugins that need a real dependency). Picking a
 real backend is a one-line swap. Full mechanics in
 [`plugins.md`](./plugins.md).
 
-### 4. Background tasks (`quay.tasks`)
+### 4. Background tasks (`causeway.tasks`)
 
 `@task` registers a handler into the IR and produces a callable that
 adapters dispatch to:
@@ -108,21 +108,21 @@ class TaskAdapter(Protocol):
     def eager(self) -> AsyncContextManager[None]: ...  # test mode
 ```
 
-### 5. The dev loop (`quay.cli`)
+### 5. The dev loop (`causeway.cli`)
 
-`quay dev` runs the whole loop in one process:
+`causeway dev` runs the whole loop in one process:
 
 1. Auto-discovery of `src/app/routes/` → registers handlers → triggers
    TS regeneration.
 2. Hot-reload of `_middleware.py` and `_scope.py` without losing
    in-memory state where safe.
-3. A diagnostics page at `http://localhost:8000/__quay` showing the
+3. A diagnostics page at `http://localhost:8000/__causeway` showing the
    route tree, registered tasks, current config (secrets redacted),
    plugin list, current OTel trace tail.
 4. A rich error overlay (Starlette debug middleware enhanced with route
    context).
 
-`quay build` produces a single artifact: the IR snapshot, the generated
+`causeway build` produces a single artifact: the IR snapshot, the generated
 `client.ts`, and a deployable Python wheel.
 
 ## Why this shape
@@ -131,9 +131,9 @@ A few decisions worth calling out explicitly.
 
 **Why brackets in filenames?**
 The cost is import semantics — `[id].py` can't be imported with
-`from app.routes.users.[id] import ...`, so Quay loads it via
+`from app.routes.users.[id] import ...`, so Causeway loads it via
 `importlib.util.spec_from_file_location()`. Cross-imports between route
-files are rare in practice; when needed, Quay provides an explicit alias
+files are rare in practice; when needed, Causeway provides an explicit alias
 mechanism. The benefit is the convention: bracket / paren / underscore
 syntax is familiar from Next.js / Nuxt / SvelteKit and translates
 cleanly to backend semantics.
@@ -146,19 +146,19 @@ upgradable, and replaceable.
 **Why depend on `dyadpy` for the typed-RPC layer?**
 Type extraction, IR generation, TypeScript codegen, and SSE streaming
 are a real piece of work on their own. `dyadpy` solves them well and
-versions independently, which lets Quay focus on project shape (routing,
+versions independently, which lets Causeway focus on project shape (routing,
 scopes, plugins, tasks) without re-implementing the wire layer. The
-two compose cleanly: Quay registers handlers; the lower layer turns
+two compose cleanly: Causeway registers handlers; the lower layer turns
 them into a generated client.
 
 ## Where to read the code
 
-- [`packages/quay/src/quay/routing/`](../packages/quay/src/quay/routing)
-- [`packages/quay/src/quay/config.py`](../packages/quay/src/quay/config.py)
-- [`packages/quay/src/quay/di.py`](../packages/quay/src/quay/di.py)
-- [`packages/quay/src/quay/tasks.py`](../packages/quay/src/quay/tasks.py)
-- [`packages/quay/src/quay/plugins.py`](../packages/quay/src/quay/plugins.py)
-- [`packages/quay/src/quay/cli.py`](../packages/quay/src/quay/cli.py)
+- [`packages/causeway/src/causeway/routing/`](../packages/causeway/src/causeway/routing)
+- [`packages/causeway/src/causeway/config.py`](../packages/causeway/src/causeway/config.py)
+- [`packages/causeway/src/causeway/di.py`](../packages/causeway/src/causeway/di.py)
+- [`packages/causeway/src/causeway/tasks.py`](../packages/causeway/src/causeway/tasks.py)
+- [`packages/causeway/src/causeway/plugins.py`](../packages/causeway/src/causeway/plugins.py)
+- [`packages/causeway/src/causeway/cli.py`](../packages/causeway/src/causeway/cli.py)
 
 If you read all of those and still have a "wait, how does X work?"
 question, that's a docs bug. Please file it.

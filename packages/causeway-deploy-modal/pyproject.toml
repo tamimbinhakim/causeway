@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "causeway-deploy-modal"
+version = "0.1.0a0"
+description = "Modal deploy target for Causeway."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = ["causeway>=0.1.0a0", "modal>=0.65"]
+
+[project.entry-points."causeway.plugins"]
+deploy-modal = "causeway_deploy_modal:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/causeway_deploy_modal"]

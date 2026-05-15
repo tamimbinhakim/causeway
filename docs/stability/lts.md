@@ -1,6 +1,6 @@
 # LTS policy
 
-This page describes what "supported" means for a given Quay release once we hit `1.0`. Pre-1.0 the rule is simpler: only the latest minor is supported.
+This page describes what "supported" means for a given Causeway release once we hit `1.0`. Pre-1.0 the rule is simpler: only the latest minor is supported.
 
 ## Support windows
 
@@ -17,8 +17,8 @@ Translation: when `2.0.0` ships, the latest `1.y` line keeps receiving security 
 
 ## What counts as a security fix
 
-- A CVE in Quay itself.
-- A CVE in a direct dependency that Quay can mitigate with a version bump or workaround.
+- A CVE in Causeway itself.
+- A CVE in a direct dependency that Causeway can mitigate with a version bump or workaround.
 - A defect that allows an attacker to bypass a documented security boundary (auth provider, plugin sandbox).
 
 Not security fixes:
@@ -44,21 +44,21 @@ Backports are not automatic; the maintainer triages each. Most bug fixes do not 
 
 ## What we don't promise
 
-- **A specific Python version forever.** Quay drops support for a Python minor when the upstream support window closes. The current minimum tracks the Python release cadence — see `pyproject.toml`'s `requires-python`.
-- **Stability for `quay._*` private modules.** Anything underscore-prefixed may change in any release.
-- **Stability for third-party plugins.** `quay-*` plugins not maintained from this repo set their own version policy.
+- **A specific Python version forever.** Causeway drops support for a Python minor when the upstream support window closes. The current minimum tracks the Python release cadence — see `pyproject.toml`'s `requires-python`.
+- **Stability for `causeway._*` private modules.** Anything underscore-prefixed may change in any release.
+- **Stability for third-party plugins.** `causeway-*` plugins not maintained from this repo set their own version policy.
 
 ## How to know which version you're on
 
 ```bash
-quay --version
+causeway --version
 ```
 
 Or programmatically:
 
 ```python
-import quay
-quay.__version__
+import causeway
+causeway.__version__
 ```
 
 The version string is the source of truth. CHANGELOG entries are keyed by it.

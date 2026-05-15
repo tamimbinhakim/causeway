@@ -8,7 +8,7 @@ storage, file-based routing, typed errors, msgspec request/response models.
 ```
 minimal-crud/
 ├── pyproject.toml
-├── quay.toml
+├── causeway.toml
 ├── app/
 │   ├── __init__.py
 │   ├── app.py            # `app = create_app("app/routes")`

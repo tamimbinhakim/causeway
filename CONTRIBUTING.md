@@ -1,4 +1,4 @@
-# Contributing to Quay
+# Contributing to Causeway
 
 First: thank you. Genuinely. Open source moves at the speed of the people who
 show up, and you showing up means a lot.
@@ -10,8 +10,8 @@ annoying, open a PR fixing it — meta-contributions count.
 ## TL;DR
 
 ```bash
-git clone https://github.com/tamimbinhakim/quay.git
-cd quay
+git clone https://github.com/tamimbinhakim/causeway.git
+cd causeway
 pnpm install               # installs Node deps + sets up husky hooks
 uv sync                    # installs Python deps into .venv
 pnpm test                  # run the test suite
@@ -25,9 +25,9 @@ A pnpm monorepo with one publishable Python package and a pile of supporting
 docs/examples:
 
 ```
-quay/
+causeway/
 ├── packages/
-│   └── quay/             # Python framework (PyPI: quay)
+│   └── causeway/             # Python framework (PyPI: causeway)
 ├── examples/             # Runnable apps you can poke
 ├── docs/                 # End-user documentation
 └── .github/              # CI, issue templates, the works
@@ -39,7 +39,7 @@ quay/
 | ------ | ---------------- | ----------------------------------------------------------------------------------- |
 | Node   | ≥ 22             | Runs the toolchain (pnpm, husky, commitlint, prettier).                             |
 | pnpm   | ≥ 10             | Workspace package manager. Don't use npm/yarn here.                                 |
-| Python | ≥ 3.11           | Quay leans on modern typing (`from __future__ import annotations`, `X \| Y`, etc.). |
+| Python | ≥ 3.11           | Causeway leans on modern typing (`from __future__ import annotations`, `X \| Y`, etc.). |
 | uv     | latest           | Python package manager. Way faster than pip.                                        |
 | Git    | any sane version | Obvious.                                                                            |
 
@@ -111,7 +111,7 @@ If the hook fails, fix the issue and re-stage. Don't bypass with
 ## Working on the Python package
 
 ```bash
-cd packages/quay
+cd packages/causeway
 uv run pytest                  # full test suite
 uv run pytest -k routing       # one area
 uv run ruff check .            # lint
@@ -122,8 +122,8 @@ uv run mypy src                # type-check
 The package layout:
 
 ```
-packages/quay/
-├── src/quay/
+packages/causeway/
+├── src/causeway/
 │   ├── __init__.py     # public API re-exports
 │   ├── routing/        # file-based router + middleware + scopes
 │   ├── config.py       # pydantic-settings wrapper
@@ -138,14 +138,14 @@ packages/quay/
 └── tests/
 ```
 
-When adding a new public symbol, re-export it from `quay/__init__.py`.
+When adding a new public symbol, re-export it from `causeway/__init__.py`.
 
 ## Working on examples
 
 ```bash
 cd examples/minimal
 uv sync
-uv run quay dev
+uv run causeway dev
 ```
 
 Each example is self-contained. They are not part of the publish pipeline —
@@ -173,7 +173,7 @@ Releases are automated via [release-please](https://github.com/googleapis/releas
 
 - Every merge to `main` updates a release PR.
 - Merging that release PR cuts versions, generates the changelog, tags, and
-  publishes `quay` to PyPI.
+  publishes `causeway` to PyPI.
 - Versioning is driven by Conventional Commits: `feat:` → minor, `fix:` →
   patch, `feat!:` / `BREAKING CHANGE:` → major.
 
@@ -188,7 +188,7 @@ If you've found a bug:
 
 1. **A minimal reproduction beats everything.** A 20-line script that fails
    is worth more than a 500-word description.
-2. Tell us the version (`quay --version`) and Python version.
+2. Tell us the version (`causeway --version`) and Python version.
 3. If it's a routing / IR issue, paste the directory tree and the offending
    handler.
 
