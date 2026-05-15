@@ -2,7 +2,7 @@
 
 # Quay
 
-**Backend conventions for type-safe Python APIs. A lean backend framework built on top of [Dyadpy](https://github.com/tamimbinhakim/dyadpy).**
+**A lean backend framework for type-safe Python APIs. Your function signature is the API contract; the typed TypeScript client comes free.**
 
 [![CI](https://github.com/tamimbinhakim/quay/actions/workflows/ci.yml/badge.svg)](https://github.com/tamimbinhakim/quay/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/quay.svg)](https://pypi.org/project/quay/)
@@ -14,21 +14,23 @@
 
 ## What Quay is
 
-A backend-only, Python-native framework that sits on top of [Dyadpy](https://github.com/tamimbinhakim/dyadpy) (the wire-level RPC layer) and contributes exactly five things to the application surface:
+A backend-only, Python-native framework that contributes exactly five things to your application surface:
 
-1. **File-based routing** — Next.js-style `[id].py` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition.
-2. **Typed config & DI** — `pydantic-settings` wrapper with scoped providers via `_scope.py`. No container boilerplate.
+1. **File-based routing** — `[id].py` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition.
+2. **Typed config & DI** — `pydantic-settings` wrapper with request-scoped providers via `_scope.py`. No container boilerplate.
 3. **Middleware & scope composition** — wraps every route in a subtree with one file at the root of that subtree.
-4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery/Arq/TaskIQ with one line.
+4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery / Arq / TaskIQ with one line.
 5. **Plugin registry** — entry-point discovery so `quay-auth-clerk`, `quay-storage-s3`, `quay-sqlmodel`, etc. install cleanly.
 
-Everything else (ORM, auth, mailer, storage) is a **plugin contract with reference adapters** — not in core.
+Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by `dyadpy`, a lower-level primitive Quay depends on. From an application author's perspective it's all just Quay — you write Python handlers; Quay registers them, validates them, and emits a TypeScript client alongside the running app.
+
+Everything outside the five things (ORM, auth, mailer, storage, cache, search, …) is a **plugin contract with reference adapters** — not in core.
 
 ## What Quay is not
 
 - Not an ORM. (Use SQLModel / SQLAlchemy / Tortoise / your choice via the `quay-sqlmodel` plugin.)
 - Not an admin panel.
-- Not an HTML / template engine. The TS client is Dyadpy's job; the frontend is yours.
+- Not an HTML / template engine. The TypeScript client is generated; the frontend is yours.
 - Not an infrastructure provisioner. (That's Terraform / Pulumi / Modal.)
 - **Not an AI / agent framework.** No `quay.ai` module, no LLM-specific types, no built-in vector stores. Quay stays at the structural / wire level; LLM tooling is user code or a separate library (LangGraph / Pydantic AI / Mastra).
 
@@ -47,7 +49,7 @@ my-app/
         ├── _middleware.py
         ├── index.py         # /
         └── users/
-            ├── _scope.py   # provides db session
+            ├── _scope.py    # provides db session
             ├── index.py     # /users
             └── [id].py      # /users/{id}
 ```
@@ -80,28 +82,29 @@ quay dev
 
 What that does:
 
-1. Discovers `src/app/routes/` → registers handlers into Dyadpy → triggers TS client regeneration.
+1. Discovers `src/app/routes/` → registers handlers → emits a typed `client.ts` for your frontend.
 2. Boots uvicorn on `http://127.0.0.1:8000`.
-3. Serves `/__quay` — route tree, registered tasks, current config (secrets redacted).
+3. Serves `/__quay` — route tree, registered tasks, current config (secrets redacted), plugin list.
 4. Hot-reloads `_middleware.py` and `_scope.py` on change.
 
 ## Why you'd use it
 
-- **You like the Dyadpy contract** (function signature = API contract) but want project shape for free.
-- **You want Encore-style conventions** without Encore's cloud lock-in.
-- **You want Next.js-style routing** in Python.
-- **You want plugins, not batteries.** Core ships contracts and one reference adapter each.
+- **Signature-as-contract.** Your handler's Python signature _is_ the wire schema. No `class CreatePostRequest(BaseModel)` mirrored in three files.
+- **Project shape for free.** File-based routing, scoped DI, middleware, plugin registry — all there the moment you scaffold.
+- **Plugins, not batteries.** Core ships contracts and one reference adapter each. Pick a real backend with one line in `plugins.py`.
+- **Cloud-agnostic.** No provisioner, no platform lock-in. Runs anywhere ASGI runs.
+- **Encore-style conventions without Encore's cloud.**
 
 ## How it compares
 
-|                     | **Quay**                | FastAPI        | Django + Ninja | Encore.ts        | NestJS          |
-| ------------------- | ----------------------- | -------------- | -------------- | ---------------- | --------------- |
-| Scope               | Backend framework       | Router lib     | Full framework | Backend + infra  | Structural      |
-| Owns ORM?           | **No**                  | No             | Yes            | Declarative      | No              |
-| Owns auth?          | **No** (plugins)        | No             | Yes            | Partial          | Partial         |
-| File-based routing? | **Yes (Next.js style)** | No             | No             | No               | No              |
-| Cloud lock-in?      | **None**                | None           | None           | Medium           | None            |
-| Closest comparison  | —                       | Building block | Heavy alt      | Closest ambition | Structural peer |
+|                     | **Quay**          | FastAPI        | Django + Ninja | Encore.ts        | NestJS          |
+| ------------------- | ----------------- | -------------- | -------------- | ---------------- | --------------- |
+| Scope               | Backend framework | Router lib     | Full framework | Backend + infra  | Structural      |
+| Owns ORM?           | **No**            | No             | Yes            | Declarative      | No              |
+| Owns auth?          | **No** (plugins)  | No             | Yes            | Partial          | Partial         |
+| File-based routing? | **Yes**           | No             | No             | No               | No              |
+| Cloud lock-in?      | **None**          | None           | None           | Medium           | None            |
+| Closest comparison  | —                 | Building block | Heavy alt      | Closest ambition | Structural peer |
 
 Full positioning matrix in [`docs/design.md`](./docs/design.md).
 
@@ -130,9 +133,7 @@ Details: [`docs/semver.md`](./docs/semver.md), [`docs/ir-stability.md`](./docs/i
 | -------------------------------- | ------------------------------------------------------------ | ------ |
 | [`quay`](./packages/quay) (PyPI) | Core framework: routing, config, DI, tasks, plugin registry. | v0.1 α |
 
-Out-of-core official plugins (planned, own repos): `quay-sqlmodel`, `quay-auth-*`, `quay-storage-s3`, `quay-mailer-resend`, `quay-deploy-modal`, `quay-deploy-fly`.
-
-See [`ROADMAP.md`](./ROADMAP.md).
+Out-of-core official plugins (planned, own repos): `quay-sqlmodel`, `quay-auth-*`, `quay-storage-s3`, `quay-mailer-resend`, `quay-deploy-modal`, `quay-deploy-fly`. Full inventory in [`ROADMAP.md`](./ROADMAP.md#plugin-ecosystem).
 
 ## Contributing
 

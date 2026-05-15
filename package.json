@@ -2,7 +2,7 @@
   "name": "quay-monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "A lean backend framework on top of Dyadpy — file-based routing, typed config/DI, plugin registry, and background tasks for Python.",
+  "description": "A lean backend framework for type-safe Python APIs — file-based routing, typed config/DI, scoped providers, plugin registry, and background tasks.",
   "homepage": "https://github.com/tamimbinhakim/quay#readme",
   "bugs": {
     "url": "https://github.com/tamimbinhakim/quay/issues"

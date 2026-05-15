@@ -1,4 +1,4 @@
-"""Quay — a lean backend framework on top of Dyadpy.
+"""Quay — a lean backend framework for type-safe Python APIs.
 
 This is the structural boilerplate for the package. Implementation lands
 incrementally per the v0.1 roadmap; see ROADMAP.md.
@@ -7,7 +7,8 @@ Public API surface (to be populated):
 
 - Method decorators: ``get``, ``post``, ``put``, ``patch``, ``delete``
 - Routing helpers: ``Middleware``, ``guard``, ``provide``
-- Errors: ``raises`` (re-exported from dyadpy), ``quay.errors`` namespace
+- Errors: ``raises``, ``quay.errors`` namespace
+- Streaming: ``stream``
 - Background tasks: ``task``, ``cron``
 - Plugin registry: ``register``
 - Testing: ``TestApp``

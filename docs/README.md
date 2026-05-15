@@ -11,7 +11,7 @@
 Stability commitments:
 
 - **[Versioning](./semver.md)** — what counts as a breaking change.
-- **[Registration stability](./ir-stability.md)** — what Quay registers into the Dyadpy IR and how that surface evolves.
+- **[Registration stability](./ir-stability.md)** — what Quay registers into the IR and how that surface evolves.
 - **[LTS](./lts.md)** — support windows, backport policy.
 
 Something wrong, confusing, or annoying? Open a doc issue.

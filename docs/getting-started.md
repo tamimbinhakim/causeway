@@ -66,7 +66,7 @@ async def show(id: UUID) -> User:
 
 That's it. No `app.add_route(...)` line. The file router discovers
 `src/app/routes/users/[id].py` and registers `GET /users/{id}` into the
-Dyadpy IR.
+IR.
 
 ## 4. Run dev
 
@@ -76,10 +76,9 @@ quay dev
 
 What that does:
 
-1. Discovers `src/app/routes/` → registers handlers into Dyadpy.
+1. Discovers `src/app/routes/` → registers handlers → emits a typed `client.ts` for the frontend.
 2. Boots uvicorn on `http://127.0.0.1:8000`.
-3. Serves `/__quay` — route tree, registered tasks, registered agents,
-   current config (secrets redacted), plugin list, OTel trace tail.
+3. Serves `/__quay` — route tree, registered tasks, current config (secrets redacted), plugin list, OTel trace tail.
 4. Hot-reloads `_middleware.py` and `_scope.py` on save.
 
 ## 5. Add middleware

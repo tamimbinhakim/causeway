@@ -175,7 +175,7 @@ async def get_stripe() -> StripeClient:
 
 ## What the router emits
 
-Every discovered handler becomes a Dyadpy route registration. From the IR you get:
+Every discovered handler becomes a route registration in the IR. From the IR you get:
 
 - Generated TypeScript client.
 - Route diagnostics page at `/__quay`.

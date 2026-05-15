@@ -8,7 +8,7 @@ Every choice has one obvious place; surprising behavior is a bug. There is one p
 
 ## 2. Backend-only
 
-No SSR, no template engine, no asset pipeline. The TypeScript client is Dyadpy's job. The frontend is yours. Quay produces an ASGI app and a manifest; you produce a product.
+No SSR, no template engine, no asset pipeline. Quay emits a typed TypeScript client alongside the running app; what your frontend does with it is your concern. Quay produces an ASGI app and a manifest; you produce a product.
 
 ## 3. Plugins, not batteries
 
@@ -16,7 +16,7 @@ Core ships **contracts** (TaskAdapter, Storage, KV, AuthProvider) and **one refe
 
 ## 4. Type-driven, IR-grounded
 
-Everything Quay knows about your app — routes, jobs, config — lives in Dyadpy's IR so it can flow to clients, dashboards, tests, and deployment artifacts. There is no second source of truth. If Quay knows it, the IR knows it.
+Everything Quay knows about your app — routes, jobs, config — lives in the IR so it can flow to clients, dashboards, tests, and deployment artifacts. There is no second source of truth. If Quay knows it, the IR knows it.
 
 ## 5. General-purpose, narrow scope
 
@@ -60,7 +60,7 @@ In one sentence:
 3. **No HTML rendering / template engine in core.**
 4. **No infrastructure provisioning.** That's Terraform / Pulumi / Modal.
 5. **No AI / LLM types in core.** No `quay.ai` module, no `Thread` / `@agent` / `VectorStore` primitives. LLM tooling is user code or a dedicated library (LangGraph / Pydantic AI / Mastra).
-6. **No frontend.** Dyadpy ships a TypeScript client; what you do with it is your concern.
+6. **No frontend.** Quay emits a typed TypeScript client; what you do with it is your concern.
 
 ## Decision-forcing changes
 
@@ -68,7 +68,7 @@ If the world shifts, the plan shifts:
 
 | If…                                                      | Then…                                                                               |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Dyadpy's IR can't represent task registrations cleanly   | Add an `extensions` namespace to Dyadpy's IR first; don't fork the IR               |
+| The IR can't represent task registrations cleanly        | Add an `extensions` namespace upstream first; don't fork the IR                     |
 | Users hate `[id].py` literal brackets in their file tree | Add a compatibility layer for `_id.py` style — but keep brackets canonical          |
 | Dramatiq adoption is too low among target users          | Switch the reference to TaskIQ (newer, asyncio-native); keep the contract identical |
 | `pydantic-settings` v3 changes API significantly         | Vendor a thin wrapper that exposes a stable `Settings` interface                    |

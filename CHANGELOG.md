@@ -22,7 +22,7 @@ the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   than just promised. Four documents cover the corners that matter —
   [`docs/semver.md`](./docs/semver.md) (public API + deprecation cycle),
   [`docs/ir-stability.md`](./docs/ir-stability.md) (route / task
-  registration invariants surfaced into the Dyadpy IR),
+  registration invariants surfaced into the IR),
   [`docs/lts.md`](./docs/lts.md) (support windows + EOL), and the
   plugin-contract-is-part-of-the-surface clause spelled out in the
   README.

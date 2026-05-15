@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "quay"
 version = "0.1.0a0"
-description = "A lean backend framework on top of Dyadpy — file-based routing, typed config/DI, plugin registry, and background tasks for Python."
+description = "A lean backend framework for type-safe Python APIs — file-based routing, typed config/DI, scoped providers, plugin registry, and background tasks."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"

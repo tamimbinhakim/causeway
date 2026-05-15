@@ -17,7 +17,7 @@ else either rides on top or doesn't belong inside.
 - [ ] **File-based router** — `[id].py`, `(group)/`, `_middleware.py`,
       `_scope.py`. Discovery via `pathlib.Path.glob()` +
       `importlib.util.spec_from_file_location()`. Emits route
-      registrations into the Dyadpy IR.
+      registrations into the IR.
 - [ ] **Typed config** — `Settings` wraps `pydantic-settings`. Single
       `config.py` convention, hot-reload-aware re-validation in dev,
       `quay.toml` `[client] expose_settings = [...]` exposes non-secret
@@ -58,8 +58,9 @@ v0.2 is about removing rough edges.
       routes / renamed fields / narrowed types as breaking.
 - [ ] **WebSocket route convention** — `[id].ws.py`.
 - [ ] **Coverage gate** — ≥ 85% across `quay/*` source (CI-enforced).
-- [ ] **Reproducible benchmark suite** — Quay vs raw Dyadpy vs FastAPI vs
-      Litestar across cold-start + p50/p95/p99 + req/s.
+- [ ] **Reproducible benchmark suite** — Quay vs FastAPI vs Litestar vs
+      the underlying RPC layer (raw `dyadpy`) across cold-start +
+      p50/p95/p99 + req/s.
 - [ ] **Plugin sandbox tests** — fixtures that boot a quay app with
       arbitrary plugin combos and run a smoke route to catch contract
       regressions.
@@ -271,8 +272,8 @@ reconsider — but the default is no.
    / `VectorStore` primitives, no LLM-shaped helpers. Those are user code
    or a separate library (LangGraph / Pydantic AI / Mastra). Quay binds
    the web/task surface; what flows through it is your problem.
-6. **No frontend.** Dyadpy ships a TS client; what you do with it is your
-   concern.
+6. **No frontend.** Quay emits a typed TypeScript client; what you do
+   with it is your concern.
 
 ## Influences
 
@@ -282,7 +283,8 @@ In rough order of "how much I stole from each":
 - **Litestar** — for "msgspec-first ASGI is viable" and clean DI scopes.
 - **Encore.ts** — for proving declarative, type-driven backends work.
 - **FastAPI** — for `Depends()` DI and dev-loop ergonomics.
-- **Dyadpy** — for the wire-level primitives Quay sits on.
+- **`dyadpy`** — the lower-level typed-RPC primitive Quay depends on
+  for IR + TypeScript codegen + streaming.
 - **AdonisJS / Laravel** — for what _not_ to do at the framework layer
   (the "ship every battery" model).
 

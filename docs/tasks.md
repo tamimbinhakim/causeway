@@ -106,6 +106,6 @@ This is small on purpose. Real adapters layer their own features (Dramatiq middl
 
 ## What's _not_ in the contract
 
-- **Long-running task result streaming** is Dyadpy's `Task[T]` primitive, not the queue. The two compose: a `@task` enqueues; a `Task[T]` route polls / streams.
+- **Long-running task result streaming** is a separate `Task[T]` route-level primitive, not the queue. The two compose: a `@task` enqueues; a `Task[T]` route polls / streams the result back.
 - **Distributed locks, leader election, semaphores**. Those belong in `quay-locks-*` plugins or in user code.
 - **Workflows / DAGs**. Pick Temporal / Prefect / your-DAG-lib-of-choice. We're not reinventing.

@@ -49,7 +49,7 @@ from quay.errors import NotFound
 async def show(id: UUID) -> User: ...
 ```
 
-Dyadpy turns `@raises(NotFound)` into a discriminated union on the TS side.
+`@raises(NotFound)` becomes a discriminated union in the generated TypeScript client — the caller is forced to handle the named error case.
 
 ### Streaming
 
@@ -60,7 +60,7 @@ from quay import get, stream
 async def watch(thread_id: str) -> stream[Event]: ...
 ```
 
-Wired through to Dyadpy's `stream[T]`.
+A `stream[T]` return becomes typed SSE on the wire and an `AsyncIterable<T>` on the client.
 
 ## Middleware
 
@@ -215,7 +215,7 @@ async def test_task_enqueued(app):
 | Command                | What it does                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------- |
 | `quay new <name>`      | Scaffold a new app — `pyproject.toml`, `quay.toml`, `src/app/`, sensible defaults.                |
-| `quay dev`             | Boot uvicorn + watcher + Dyadpy codegen + `/__quay` diagnostics page.                             |
+| `quay dev`             | Boot uvicorn + watcher + TypeScript client codegen + `/__quay` diagnostics page.                  |
 | `quay build`           | Emit the IR, the generated `client.ts`, and a deployable wheel.                                   |
 | `quay deploy <target>` | Invoke the relevant deploy plugin (`quay-deploy-modal`, `quay-deploy-fly`, `quay-deploy-lambda`). |
 | `quay --version`       | Print the installed version.                                                                      |

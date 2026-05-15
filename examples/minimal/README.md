@@ -6,7 +6,7 @@ The smallest possible Quay app. One handler, zero plugins. The point is to sanit
 
 - `quay new` scaffolding shape.
 - The file router picking up `src/app/routes/index.py` and `src/app/routes/health.py`.
-- `quay dev` booting uvicorn + watcher + Dyadpy codegen + `/__quay` diagnostics page.
+- `quay dev` booting uvicorn + watcher + TypeScript client codegen + `/__quay` diagnostics page.
 
 ## Status
 

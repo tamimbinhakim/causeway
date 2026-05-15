@@ -1,6 +1,6 @@
 # Benchmarks
 
-A reproducible harness comparing Quay vs raw Dyadpy vs FastAPI vs Litestar across:
+A reproducible harness comparing Quay vs FastAPI vs Litestar vs the underlying RPC layer (raw `dyadpy`) across:
 
 - Cold start
 - p50 / p95 / p99 request latency
@@ -24,6 +24,6 @@ uv run python bench.py --compare results/
 
 ## What's measured
 
-A canonical handler implemented identically across all four frameworks: validate a request body, look up an item, return JSON. The point is to compare framework overhead, not application logic.
+A canonical handler implemented identically across all four targets: validate a request body, look up an item, return JSON. The point is to compare framework overhead, not application logic. Including raw `dyadpy` is the floor — it measures how much overhead Quay's project-shape layer (file router, scope graph, plugin registry) adds on top.
 
 Vendor-blog numbers ("9x faster than X") are deliberately avoided — these benchmarks publish raw output and let readers draw conclusions.
