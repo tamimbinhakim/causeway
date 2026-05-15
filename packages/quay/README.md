@@ -87,7 +87,7 @@ uv add 'quay[all]'       # everything
 
 ## Scope
 
-Quay ships project shape and a small set of contracts. It does **not** ship vertical integrations — no ORM, no admin panel, no template engine, no infrastructure provisioning, no AI / LLM helpers. Those layers compose on top of the fundamentals and live in their own plugin packages or in user code.
+Quay ships project shape and a small set of contracts. It does **not** ship vertical integrations — no ORM, no admin panel, no template engine, no infrastructure provisioning. Those layers compose on top of the fundamentals and live in their own plugin packages or in user code.
 
 ## License
 

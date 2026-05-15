@@ -32,7 +32,6 @@ Everything outside the five things (ORM, auth, mailer, storage, cache, search, â
 - Not an admin panel.
 - Not an HTML / template engine. The TypeScript client is generated; the frontend is yours.
 - Not an infrastructure provisioner. (That's Terraform / Pulumi / Modal.)
-- **Not an AI / agent framework.** No `quay.ai` module, no LLM-specific types, no built-in vector stores. Quay stays at the structural / wire level; LLM tooling is user code or a separate library (LangGraph / Pydantic AI / Mastra).
 
 See [`docs/design.md`](./docs/design.md) for the full philosophy and the explicit non-goals.
 

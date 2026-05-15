@@ -20,7 +20,7 @@ Everything Quay knows about your app — routes, jobs, config — lives in the I
 
 ## 5. General-purpose, narrow scope
 
-Quay binds the web / task surface and stops there. No AI / LLM primitives, no ORM, no admin panel, no infra provisioning. Those layers move on a different cadence and live in user code or in dedicated libraries.
+Quay binds the web / task surface and stops there. No ORM, no admin panel, no infra provisioning. Those layers move on a different cadence and live in user code or in dedicated libraries.
 
 ## 6. One artifact, anywhere
 
@@ -35,23 +35,23 @@ The two coherent models in 2026 are:
 - **The Rails / Laravel / AdonisJS model** — framework owns everything. Productivity peaks for greenfield; the mismatch with reality is painful.
 - **The Encore / Litestar / NestJS model** — framework owns architecture and primitives, delegates implementations.
 
-Quay is the second model. We opinionate on **structure, lifecycle, naming, and contracts** — and stay deliberately neutral on **storage, identity, infrastructure, presentation, and AI tooling**.
+Quay is the second model. We opinionate on **structure, lifecycle, naming, and contracts** — and stay deliberately neutral on **storage, identity, infrastructure, and presentation**.
 
 ## Positioning matrix
 
-| Framework          | Scope                | Owns ORM?        | Owns auth? | File routing? | AI primitives? | Closest comparison |
-| ------------------ | -------------------- | ---------------- | ---------- | ------------- | -------------- | ------------------ |
-| FastAPI            | router lib           | no               | no         | no            | no             | building block     |
-| Litestar           | API framework        | partial (SQLA)   | primitives | no            | no             | peer-ish, lower    |
-| Django + Ninja     | full framework       | yes              | yes        | no            | no             | heavy alternative  |
-| AdonisJS / Laravel | full-stack batteries | yes              | yes        | no            | no             | what Quay isn't    |
-| NestJS             | structural framework | no               | partial    | no            | no             | structural peer    |
-| Encore.ts / .go    | backend + infra      | no (declarative) | partial    | no            | no             | closest ambition   |
-| **Quay**           | backend framework    | **no**           | **no**     | **yes**       | **no**         | —                  |
+| Framework          | Scope                | Owns ORM?        | Owns auth? | File routing? | Closest comparison |
+| ------------------ | -------------------- | ---------------- | ---------- | ------------- | ------------------ |
+| FastAPI            | router lib           | no               | no         | no            | building block     |
+| Litestar           | API framework        | partial (SQLA)   | primitives | no            | peer-ish, lower    |
+| Django + Ninja     | full framework       | yes              | yes        | no            | heavy alternative  |
+| AdonisJS / Laravel | full-stack batteries | yes              | yes        | no            | what Quay isn't    |
+| NestJS             | structural framework | no               | partial    | no            | structural peer    |
+| Encore.ts / .go    | backend + infra      | no (declarative) | partial    | no            | closest ambition   |
+| **Quay**           | backend framework    | **no**           | **no**     | **yes**       | —                  |
 
 In one sentence:
 
-> _"Encore-style conventions, Litestar-style scope, Next.js-style routing, cloud-agnostic, ORM-agnostic, auth-agnostic, AI-agnostic by design."_
+> _"Encore-style conventions, Litestar-style scope, Next.js-style routing, cloud-agnostic, ORM-agnostic, auth-agnostic by design."_
 
 ## Explicitly out of scope, ever
 
@@ -59,8 +59,7 @@ In one sentence:
 2. **No admin panel in core.** Recommend `sqladmin` / `Dashibase` / `retool`.
 3. **No HTML rendering / template engine in core.**
 4. **No infrastructure provisioning.** That's Terraform / Pulumi / Modal.
-5. **No AI / LLM types in core.** No `quay.ai` module, no `Thread` / `@agent` / `VectorStore` primitives. LLM tooling is user code or a dedicated library (LangGraph / Pydantic AI / Mastra).
-6. **No frontend.** Quay emits a typed TypeScript client; what you do with it is your concern.
+5. **No frontend.** Quay emits a typed TypeScript client; what you do with it is your concern.
 
 ## Decision-forcing changes
 
@@ -74,4 +73,3 @@ If the world shifts, the plan shifts:
 | `pydantic-settings` v3 changes API significantly         | Vendor a thin wrapper that exposes a stable `Settings` interface                    |
 | User demand emerges for server-rendered HTML             | Do not add it. Recommend HTMX + a separate template lib. Hold the line.             |
 | User demand emerges for multi-tenancy                    | Add it in v0.3 as a `tenant` scope on `_scope.py` — not in v0.1                     |
-| User demand emerges for built-in LLM helpers             | Do not add them. Point to LangGraph / Pydantic AI / Mastra. Hold the line.          |

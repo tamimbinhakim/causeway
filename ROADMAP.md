@@ -268,11 +268,7 @@ reconsider — but the default is no.
 3. **No HTML rendering / template engine in core.** Ever.
 4. **No infrastructure provisioning.** That's Terraform / Pulumi / Modal's
    job, not a framework's.
-5. **No AI / LLM types in core.** No `quay.ai` module, no `Thread` / `@agent`
-   / `VectorStore` primitives, no LLM-shaped helpers. Those are user code
-   or a separate library (LangGraph / Pydantic AI / Mastra). Quay binds
-   the web/task surface; what flows through it is your problem.
-6. **No frontend.** Quay emits a typed TypeScript client; what you do
+5. **No frontend.** Quay emits a typed TypeScript client; what you do
    with it is your concern.
 
 ## Influences

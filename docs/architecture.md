@@ -143,14 +143,6 @@ Every shipped opinion is a future pain point for the 60% of users who
 already have a choice. Plugins make this opt-in. Core stays small,
 upgradable, and replaceable.
 
-**Why no AI / LLM primitives?**
-The AI surface moves too fast for a framework to bake in. Threads,
-agents, tool-calling, RAG chunking, evals — any choice we'd ship today
-could be wrong in 18 months. Apps building AI features pick the library
-that fits (LangGraph, Pydantic AI, Mastra) and consume Quay's
-general-purpose primitives (`stream[T]`, `@task` for background
-ingestion, the plugin contract for vector stores).
-
 **Why depend on `dyadpy` for the typed-RPC layer?**
 Type extraction, IR generation, TypeScript codegen, and SSE streaming
 are a real piece of work on their own. `dyadpy` solves them well and
