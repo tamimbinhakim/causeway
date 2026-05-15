@@ -41,7 +41,7 @@ async def create(data: NewUser) -> User:
 ```python
 # src/app/plugins.py
 from quay import register
-from quay.tasks.dramatiq import DramatiqAdapter  # reference
+from quay_tasks_dramatiq import DramatiqAdapter  # reference
 
 register(DramatiqAdapter(broker_url="redis://localhost"))
 ```
@@ -80,13 +80,15 @@ Cron delegates to whatever `TaskAdapter` is registered. Dramatiq has its own sch
 Every adapter must support `tasks_eager()`:
 
 ```python
+from quay.testing import tasks_eager
+
 async def test_create_user(app):
-    with app.tasks_eager():
+    async with tasks_eager():
         r = await app.post("/users", json={"name": "ada"})
-    assert app.tasks.calls("emails.send_welcome") == 1
+    assert r.status_code == 201
 ```
 
-Tasks run inline in the same process; assertions are deterministic.
+Tasks run inline in the same process; `.enqueue(...)` returns only after the task body finishes, so the test can assert on its side-effects synchronously.
 
 ## Contract shape
 

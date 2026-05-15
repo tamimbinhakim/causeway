@@ -14,6 +14,10 @@ The bracket / paren / underscore syntax will look familiar if you've used Next.j
 
 ## File conventions
 
+Two styles, freely mixable in the same tree: **folder style** (Next.js / SvelteKit-flavored) and **dot-flat style** (TanStack Router-flavored). Pick whichever reads better for the route — most projects use folders for deep, group-heavy trees and dot-flat for shallow, parameter-light endpoints.
+
+### Folder style
+
 | Pattern          | URL effect                                                                              | Example                                                       |
 | ---------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `index.py`       | the folder's URL itself                                                                 | `users/index.py` → `/users`                                   |
@@ -25,6 +29,30 @@ The bracket / paren / underscore syntax will look familiar if you've used Next.j
 | `_middleware.py` | wraps every route in the subtree                                                        | runs in order: app → tree → leaf                              |
 | `_scope.py`      | declares request-scoped DI providers + scope-scoped lifespan hooks                      | exports `provide()` and optionally `startup()` / `shutdown()` |
 | `_*.py`          | private — colocated helpers, not routed                                                 | `_db.py`, `_validators.py`                                    |
+
+### Dot-flat style
+
+The leaf filename is split on `.` and each piece becomes a URL segment. A trailing `index` is dropped (means "match the parent exactly").
+
+| Pattern              | URL effect                              | Example                                                |
+| -------------------- | --------------------------------------- | ------------------------------------------------------ |
+| `a.b.c.py`           | nested URL segments                     | `billing.webhooks.py` → `/billing/webhooks`            |
+| `$name`              | dynamic segment (parallels `[name]`)    | `users.$id.py` → `/users/{id}`                         |
+| `.index`             | trailing `index` matches the parent     | `users.$id.index.py` → `/users/{id}`                   |
+| `(group)`            | dotted group piece, stripped from URL   | `(admin).stats.py` → `/stats`                          |
+| `$$rest`             | catch-all (reserved for v0.2+)          | not used in v0.1 by default                            |
+
+### Mixing the two
+
+Folder hierarchy and dotted leaf concatenate:
+
+| Pattern                            | URL                              |
+| ---------------------------------- | -------------------------------- |
+| `api/v1.$version.posts.py`         | `/api/v1/{version}/posts`        |
+| `(admin)/users.$id.py`             | `/users/{id}`                    |
+| `users/[id]/posts.$postId.py`      | `/users/{id}/posts/{postId}`     |
+
+`_middleware.py` and `_scope.py` are always folder-scoped — a dotted file inherits the same middleware / DI chain its folder gives every other file there.
 
 ## Composition order at request time
 
@@ -60,11 +88,11 @@ src/app/routes/
     └── webhooks.py           # /billing/webhooks
 ```
 
-## Why brackets
+## Why brackets / dollars work as filenames
 
-Python doesn't allow brackets in module names, so Quay loads route files via `importlib.util.spec_from_file_location()` rather than ordinary `import` statements. This is well-trodden ground — pytest, fastapi-file-router, and Django's app auto-discovery all rely on the same mechanism.
+Python doesn't allow `[`, `]`, or `$` in module names, so Quay loads route files via `importlib.util.spec_from_file_location()` rather than ordinary `import` statements. This is well-trodden ground — pytest, fastapi-file-router, and Django's app auto-discovery all rely on the same mechanism. The filename is just a string on disk; the import machinery never sees the dotted parts as package attribute lookups.
 
-The trade-off: you can't write `from app.routes.users.[id] import ...`. In practice, route files almost never need to import each other; when they do, Quay provides an explicit alias mechanism.
+The trade-off: you can't write `from app.routes.users.[id] import ...` or `from app.routes.users.$id import ...`. In practice, route files almost never need to import each other; when they do, Quay provides an explicit alias mechanism.
 
 ## Method handlers inside a route file
 
@@ -102,7 +130,8 @@ Method conflicts (two `@get` decorators in the same file) are caught at boot, no
 
 ```python
 # src/app/routes/_middleware.py
-from quay import Middleware, Request, Response
+from quay import Middleware
+from quay.middleware import Request, Response
 
 class RequestId(Middleware):
     async def __call__(self, req: Request, call_next):

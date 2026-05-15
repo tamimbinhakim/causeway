@@ -1,0 +1,5 @@
+[app]
+name = "minimal"
+
+[client]
+expose_settings = []

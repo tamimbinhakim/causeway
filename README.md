@@ -2,38 +2,53 @@
 
 # Quay
 
-**A lean backend framework for type-safe Python APIs. Your function signature is the API contract; the typed TypeScript client comes free.**
+**A lean backend framework for type-safe Python APIs.**
+**Your function signature is the API contract; the typed TypeScript client comes free.**
 
 [![CI](https://github.com/tamimbinhakim/quay/actions/workflows/ci.yml/badge.svg)](https://github.com/tamimbinhakim/quay/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/quay.svg)](https://pypi.org/project/quay/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-[**Quickstart**](./docs/getting-started.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
+[**Quickstart**](./docs/getting-started.md) · [**Why Quay**](./docs/why-quay.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
 
 </div>
+
+## Why this exists (a short story)
+
+A while back I was working on AML (Anti-Money-Laundering) software for a client. Half the system was rules-and-graph-traversal work, and the other half — the half that actually caught the suspicious behavior — was ML models. Python was the only sane choice on the model side, so Python won the whole backend.
+
+But I'm a React person at heart. I wanted the frontend story to feel as good as it does in Next.js or TanStack Start. So I reached for **FastAPI**, because it had the OpenAPI story going for it, and tried to make the contract flow from Python into the React app.
+
+It mostly worked. But "mostly" is exactly where you start losing whole afternoons — the OpenAPI generators drift, the request/response shapes don't quite match what your handlers actually return, you end up writing the same `interface User` in three places. The seam between the Python types I'd just written and the TypeScript types my React app needed was always a little broken.
+
+So I built **[dyadpy](https://github.com/tamimbinhakim/dyadpy)** — a typed-RPC primitive that walks your Python signatures into an IR and emits a TypeScript client that's exactly what the server returns. No OpenAPI middle-man, no generator drift, no manual sync.
+
+dyadpy is the right primitive but it's deliberately low-level — it knows nothing about routing, config, DI, background jobs, middleware, or plugins. I needed a layer on top that would let me ship a real backend without writing the same scaffolding for the tenth time.
+
+That layer is **Quay.**
 
 ## What Quay is
 
 A backend-only, Python-native framework that contributes exactly five things to your application surface:
 
-1. **File-based routing** — `[id].py` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition.
-2. **Typed config & DI** — `pydantic-settings` wrapper with request-scoped providers via `_scope.py`. No container boilerplate.
-3. **Middleware & scope composition** — wraps every route in a subtree with one file at the root of that subtree.
+1. **File-based routing** — `[id].py` / `$id` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition. See [`docs/routing.md`](./docs/routing.md).
+2. **Typed config & DI** — a `pydantic-settings` wrapper with request-scoped providers. No DI container boilerplate.
+3. **Middleware & scope composition** — one file at the root of a subtree wraps every route below it.
 4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery / Arq / TaskIQ with one line.
-5. **Plugin registry** — entry-point discovery so `quay-auth-clerk`, `quay-storage-s3`, `quay-sqlmodel`, etc. install cleanly.
+5. **Plugin registry** — entry-point discovery so `quay-auth-jwt`, `quay-storage-s3`, `quay-sqlmodel`, etc. install cleanly.
 
-Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by `dyadpy`, a lower-level primitive Quay depends on. From an application author's perspective it's all just Quay — you write Python handlers; Quay registers them, validates them, and emits a TypeScript client alongside the running app.
+Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by [`dyadpy`](https://github.com/tamimbinhakim/dyadpy). From an application author's perspective it's all just Quay — you write Python handlers; Quay registers them, validates them, and emits a TypeScript client alongside the running app.
 
-Everything outside the five things (ORM, auth, mailer, storage, cache, search, …) is a **plugin contract with reference adapters** — not in core.
+Everything outside those five things (ORM, auth, mailer, storage, cache, search, …) is a **plugin contract with reference adapters** — not in core.
 
 ## What Quay is not
 
-- Not an ORM. (Use SQLModel / SQLAlchemy / Tortoise / your choice via the `quay-sqlmodel` plugin.)
+- Not an ORM. Use SQLModel / SQLAlchemy / Tortoise / your choice via the `quay-sqlmodel` plugin.
 - Not an admin panel.
 - Not an HTML / template engine. The TypeScript client is generated; the frontend is yours.
-- Not an infrastructure provisioner. (That's Terraform / Pulumi / Modal.)
+- Not an infrastructure provisioner. That's Terraform / Pulumi / Modal.
 
-See [`docs/design.md`](./docs/design.md) for the full philosophy and the explicit non-goals.
+The full design philosophy and the explicit non-goals live in [`docs/why-quay.md`](./docs/why-quay.md).
 
 ## 30-second example
 
@@ -86,6 +101,17 @@ What that does:
 3. Serves `/__quay` — route tree, registered tasks, current config (secrets redacted), plugin list.
 4. Hot-reloads `_middleware.py` and `_scope.py` on change.
 
+Prefer the TanStack-Router-style flat layout? Same routes, dot-flat:
+
+```
+src/app/routes/
+├── index.py
+├── users.index.py            # /users
+└── users.$id.py              # /users/{id}
+```
+
+You can mix the two freely in the same tree. Details: [`docs/routing.md`](./docs/routing.md).
+
 ## Why you'd use it
 
 - **Signature-as-contract.** Your handler's Python signature _is_ the wire schema. No `class CreatePostRequest(BaseModel)` mirrored in three files.
@@ -105,7 +131,7 @@ What that does:
 | Cloud lock-in?      | **None**          | None           | None           | Medium           | None            |
 | Closest comparison  | —                 | Building block | Heavy alt      | Closest ambition | Structural peer |
 
-Full positioning matrix in [`docs/design.md`](./docs/design.md).
+Full positioning matrix and the trade-offs in [`docs/why-quay.md`](./docs/why-quay.md).
 
 ## Install
 
@@ -124,7 +150,7 @@ Pre-1.0. Pin exact versions. After 1.0:
 - **Major bumps follow a deprecation cycle** — one full minor of warnings before removal.
 - **The plugin contract is part of the stable surface.**
 
-Details: [`docs/semver.md`](./docs/semver.md), [`docs/ir-stability.md`](./docs/ir-stability.md), [`docs/lts.md`](./docs/lts.md).
+Details in [`docs/stability/`](./docs/stability) — semver, IR stability, LTS.
 
 ## Packages
 
@@ -132,11 +158,11 @@ Details: [`docs/semver.md`](./docs/semver.md), [`docs/ir-stability.md`](./docs/i
 | -------------------------------- | ------------------------------------------------------------ | ------ |
 | [`quay`](./packages/quay) (PyPI) | Core framework: routing, config, DI, tasks, plugin registry. | v0.1 α |
 
-Out-of-core official plugins (planned, own repos): `quay-sqlmodel`, `quay-auth-*`, `quay-storage-s3`, `quay-mailer-resend`, `quay-deploy-modal`, `quay-deploy-fly`. Full inventory in [`ROADMAP.md`](./ROADMAP.md#plugin-ecosystem).
+The official plugin set (`quay-tasks-dramatiq`, `quay-storage-s3`, `quay-auth-jwt`, `quay-sqlmodel`, etc.) lives under [`packages/`](./packages). Full inventory and roadmap in [`ROADMAP.md`](./ROADMAP.md#plugin-ecosystem).
 
 ## Contributing
 
-Issues that start with "I tried to use Quay for X and got confused" are the most valuable kind. Read [CONTRIBUTING.md](./CONTRIBUTING.md), be kind ([Code of Conduct](./CODE_OF_CONDUCT.md)).
+Issues that start with "I tried to use Quay for X and got confused" are the most valuable kind. Skim [CONTRIBUTING.md](./CONTRIBUTING.md) for the on-ramp, and if you're going deep, [`docs/internals/`](./docs/internals) is the contributor's tour of the codebase.
 
 ## License
 

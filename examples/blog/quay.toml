@@ -1,0 +1,6 @@
+[app]
+name = "blog"
+
+[client]
+# Non-secret settings to surface to the generated TS client.
+expose_settings = ["env", "site_title"]

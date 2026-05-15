@@ -1,0 +1,15 @@
+[project]
+name = "quay-example-minimal"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+  "quay>=0.1.0a0",
+]
+
+[tool.uv.sources]
+quay = { path = "../../packages/quay", editable = true }
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]

@@ -36,7 +36,7 @@ Each contract ships with a reference adapter in core (or in a sibling repo for p
 | `BlobScanner`  | `scan(stream)` for incoming-file virus / type checks                  | `quay.scanner.NullScanner`        |
 | `DeployTarget` | `manifest()`, `package()`, `push(target)`                             | none — provided by deploy plugins |
 
-Contracts are versioned. `quay.contracts.v1.Storage` is the stable surface; new optional methods land in minor releases (`v1.1`), breaking changes wait for `v2`. See [`semver.md`](./semver.md) for the rules.
+Contracts are versioned. `quay.contracts.v1.Storage` is the stable surface; new optional methods land in minor releases (`v1.1`), breaking changes wait for `v2`. See [`semver.md`](./stability/semver.md) for the rules.
 
 ## Two discovery paths
 
@@ -66,7 +66,7 @@ Install it (`uv add quay-storage-s3`) and it works. No explicit wiring needed.
 ```python
 # src/app/plugins.py
 from quay import register
-from quay.tasks.dramatiq import DramatiqAdapter
+from quay_tasks_dramatiq import DramatiqAdapter
 from quay_storage_s3 import S3Storage
 from quay_observe_sentry import SentryObserver
 from app.config import settings
@@ -114,12 +114,16 @@ A plugin may declare a Pydantic settings _fragment_ that contributes fields to t
 
 ```bash
 $ quay plugins
-Contract        Adapter                                Version   Ready
-TaskAdapter     quay.tasks.dramatiq:DramatiqAdapter    0.2.1     ✓
-Storage         quay_storage_s3:S3Storage              0.3.0     ✓
-KV              quay_cache_redis:RedisKV               0.1.4     ✓
-Mailer          quay_mailer_resend:ResendMailer        0.1.0     ✓
-DBSession       quay_sqlmodel:SQLModelSession          0.4.2     ✓
+                       Registered plugins
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Adapter          ┃ Contract version  ┃ Module               ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ DramatiqAdapter  │ v1.0              │ quay_tasks_dramatiq  │
+│ S3Storage        │ v1.0              │ quay_storage_s3      │
+│ RedisCache       │ v1.0              │ quay_cache_redis     │
+│ SmtpMailer       │ v1.0              │ quay_mailer_smtp     │
+│ SQLModelSession  │ v1.0              │ quay_sqlmodel        │
+└──────────────────┴───────────────────┴──────────────────────┘
 ```
 
 The same view is available at `http://localhost:8000/__quay` while `quay dev` is running.
@@ -203,31 +207,19 @@ This generates the package layout, the entry-point wiring, a `TestApp`-based smo
 
 ## Naming convention
 
-Official plugins use the `quay-` prefix:
+Official plugins use the `quay-<role>-<impl>` prefix. The current shipping set:
 
-- `quay-sqlmodel` — SQLAlchemy / SQLModel session injection + Alembic glue
-- `quay-auth-sessions`, `quay-auth-jwt`, `quay-auth-clerk`, `quay-auth-workos`, `quay-auth-auth0`, `quay-auth-supabase`
-- `quay-storage-s3`, `quay-storage-r2`, `quay-storage-gcs`, `quay-storage-azure`, `quay-storage-minio`
-- `quay-cache-redis`, `quay-cache-dragonfly`, `quay-cache-memcached`, `quay-cache-upstash`
-- `quay-sessions-cookie`, `quay-sessions-redis`
-- `quay-tasks-celery`, `quay-tasks-arq`, `quay-tasks-taskiq`, `quay-tasks-rq`, `quay-tasks-huey`
-- `quay-mailer-resend`, `quay-mailer-postmark`, `quay-mailer-ses`, `quay-mailer-sendgrid`, `quay-mailer-mailgun`, `quay-mailer-smtp`
-- `quay-search-meilisearch`, `quay-search-typesense`, `quay-search-elastic`, `quay-search-algolia`
-- `quay-observe-sentry`, `quay-observe-signoz`, `quay-observe-honeycomb`, `quay-observe-datadog`
-- `quay-metrics-prometheus`, `quay-metrics-statsd`, `quay-metrics-otel`
-- `quay-ratelimit-redis`, `quay-ratelimit-memory`
-- `quay-flags-growthbook`, `quay-flags-flagsmith`, `quay-flags-unleash`, `quay-flags-launchdarkly`
-- `quay-pay-stripe`, `quay-pay-paddle`, `quay-pay-lemonsqueezy`
-- `quay-security-cors`, `quay-security-csrf`, `quay-security-headers`, `quay-security-trusted-hosts`
-- `quay-webhooks` — signed inbound + retried, idempotent outbound
-- `quay-pubsub-redis`, `quay-pubsub-nats`, `quay-broker-kafka`
-- `quay-jobs-temporal`, `quay-jobs-prefect`
-- `quay-schema-openapi`, `quay-schema-asyncapi`
-- `quay-deploy-modal`, `quay-deploy-fly`, `quay-deploy-lambda`, `quay-deploy-render`, `quay-deploy-railway`, `quay-deploy-aws-ecs`, `quay-deploy-gcp-run`, `quay-deploy-docker`
+- **tasks**: `quay-tasks-dramatiq`
+- **storage**: `quay-storage-fs`, `quay-storage-s3`
+- **cache**: `quay-cache-redis`
+- **auth**: `quay-auth-jwt`
+- **mailer**: `quay-mailer-smtp`
+- **observe**: `quay-observe-sentry`
+- **flags**: `quay-flags-growthbook`
+- **db**: `quay-sqlmodel`
+- **deploy**: `quay-deploy-docker`, `quay-deploy-fly`, `quay-deploy-modal`
 
-Full ecosystem inventory in [`ROADMAP.md`](../ROADMAP.md#plugin-ecosystem).
-
-Third-party plugins should use `quay-contrib-<thing>` to avoid implying official status.
+Planned additions (and the full ecosystem inventory) are tracked in [`ROADMAP.md`](../ROADMAP.md#plugin-ecosystem). Third-party plugins should use `quay-contrib-<thing>` to avoid implying official status.
 
 ## Contract stability
 
@@ -235,6 +227,6 @@ The plugin contract is part of the stable surface. After 1.0:
 
 - Adding optional methods to a contract is non-breaking.
 - Adding a new contract is non-breaking.
-- Removing or renaming a contract method is **breaking** and follows the deprecation cycle in [`semver.md`](./semver.md) — one full minor of `DeprecationWarning` before removal.
+- Removing or renaming a contract method is **breaking** and follows the deprecation cycle in [`semver.md`](./stability/semver.md) — one full minor of `DeprecationWarning` before removal.
 
 A plugin that targets Quay `1.x` keeps working through every `1.y` release. Major bumps to Quay require, at most, a corresponding major bump in the plugin — never a silent break.

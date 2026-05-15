@@ -1,20 +1,46 @@
-# Example: minimal
+# minimal
 
-The smallest possible Quay app. One handler, zero plugins. The point is to sanity-check the dev loop.
+The smallest possible Quay app. One handler, zero plugins, no DB. Use it
+to sanity-check the dev loop on a fresh checkout.
 
-## What this will demonstrate
+## Layout
 
-- `quay new` scaffolding shape.
-- The file router picking up `src/app/routes/index.py` and `src/app/routes/health.py`.
-- `quay dev` booting uvicorn + watcher + TypeScript client codegen + `/__quay` diagnostics page.
+```
+minimal/
+├── pyproject.toml
+├── quay.toml
+└── app/
+    ├── __init__.py
+    ├── app.py            # `app = create_app("app/routes")`
+    └── routes/
+        └── index.py      # GET /
+```
 
-## Status
-
-Structural placeholder — implementation lands with v0.1. See [`ROADMAP.md`](../../ROADMAP.md).
-
-## Will run as
+## Run
 
 ```bash
+cd examples/minimal
 uv sync
-uv run quay dev
+uv run uvicorn app.app:app --reload
 ```
+
+Then:
+
+```bash
+curl http://127.0.0.1:8000/
+# → {"message":"hello from quay"}
+
+curl http://127.0.0.1:8000/healthz
+# → {"status":"ok"}
+
+curl http://127.0.0.1:8000/__quay   # diagnostics page (HTML)
+```
+
+## What's wired
+
+- `create_app("app/routes")` walks the routes tree, registers handlers,
+  attaches `/healthz`, `/readyz`, `/__quay`, and the request-id +
+  problem+json error renderer.
+- The file router discovers `app/routes/index.py` and registers `GET /`.
+- The return type (`Hello`, a `msgspec.Struct`) is the wire schema — no
+  separate request/response model.

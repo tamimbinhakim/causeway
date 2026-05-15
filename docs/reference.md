@@ -66,7 +66,8 @@ A `stream[T]` return becomes typed SSE on the wire and an `AsyncIterable<T>` on 
 
 ```python
 # src/app/routes/_middleware.py
-from quay import Middleware, Request, Response
+from quay import Middleware
+from quay.middleware import Request, Response
 
 class RequestId(Middleware):
     async def __call__(self, req: Request, call_next):
@@ -151,7 +152,7 @@ Adapter swap (one line):
 ```python
 # src/app/plugins.py
 from quay import register
-from quay.tasks.dramatiq import DramatiqAdapter
+from quay_tasks_dramatiq import DramatiqAdapter
 
 register(DramatiqAdapter(broker_url=settings.redis_url.get_secret_value()))
 ```
@@ -161,7 +162,7 @@ register(DramatiqAdapter(broker_url=settings.redis_url.get_secret_value()))
 ```python
 # src/app/plugins.py
 from quay import register
-from quay.tasks.dramatiq import DramatiqAdapter
+from quay_tasks_dramatiq import DramatiqAdapter
 from quay_storage_s3 import S3Storage
 from app.config import settings
 
@@ -191,24 +192,24 @@ Quay ships OTel auto-instrumentation hooks; pick your exporter via env (SigNoz, 
 
 ```python
 import pytest
-from quay.testing import TestApp
+from quay.testing import TestApp, tasks_eager
 
 @pytest.fixture
-def app():
-    return TestApp.from_module("app")
+async def app():
+    return TestApp.from_routes("src/app/routes")
 
 async def test_create_user(app):
-    with app.override(get_session, fake_session):
+    async with app.override(get_session, fake_session):
         r = await app.post("/users", json={"name": "ada"})
     assert r.status_code == 201
 
-async def test_task_enqueued(app):
-    with app.tasks_eager():
-        await app.post("/users", json={...})
-    assert app.tasks.calls("emails.send_welcome") == 1
+async def test_task_runs_inline(app):
+    async with tasks_eager():
+        r = await app.post("/users", json={"name": "ada"})
+    assert r.status_code == 201
 ```
 
-`tasks_eager()` is part of the `TaskAdapter` contract; every adapter must support it.
+`tasks_eager()` is part of the `TaskAdapter` contract; every adapter must support it. Inside the block, `.enqueue(...)` runs the task body in-process so the test can assert on its side-effects synchronously.
 
 ## CLI
 
@@ -217,5 +218,8 @@ async def test_task_enqueued(app):
 | `quay new <name>`      | Scaffold a new app — `pyproject.toml`, `quay.toml`, `src/app/`, sensible defaults.                |
 | `quay dev`             | Boot uvicorn + watcher + TypeScript client codegen + `/__quay` diagnostics page.                  |
 | `quay build`           | Emit the IR, the generated `client.ts`, and a deployable wheel.                                   |
-| `quay deploy <target>` | Invoke the relevant deploy plugin (`quay-deploy-modal`, `quay-deploy-fly`, `quay-deploy-lambda`). |
+| `quay deploy <target>` | Invoke the relevant deploy plugin (`quay-deploy-docker`, `quay-deploy-fly`, `quay-deploy-modal`).  |
+| `quay diff <a> <b>`    | Compare two IR snapshots and flag breaking changes (delegates to `dyadpy diff`).                  |
+| `quay plugins`         | List currently-registered plugin adapters.                                                        |
+| `quay plugin new <n>`  | Scaffold a new Quay plugin package.                                                               |
 | `quay --version`       | Print the installed version.                                                                      |
