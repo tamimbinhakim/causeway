@@ -32,6 +32,7 @@ from quay.config import Manifest, Settings
 from quay.middleware import Middleware, guard
 from quay.plugins import register
 from quay.scope import provide
+from quay.tasks import cron, task, tasks_eager
 
 __version__ = "0.1.0a0"
 
@@ -42,6 +43,7 @@ __all__ = [
     "Middleware",
     "Settings",
     "__version__",
+    "cron",
     "delete",
     "get",
     "guard",
@@ -52,4 +54,6 @@ __all__ = [
     "raises",
     "register",
     "stream",
+    "task",
+    "tasks_eager",
 ]
