@@ -1,29 +1,12 @@
 """File-based router.
 
-Walks ``src/app/routes/**/*.py``, translates filenames into URL patterns,
-collects ``_middleware.py`` and ``_scope.py`` declarations per subtree, and
-registers handlers onto a ``dyadpy.App``.
+Walks the routes tree, translates filenames into URL patterns, collects
+``_middleware.py`` and ``_scope.py`` declarations per subtree, and registers
+handlers onto a ``dyadpy.App``.
 
-Discovery is one-shot and side-effect-free: ``discover()`` returns a plain
-:class:`Discovered` dataclass. ``register(app, discovered)`` is the only
-function that mutates the dyadpy App.
-
-What's wired in this slice:
-
-- File walk + URL translation (``index.py``, ``[id].py``, ``(group)/``,
-  underscore-prefixed skip).
-- ``_scope.py`` provider discovery and inner-most-wins composition per subtree.
-- ``_middleware.py`` discovery + guard composition (guards run inline).
-- Method conflict detection at boot.
-
-Not yet wired (tracked as TODOs for slice 5 / a follow-up):
-
-- ``Middleware`` (class-based) Starlette integration — needs ASGI-layer wiring
-  in ``quay.app``. Guards work today; class middleware lands when the app
-  factory grows.
-- Automatic rewriting of ``Annotated[T, provider]`` to ``Annotated[T, Depends(provider)]``.
-  For now, route handlers should write ``Depends(get_session)`` explicitly when
-  pulling a scope provider; the provider lookup still flows through ``_scope.py``.
+:func:`discover` is pure — it returns a :class:`Discovered` snapshot suitable
+for ``quay diff`` and unit tests. :func:`register` is the only function that
+mutates the App.
 """
 
 from __future__ import annotations
@@ -94,11 +77,8 @@ def discover(routes_root: str | Path) -> Discovered:
     result = Discovered()
     _walk(root, root, _ScopeFrame(), result)
     _check_method_conflicts(result.routes)
-    # Shutdown order is reverse-of-startup: outer-most subtree shuts down last.
+    # Outer-most subtree shuts down last.
     result.shutdown_hooks.reverse()
-    # Each route's ``handler`` is wrapped so guards run before the body.
-    # Class-based Middleware is recorded on the wrapped function via
-    # ``__quay_class_middleware__`` for the ASGI layer to pick up.
     for r in result.routes:
         r.handler = _compose_guards(r.handler, r.middleware)
     return result
@@ -234,11 +214,10 @@ def _decorator_for(app: App, method: HttpMethod) -> Callable[[str], Callable[[Ha
 
 
 def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
-    """Wrap ``handler`` so any @guard items run before the body.
+    """Wrap ``handler`` so any ``@guard`` items run before the body.
 
-    Class-based ``Middleware`` instances are recorded on the wrapped function
-    as ``__quay_class_middleware__`` for the ASGI-layer wiring to pick up
-    later, but are not invoked here.
+    Class-based ``Middleware`` instances ride on the wrapped function as
+    ``__quay_class_middleware__`` for the ASGI layer to pick up.
     """
     guards = [m for m in middleware if is_guard(m)]
     mws = [m for m in middleware if isinstance(m, Middleware)]
@@ -251,21 +230,14 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
         return handler
 
     async def with_guards(*args: Any, **kwargs: Any) -> Any:
-        # Guards take the Starlette Request. Prefer one bound into the
-        # handler signature (Context / explicit Request annotation); fall
-        # back to dyadpy's per-request contextvar — set by its runtime
-        # immediately before the handler is dispatched.
         req = _find_request(args, kwargs)
         for g in guards:
             await g(req)
         return await handler(*args, **kwargs)
 
-    # Preserve dyadpy's view of the original signature so its runtime
-    # inspection (path/query/body binding, Depends resolution) sees the
-    # real parameter shape, not ``*args, **kwargs``. Also forward the
-    # handler's annotation namespace so dyadpy can evaluate string-form
-    # type hints (e.g. ``Any``, user-defined Struct types) against the
-    # route module's globals rather than this file's.
+    # Preserve dyadpy's view of the signature and the handler's annotation
+    # namespace — without this, string forward-refs (``Any``, user Structs)
+    # fail to resolve when dyadpy inspects the wrapper.
     import inspect as _inspect
 
     with_guards.__signature__ = _inspect.signature(handler)  # type: ignore[attr-defined]
@@ -281,12 +253,10 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
 
 
 def _find_request(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
-    """Locate the Starlette Request in a handler's bound arguments.
+    """Locate the Starlette Request in a handler's arguments.
 
-    Prefers a Request found in the handler's parameters (when the handler
-    takes a ``Context`` or an explicit ``Request`` annotation). Falls back
-    to dyadpy's per-request ``current_context_var``, which is set by the
-    runtime right before the handler is dispatched.
+    Falls back to dyadpy's per-request contextvar when the handler doesn't
+    take the Request directly.
     """
     for v in (*args, *kwargs.values()):
         if hasattr(v, "headers") and hasattr(v, "url"):
