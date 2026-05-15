@@ -163,6 +163,64 @@ def diff(
     )
 
 
+@app.command()
+def deploy(
+    target: Annotated[str, typer.Argument(help="Deploy target name (e.g. docker, fly, modal).")],
+    output: Annotated[Path, typer.Option("--output", "-o")] = Path("dist"),
+) -> None:
+    """Invoke the registered ``DeployTarget`` adapter matching ``target``.
+
+    Discovery: scan registered plugins for one whose class name matches
+    ``<Target>Deploy`` (case-insensitive). The adapter writes its manifest
+    files into ``output`` and pushes via its ``push()`` if available.
+    """
+    from quay.plugins import registered
+
+    wanted = f"{target.lower()}deploy"
+    adapter = next(
+        (p for p in registered() if type(p).__name__.lower() == wanted),
+        None,
+    )
+    if adapter is None:
+        console.print(
+            f"[red]no DeployTarget registered for {target!r}[/red]. "
+            f"Install ``quay-deploy-{target}`` and register it in ``plugins.py``.",
+        )
+        raise typer.Exit(code=1)
+
+    package = getattr(adapter, "package", None)
+    if callable(package):
+        package(target_dir=output)  # type: ignore[call-arg]
+    console.print(f"[green]packaged[/green] -> {output}")
+
+
+@app.command(name="plugin")
+def plugin_new(
+    action: Annotated[str, typer.Argument(help="Subcommand; only 'new' is supported.")],
+    name: Annotated[str, typer.Argument(help="Plugin package name (e.g. quay-storage-s3).")],
+    target: Annotated[Path | None, typer.Option("--target", "-t")] = None,
+) -> None:
+    """Scaffold a new Quay plugin package.
+
+    ``quay plugin new quay-mailer-mailgun`` creates a sibling package with
+    a ``pyproject.toml``, entry-point wiring, and a smoke test placeholder.
+    """
+    if action != "new":
+        console.print(f"[red]unknown plugin subcommand:[/red] {action!r}")
+        raise typer.Exit(code=1)
+
+    parent = target or Path.cwd()
+    root = parent / name
+    if root.exists():
+        console.print(f"[red]error[/red]: {root} already exists")
+        raise typer.Exit(code=1)
+
+    from quay._scaffold import scaffold_plugin
+
+    scaffold_plugin(root, name)
+    console.print(f"[green]created[/green] plugin {name} at {root}")
+
+
 def main() -> None:
     """Entry point for the ``quay`` console script."""
     app()

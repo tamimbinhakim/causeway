@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quay-mailer-smtp"
+version = "0.1.0a0"
+description = "SMTP Mailer adapter for Quay."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = ["quay>=0.1.0a0", "aiosmtplib>=3.0"]
+
+[project.entry-points."quay.plugins"]
+mailer-smtp = "quay_mailer_smtp:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quay_mailer_smtp"]

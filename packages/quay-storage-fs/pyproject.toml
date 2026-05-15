@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quay-storage-fs"
+version = "0.1.0a0"
+description = "Disk-backed Storage adapter for Quay — dev + tests."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = ["quay>=0.1.0a0"]
+
+[project.entry-points."quay.plugins"]
+storage-fs = "quay_storage_fs:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quay_storage_fs"]

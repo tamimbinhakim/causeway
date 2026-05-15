@@ -112,6 +112,20 @@ def configure_otel(*, service_name: str = "quay-app", endpoint: str | None = Non
     return True
 
 
+def instrument_asgi(app: Any) -> Any:
+    """Wrap an ASGI app with OpenTelemetry's ASGI instrumentation if installed.
+
+    Returns the wrapped app on success or the original ``app`` unchanged
+    when ``opentelemetry-instrumentation-asgi`` isn't installed.
+    """
+    try:
+        from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+    except ImportError:
+        _log.debug("opentelemetry-instrumentation-asgi not installed; skipping wrap")
+        return app
+    return OpenTelemetryMiddleware(app)
+
+
 def request_id_of(request: Request | None) -> str | None:
     """Read the request id off a Starlette Request, if one was stamped."""
     if request is None:
@@ -124,5 +138,6 @@ __all__ = [
     "Response",
     "configure_logging",
     "configure_otel",
+    "instrument_asgi",
     "request_id_of",
 ]

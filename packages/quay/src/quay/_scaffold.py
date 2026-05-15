@@ -156,6 +156,90 @@ async def test_root_responds() -> None:
 '''
 
 
+_PLUGIN_PYPROJECT = """\
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{name}"
+version = "0.1.0a0"
+description = "TODO"
+readme = "README.md"
+license = {{ text = "MIT" }}
+requires-python = ">=3.11"
+dependencies = ["quay>=0.1.0a0"]
+
+[project.entry-points."quay.plugins"]
+{entry_name} = "{module}:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{module}"]
+"""
+
+_PLUGIN_INIT = '''\
+"""TODO — describe the contract this plugin implements."""
+
+from __future__ import annotations
+
+from typing import Any, ClassVar
+
+
+class TodoAdapter:
+    """Implements :class:`quay.contracts.TODO`."""
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def startup(self, settings: Any) -> None: ...
+    async def shutdown(self) -> None: ...
+    async def ready(self) -> bool:
+        return True
+
+
+def plugin(settings: Any) -> None:
+    from quay import register
+
+    register(TodoAdapter())
+
+
+__all__ = ["TodoAdapter", "plugin"]
+'''
+
+_PLUGIN_TEST = '''\
+"""Smoke test."""
+
+from __future__ import annotations
+
+from {module} import TodoAdapter
+
+
+def test_adapter_constructs() -> None:
+    assert TodoAdapter()
+'''
+
+_PLUGIN_README = """\
+# {name}
+
+TODO — describe what this plugin does and how to configure it.
+"""
+
+
+def scaffold_plugin(root: Path, name: str) -> None:
+    """Create the package layout for a new plugin under ``root``."""
+    module = name.replace("-", "_")
+    entry_name = name.removeprefix("quay-")
+    files: dict[str, str] = {
+        "pyproject.toml": _PLUGIN_PYPROJECT.format(name=name, module=module, entry_name=entry_name),
+        "README.md": _PLUGIN_README.format(name=name),
+        f"src/{module}/__init__.py": _PLUGIN_INIT,
+        f"tests/test_{module}.py": _PLUGIN_TEST.format(module=module),
+    }
+    for rel, body in files.items():
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(body)
+
+
 def scaffold(root: Path, name: str) -> None:
     """Materialize the template tree under ``root``."""
     files: dict[str, str] = {
