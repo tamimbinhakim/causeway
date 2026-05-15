@@ -45,7 +45,7 @@ dependencies = [
   "typer>=0.15",
   "rich>=14.0",
   "structlog>=24.4",
-  "anyio>=4.6",
+  "anyio>=4.13.0",
 ]
 
 [project.optional-dependencies]
