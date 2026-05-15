@@ -44,7 +44,7 @@ dependencies = [
   "watchfiles>=1.0",
   "typer>=0.15",
   "rich>=14.0",
-  "structlog>=24.4",
+  "structlog>=25.5.0",
   "anyio>=4.6",
 ]
 
