@@ -1,0 +1,26 @@
+# Build output
+**/dist/
+**/build/
+**/.turbo/
+**/coverage/
+
+# Dependencies
+**/node_modules/
+**/.venv/
+
+# Lockfiles
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+uv.lock
+
+# Generated
+**/CHANGELOG.md
+
+# Python (handled by ruff)
+**/*.py
+**/*.pyi
+
+# Don't touch this
+.gitignore
+.gitattributes

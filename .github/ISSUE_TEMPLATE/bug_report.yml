@@ -1,0 +1,61 @@
+name: Bug report
+description: Something broke. Help me reproduce it.
+title: "[bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug! A minimal reproduction makes this 10x easier to fix.
+        Please fill out as much as you can.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of what you expected vs. what actually happened.
+      placeholder: "I added a `[id].py` under `routes/users/` and it 404s..."
+    validations: { required: true }
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: A 20-line app is worth 1000 words. Code blocks or a link to a repo / sandbox.
+      render: shell
+    validations: { required: true }
+
+  - type: input
+    id: quay-version
+    attributes:
+      label: Quay version
+      placeholder: "0.1.0a0 (run `quay --version`)"
+    validations: { required: true }
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "3.13.0"
+    validations: { required: true }
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Linux, Windows, Other]
+    validations: { required: true }
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / route tree
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight
+      options:
+        - { label: "I searched existing issues and discussions", required: true }
+        - { label: "I'm on the latest version of `quay`", required: false }

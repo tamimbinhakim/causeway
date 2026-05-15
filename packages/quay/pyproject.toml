@@ -1,0 +1,158 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quay"
+version = "0.1.0a0"
+description = "A lean backend framework on top of Dyadpy — file-based routing, typed config/DI, plugin registry, and background tasks for Python."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Tamim Bin Hakim", email = "tamimbinhakim.work@gmail.com" }]
+keywords = [
+  "asgi",
+  "backend-framework",
+  "file-based-routing",
+  "dependency-injection",
+  "background-tasks",
+  "dyadpy",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+
+dependencies = [
+  "dyadpy>=0.1.0a0",
+  "pydantic-settings>=2.6",
+  "pydantic>=2.10",
+  "msgspec>=0.19",
+  "starlette>=0.45",
+  "uvicorn[standard]>=0.32",
+  "watchfiles>=1.0",
+  "typer>=0.15",
+  "rich>=14.0",
+  "structlog>=24.4",
+  "anyio>=4.6",
+]
+
+[project.optional-dependencies]
+dramatiq = ["dramatiq[redis]>=1.17"]
+otel = [
+  "opentelemetry-api>=1.27",
+  "opentelemetry-sdk>=1.27",
+  "opentelemetry-instrumentation-asgi>=0.49b0",
+]
+all = ["quay[dramatiq,otel]"]
+
+[project.scripts]
+quay = "quay.cli:main"
+
+[project.entry-points."quay.plugins"]
+# Reference adapters shipped in core register themselves under this group.
+
+[project.urls]
+Homepage = "https://github.com/tamimbinhakim/quay"
+Documentation = "https://github.com/tamimbinhakim/quay/tree/main/docs"
+Repository = "https://github.com/tamimbinhakim/quay"
+Issues = "https://github.com/tamimbinhakim/quay/issues"
+Changelog = "https://github.com/tamimbinhakim/quay/blob/main/packages/quay/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0",
+  "pytest-asyncio>=1.0",
+  "pytest-cov>=7.0",
+  "httpx>=0.28",
+  "ruff>=0.13",
+  "mypy>=1.18",
+  "types-setuptools",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quay"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/CHANGELOG.md"]
+
+# ---- ruff ----
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "W",   # pycodestyle / pyflakes
+  "I",   # isort
+  "B",   # bugbear
+  "UP",  # pyupgrade
+  "SIM", # simplify
+  "C4",  # comprehensions
+  "PT",  # pytest
+  "RUF", # ruff
+  "TID", # tidy imports
+  "PYI", # type stubs
+  "ANN", # annotations
+]
+ignore = [
+  "ANN401", # allow Any in select cases
+  "E501",   # line length handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "B017", "PT011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["quay"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+# ---- mypy ----
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+no_implicit_reexport = true
+files = ["src/quay"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# ---- pytest ----
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+filterwarnings = ["error"]
+
+# ---- coverage ----
+[tool.coverage.run]
+branch = true
+source = ["quay"]
+omit = ["src/quay/cli.py"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError", "\\.\\.\\."]

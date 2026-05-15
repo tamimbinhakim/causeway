@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+
+# Allow build scripts for trusted toolchain deps.
+allowBuilds:
+  esbuild: true

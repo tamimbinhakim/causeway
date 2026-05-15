@@ -1,0 +1,93 @@
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Editors ----
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# ---- Node ----
+node_modules/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.npm/
+.eslintcache
+*.tsbuildinfo
+
+# ---- Build output ----
+dist/
+build/
+out/
+.turbo/
+.cache/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.python-version-local
+.venv/
+venv/
+env/
+ENV/
+.uv-cache/
+.eggs/
+*.egg-info/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+*.cover
+*.py,cover
+
+# ---- Claude Code harness ----
+.claude/
+!.claude/settings.json
+!.claude/commands/
+
+# ---- Quay ----
+.quay/
+
+# ---- Benchmarks ----
+benchmarks/results/
+benchmarks/uv.lock
+
+# ---- Env / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# ---- Misc ----
+*.tgz
+*.zip
+.DS_Store?
+._*

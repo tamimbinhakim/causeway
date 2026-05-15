@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "Quay: a lean backend framework for type-safe Python APIs"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Bin Hakim"
+    given-names: "Tamim"
+    alias: "tamimbinhakim"
+url: "https://github.com/tamimbinhakim/quay"
+repository-code: "https://github.com/tamimbinhakim/quay"
+license: MIT
+keywords:
+  - python
+  - asgi
+  - backend-framework
+  - file-based-routing
+  - dependency-injection
+  - background-tasks
+  - ai
+  - llm
+  - agents
+  - rpc
