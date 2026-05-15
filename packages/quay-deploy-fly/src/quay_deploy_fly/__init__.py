@@ -51,7 +51,6 @@ class FlyDeploy:
         target.mkdir(parents=True, exist_ok=True)
         body = _FLY_TOML.format(name=self.app_name)
         (target / "fly.toml").write_text(body)
-        # Reuse the docker plugin's Dockerfile if it's installed, else inline.
         try:
             from quay_deploy_docker import DockerDeploy
 

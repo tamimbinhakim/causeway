@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -37,7 +38,7 @@ class TestApp:
         self._overrides: dict[Callable[..., Any], Callable[..., Any]] = {}
 
     @classmethod
-    def from_routes(cls, routes_root: str) -> TestApp:
+    def from_routes(cls, routes_root: str | Path) -> TestApp:
         """Discover ``routes_root`` and wire a fresh App. Health endpoints attach."""
         app = App()
         register(app, discover(routes_root))

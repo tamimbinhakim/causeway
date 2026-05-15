@@ -38,9 +38,9 @@ def snapshot(*, settings: Any = None, manifest: Manifest | None = None) -> dict[
 
 
 def _route_summary() -> list[dict[str, str]]:
-    # The route registry lives on whatever ``App`` the request is being served
-    # from. We resolve it lazily through the request context — see ``handler``.
-    return []  # filled in at request time; see ``handler`` below
+    # Filled in at request time in ``attach.handler`` — the route table lives
+    # on the live ``App`` and isn't reachable from module scope.
+    return []
 
 
 def _task_summary() -> list[dict[str, str | int]]:
@@ -81,8 +81,6 @@ def attach(
 
     async def handler() -> dict[str, Any]:
         data = snapshot(settings=settings, manifest=manifest)
-        # Fill in the route summary from the live App's route table — done at
-        # request time so reloads pick up the latest tree.
         data["routes"] = [
             {"method": r.method, "path": r.path, "name": r.name or r.handler.__name__}
             for r in app.routes

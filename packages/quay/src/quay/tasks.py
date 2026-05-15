@@ -63,10 +63,7 @@ class TaskRef:
         return f"TaskRef({self.module}.{self.name}, queue={self.queue!r})"
 
 
-# Module-level registry of every ``@task`` discovered. Adapters can iterate
-# this on startup to register cron jobs / declare workers.
 _registered_tasks: dict[str, TaskRef] = {}
-# Cron declarations: list of (task, cron_expr).
 _cron_jobs: list[tuple[TaskRef, str]] = []
 
 
@@ -101,14 +98,7 @@ def task(
 
 
 def cron(expr: str) -> Callable[[Callable[..., Awaitable[Any]]], TaskRef]:
-    """Mark a coroutine as cron-scheduled. Accepts standard 5-field crontab syntax.
-
-    Implementation: turns the function into a task (queue ``cron``, retries 0)
-    and records the (task, expression) pair on the module registry. Adapters
-    pick it up in ``startup()`` and dispatch to whatever scheduler they prefer
-    (Dramatiq's, Celery-beat, Arq's ``cron_jobs``, ``apscheduler`` for the
-    in-process reference).
-    """
+    """Mark a coroutine as cron-scheduled. Accepts standard 5-field crontab syntax."""
 
     def decorator(fn: Callable[..., Awaitable[Any]]) -> TaskRef:
         ref = task(queue="cron", retries=0)(fn)
@@ -134,11 +124,9 @@ def _clear() -> None:
     _cron_jobs.clear()
 
 
-# Adapter selection: a contextvar holds the active adapter so a request can
-# operate against a different adapter (e.g. ``tasks_eager()``) without global
-# mutation.
-
-
+# A contextvar lets ``tasks_eager()`` swap the adapter for the current task
+# only — without it, eager mode in one test would leak into concurrently
+# running tests.
 _adapter_var: ContextVar[Any] = ContextVar("_quay_task_adapter")
 
 
@@ -159,19 +147,12 @@ def _active_adapter() -> Any:
 
 
 def _encode(args: tuple[Any, ...], kwargs: dict[str, Any]) -> bytes:
-    """JSON-encode positional + keyword args. Adapters override if they want
-    msgspec or pickle; the contract is just ``bytes``.
-    """
     return json.dumps({"args": list(args), "kwargs": kwargs}).encode()
 
 
 def _decode(payload: bytes) -> tuple[tuple[Any, ...], dict[str, Any]]:
     data = json.loads(payload)
     return tuple(data.get("args", [])), data.get("kwargs", {})
-
-
-# Reference adapter: in-process. Real adapters (Dramatiq, Celery) live in
-# sibling packages.
 
 
 @dataclass(slots=True)
@@ -209,7 +190,6 @@ class InMemoryAdapter:
 
     async def startup(self, settings: Any) -> None:
         set_adapter(self)
-        # Cron handling: scan the global registry and spin a per-job loop.
         for ref, expr in cron_jobs():
             self._cron_tasks.append(asyncio.create_task(self._cron_loop(ref, expr)))
 
@@ -251,8 +231,6 @@ class InMemoryAdapter:
         return task_id
 
     async def cron(self, task: TaskRef, expr: str) -> None:
-        # Cron registration is handled in ``startup()`` from the module registry;
-        # external callers who hand-roll a TaskRef can register here.
         self._cron_tasks.append(asyncio.create_task(self._cron_loop(task, expr)))
 
     def eager(self) -> contextlib.AbstractAsyncContextManager[None]:
@@ -279,8 +257,6 @@ class InMemoryAdapter:
             msg = f"unknown task {task_id}"
             raise KeyError(msg)
         return await record.fut
-
-    # -- internals ----------------------------------------------------------
 
     async def _run(self, task: TaskRef, task_id: str, payload: bytes) -> None:
         record = self._records[task_id]
@@ -312,10 +288,6 @@ class InMemoryAdapter:
             record.fut.set_exception(last_exc)
 
     async def _cron_loop(self, task: TaskRef, expr: str) -> None:
-        """Minimal cron loop. The reference impl parses 5-field crontab and
-        sleeps until the next match. Production adapters (Dramatiq / Celery)
-        delegate to a real scheduler.
-        """
         try:
             from quay._cron import next_fire
 
@@ -336,10 +308,6 @@ def _backoff_delay(strategy: Backoff, attempt: int) -> float:
     if strategy == "linear":
         return base * (attempt + 1)
     return base * (2**attempt)
-
-
-# Public testing entry point: ``tasks_eager()``. Pull the active adapter and
-# enter its ``eager()`` context.
 
 
 def tasks_eager() -> contextlib.AbstractAsyncContextManager[None]:

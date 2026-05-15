@@ -269,7 +269,6 @@ class MemoryBus:
 
     async def publish(self, topic: str, payload: bytes) -> None:
         handlers = list(self._subs.get(topic, ()))
-        # Fan-out concurrently so a slow subscriber doesn't block the others.
         if handlers:
             await asyncio.gather(*(h(payload) for h in handlers), return_exceptions=True)
 

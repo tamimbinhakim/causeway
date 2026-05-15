@@ -19,10 +19,8 @@ from quay.contracts import Plugin
 
 _log = logging.getLogger("quay.plugins")
 
-# OrderedDict preserves registration order — important because shutdown
-# is reverse-of-registration. Keying by ``id()`` of the adapter would
-# leak references; keying by ``(contract_name, instance_repr)`` would be
-# fragile. We key by sequence number and store the instance.
+# Ordered because shutdown runs in reverse-of-registration; keyed by a
+# monotonic seq so two instances of the same class don't collide.
 _registry: OrderedDict[int, Plugin] = OrderedDict()
 _next_id = 0
 _started = False
@@ -77,9 +75,8 @@ def discover(group: str = "quay.plugins") -> list[str]:
             _log.warning("plugin %r failed to load: %s", ep.name, exc)
             continue
         discovered.append(ep.name)
-        # The plugin's ``plugin(settings)`` callable does its own ``register()``
-        # call. ``settings`` is None here; the lifespan layer re-invokes with
-        # the real Settings object once it's loaded.
+        # Settings is None at discovery; the lifespan layer re-invokes
+        # ``settings_fragment`` / ``startup`` once Settings is loaded.
         try:
             plugin_fn(None)
         except Exception as exc:

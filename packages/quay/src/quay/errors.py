@@ -98,8 +98,8 @@ def render_problem(exc: BaseException, *, request_id: str | None = None) -> Resp
         }
         status = 404
     else:
-        # Don't leak the type or the message in prod — handlers that want a
-        # specific message should subclass ``HttpError``.
+        # Never surface the raw exception message — it may contain secrets,
+        # stack frames, or SQL. Subclass ``HttpError`` to opt into a custom one.
         body = {
             "type": "about:blank#internal",
             "title": "internal",

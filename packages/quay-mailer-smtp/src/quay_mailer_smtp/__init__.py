@@ -49,8 +49,8 @@ class SmtpMailer:
         )
 
     async def send_template(self, to: str, template: str, data: dict[str, Any]) -> None:
-        # Templates are a product concern (Jinja, mjml, etc.); we render
-        # ``template.format(**data)`` as the smallest viable contract.
+        # Renders via ``str.format`` to keep this adapter dependency-free —
+        # apps that need Jinja / mjml swap in their own MailerContract.
         await self.send(to=to, subject=template, body=template.format(**data))
 
     async def verify_address(self, address: str) -> bool:

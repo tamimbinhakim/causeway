@@ -88,9 +88,8 @@ class DramatiqAdapter:
         return str(message.message_id)
 
     async def cron(self, task: TaskRef, expr: str) -> None:
-        # Dramatiq doesn't ship cron — the convention is to use ``dramatiq-crontab``
-        # or ``apscheduler`` alongside. We register the intent and let the user
-        # wire it explicitly; raising here would surprise everyone.
+        # Dramatiq has no cron of its own; users pair it with ``dramatiq-crontab``
+        # or ``apscheduler``. Register the actor and no-op the schedule.
         del expr
         self._actor_for(task)
 
@@ -99,8 +98,6 @@ class DramatiqAdapter:
 
     @contextlib.asynccontextmanager
     async def _eager_context(self) -> AsyncIterator[None]:
-        # Switch to Dramatiq's stub broker, which executes synchronously
-        # in-memory. Restore the real broker on exit.
         from dramatiq.brokers.stub import StubBroker
 
         prev_broker = self._broker

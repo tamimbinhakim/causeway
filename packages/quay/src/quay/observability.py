@@ -13,7 +13,7 @@ from typing import Any
 import structlog
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _log = logging.getLogger("quay.observability")
 
@@ -43,14 +43,13 @@ class RequestIdMiddleware:
         scope.setdefault("state", {})  # type: ignore[typeddict-item]
         scope["state"]["request_id"] = request_id  # type: ignore[typeddict-item]
 
-        async def send_with_header(message: dict[str, Any]) -> None:
+        async def send_with_header(message: Message) -> None:
             if message["type"] == "http.response.start":
                 raw_headers = list(message.get("headers", []))
                 raw_headers.append((self.HEADER.encode(), request_id.encode()))
                 message["headers"] = raw_headers
             await send(message)
 
-        # Bind into structlog context for the duration of this request.
         with structlog.contextvars.bound_contextvars(request_id=request_id):
             await self.app(scope, receive, send_with_header)
 

@@ -92,10 +92,8 @@ def expose_for_client(settings: BaseSettings | None, manifest: Manifest) -> dict
     return out
 
 
-# Re-export ``BaseSettings`` so apps can ``from quay import Settings`` if they want.
-# A separate name is offered for documentation symmetry with the docs examples.
-# The explicit annotation gives type checkers a complete type for downstream code
-# even when ``pydantic-settings`` ships without a ``py.typed`` marker.
+# Annotated so downstream type checkers see a complete type even when
+# ``pydantic-settings`` ships without ``py.typed``.
 Settings: type[BaseSettings] = BaseSettings
 
 

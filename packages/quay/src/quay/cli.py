@@ -106,7 +106,6 @@ def build(
     snapshot for CI breaking-change detection.
     """
     target.mkdir(parents=True, exist_ok=True)
-    # Delegate codegen + IR emission to dyadpy.
     result = subprocess.run(
         [sys.executable, "-m", "dyadpy", "codegen", "--out", str(target / "client.ts")],
         check=False,
@@ -114,8 +113,6 @@ def build(
     if result.returncode != 0:
         console.print("[red]codegen failed[/red]")
         raise typer.Exit(code=result.returncode)
-    # Build the wheel with hatch if available, otherwise via the project's
-    # configured build backend.
     subprocess.run(
         [sys.executable, "-m", "build", "--wheel", "--outdir", str(target)],
         check=False,

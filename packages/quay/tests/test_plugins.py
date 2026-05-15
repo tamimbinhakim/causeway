@@ -131,7 +131,7 @@ async def test_no_contract_version_warns() -> None:
             return True
 
     with pytest.warns(UserWarning, match="without contract_version"):
-        register(NoVersion())
+        register(NoVersion())  # type: ignore[arg-type]  # missing contract_version is the point
 
 
 async def test_shutdown_swallows_per_plugin_errors() -> None:
