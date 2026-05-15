@@ -38,7 +38,7 @@ After 1.0:
 
 ## How CI enforces it
 
-- **`quay diff`** in CI compares the route + task + agent registrations snapshot from `main` to the snapshot built from each PR. Breaking changes annotate the PR with GitHub error annotations and fail the required check.
+- **`quay diff`** in CI compares the route + task registrations snapshot from `main` to the snapshot built from each PR. Breaking changes annotate the PR with GitHub error annotations and fail the required check.
 - **release-please** classifies commits via Conventional Commits. A `feat!:` or `BREAKING CHANGE:` footer triggers a major bump in the release PR. A plain `feat:` triggers minor. `fix:` triggers patch. `chore:`, `docs:`, `ci:`, `test:`, `build:`, `refactor:` are hidden from the changelog and do not bump versions.
 
 ## What you can rely on
