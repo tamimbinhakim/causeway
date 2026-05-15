@@ -12,5 +12,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Initial package scaffold: file-based router, typed config / DI,
-  middleware + layout composition, background-task contract + reference
+  middleware + scope composition, background-task contract + reference
   adapter, plugin registry, `quay` CLI.

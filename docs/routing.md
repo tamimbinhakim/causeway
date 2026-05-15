@@ -1,14 +1,16 @@
 # Routing
 
-Next.js-style file-based routing for Python. The directory layout is the route table.
+File-based routing for Python. The folder tree _is_ the route table — no `urls.py`, no `routes.ts`, no central registration file.
 
 ## Why files
 
 Three reasons:
 
-1. **It's the most widely understood convention in 2026.** Anyone who has shipped Next.js / Nuxt / SvelteKit recognizes `[id]/`, `(group)/`, `_layout`, `_middleware` instantly.
-2. **Routes colocate with their dependencies.** No giant `urls.py` / `routes.ts` file growing forever.
-3. **The router itself becomes inspectable.** A folder tree is easier to reason about than a list of `app.add_route(...)` calls.
+1. **The folder tree is the route table.** What you see on disk is what you serve.
+2. **Routes colocate with their dependencies.** Middleware, scoped DI providers, and helpers live next to the handlers they apply to — no giant `urls.py` growing forever.
+3. **The router is inspectable.** A folder tree is easier to reason about, diff, and grep than a list of `app.add_route(...)` calls.
+
+The bracket / paren / underscore syntax will look familiar if you've used Next.js or SvelteKit; the conventions translate cleanly to backend semantics.
 
 ## File conventions
 
@@ -21,25 +23,25 @@ Three reasons:
 | `[...rest].py`   | catch-all (reserved for v0.2+)                                                          | not used in v0.1 by default                                   |
 | `(group)/`       | folder ignored in URL — group by team / feature / auth without changing the URL surface | `(admin)/stats.py` → `/stats`                                 |
 | `_middleware.py` | wraps every route in the subtree                                                        | runs in order: app → tree → leaf                              |
-| `_layout.py`     | provides scoped dependencies + lifespan hooks for the subtree                           | exports `provide()` and optionally `startup()` / `shutdown()` |
+| `_scope.py`      | declares request-scoped DI providers + scope-scoped lifespan hooks                      | exports `provide()` and optionally `startup()` / `shutdown()` |
 | `_*.py`          | private — colocated helpers, not routed                                                 | `_db.py`, `_validators.py`                                    |
 
 ## Composition order at request time
 
 1. App-level middleware (registered via `plugins.py`).
 2. Each `_middleware.py` from root to leaf.
-3. Each `_layout.py`'s `provide()`s become available in handler `Annotated[...]` slots.
+3. Each `_scope.py`'s providers become available in handler `Annotated[...]` slots.
 4. The handler runs.
-5. Response unwinds in reverse.
+5. Response unwinds in reverse: leaf middleware exits first, root last.
 
-This matches SvelteKit / Next.js layouts and is intuitive for anyone with that background.
+The inner-most scope wins for providers of the same name; the outer-most middleware runs first on the way in and last on the way out.
 
 ## A realistic tree
 
 ```
 src/app/routes/
 ├── _middleware.py            # global request id + auth
-├── _layout.py                # provides db session
+├── _scope.py                 # provides db session
 ├── index.py                  # /
 ├── health.py                 # /health
 ├── users/
@@ -50,11 +52,12 @@ src/app/routes/
 │       └── posts.py          # /users/{id}/posts
 ├── (admin)/                  # route group (not in URL)
 │   ├── _middleware.py        # require_admin guard
+│   ├── _scope.py             # provides admin-only audit logger
 │   ├── stats.py              # /stats
-│   └── users.py              # /users  (a separate file from users/index.py)
-└── chat/
-    ├── index.py              # /chat
-    └── [thread_id].py        # /chat/{thread_id}
+│   └── users.py              # /users  (separate from users/index.py)
+└── billing/
+    ├── _scope.py             # provides stripe client
+    └── webhooks.py           # /billing/webhooks
 ```
 
 ## Why brackets
@@ -127,10 +130,15 @@ async def require_admin(req):
 middleware = [require_admin]
 ```
 
-## Layouts
+## Scopes
+
+A `_scope.py` is the subtree's DI + lifespan declaration. It does two things:
+
+1. Declares **request-scoped providers** via `@provide(...)`. Handlers below the file can take any provided name as an `Annotated[T, provider]` dependency.
+2. Optionally exposes **scope-scoped lifespan hooks** (`startup()` / `shutdown()`) that fire when the app starts up and shuts down.
 
 ```python
-# src/app/routes/users/_layout.py
+# src/app/routes/users/_scope.py
 from quay import provide
 from app.lib.db import session_factory
 
@@ -140,9 +148,30 @@ async def get_session():
         yield s
 ```
 
-Providers from `_layout.py` are request-scoped. Subtree layouts can override parent providers; the inner-most wins.
+Providers are request-scoped: a new instance per request, cleaned up on response. Nested scopes inherit from parent scopes and can override providers by name — the inner-most wins.
 
-`_layout.py` may also export `startup()` and `shutdown()` for subtree-scoped lifespan hooks (useful for things like opening a long-lived client only when a specific subtree is active).
+`startup()` / `shutdown()` are useful for things like opening a long-lived client (search index, broker) only when a specific subtree is active, so you don't pay the cost in every process or worker.
+
+```python
+# src/app/routes/billing/_scope.py
+from quay import provide
+from stripe import StripeClient
+
+_stripe: StripeClient | None = None
+
+async def startup():
+    global _stripe
+    _stripe = StripeClient(api_key=settings.stripe_key.get_secret_value())
+
+async def shutdown():
+    if _stripe is not None:
+        await _stripe.aclose()
+
+@provide("stripe")
+async def get_stripe() -> StripeClient:
+    assert _stripe is not None
+    return _stripe
+```
 
 ## What the router emits
 

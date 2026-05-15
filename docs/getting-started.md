@@ -80,7 +80,7 @@ What that does:
 2. Boots uvicorn on `http://127.0.0.1:8000`.
 3. Serves `/__quay` — route tree, registered tasks, registered agents,
    current config (secrets redacted), plugin list, OTel trace tail.
-4. Hot-reloads `_middleware.py` and `_layout.py` on save.
+4. Hot-reloads `_middleware.py` and `_scope.py` on save.
 
 ## 5. Add middleware
 
@@ -105,7 +105,7 @@ under `routes/(admin)/_middleware.py` and it only applies to admin routes.
 ## 6. Add a scoped dependency
 
 ```python
-# src/app/routes/users/_layout.py
+# src/app/routes/users/_scope.py
 from quay import provide
 from app.lib.db import session_factory
 

@@ -16,9 +16,9 @@
 
 A backend-only, Python-native framework that sits on top of [Dyadpy](https://github.com/tamimbinhakim/dyadpy) (the wire-level RPC layer) and contributes exactly five things to the application surface:
 
-1. **File-based routing** — Next.js-style `[id].py` dynamic segments, `(group)/` route groups, `_middleware.py` / `_layout.py` per-tree composition.
-2. **Typed config & DI** — `pydantic-settings` wrapper with scoped providers via `_layout.py`. No container boilerplate.
-3. **Middleware & layout composition** — wraps every route in a subtree with one file at the root of that subtree.
+1. **File-based routing** — Next.js-style `[id].py` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition.
+2. **Typed config & DI** — `pydantic-settings` wrapper with scoped providers via `_scope.py`. No container boilerplate.
+3. **Middleware & scope composition** — wraps every route in a subtree with one file at the root of that subtree.
 4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery/Arq/TaskIQ with one line.
 5. **Plugin registry** — entry-point discovery so `quay-auth-clerk`, `quay-storage-s3`, `quay-sqlmodel`, etc. install cleanly.
 
@@ -47,7 +47,7 @@ my-app/
         ├── _middleware.py
         ├── index.py         # /
         └── users/
-            ├── _layout.py   # provides db session
+            ├── _scope.py   # provides db session
             ├── index.py     # /users
             └── [id].py      # /users/{id}
 ```
@@ -83,7 +83,7 @@ What that does:
 1. Discovers `src/app/routes/` → registers handlers into Dyadpy → triggers TS client regeneration.
 2. Boots uvicorn on `http://127.0.0.1:8000`.
 3. Serves `/__quay` — route tree, registered tasks, current config (secrets redacted).
-4. Hot-reloads `_middleware.py` and `_layout.py` on change.
+4. Hot-reloads `_middleware.py` and `_scope.py` on change.
 
 ## Why you'd use it
 

@@ -17,7 +17,7 @@ Every primitive in one page. This is the page you keep open in a tab.
 | `[...rest].py`   | catch-all (reserved; not used in v0.1 by default)             | reserved                                                      |
 | `(group)/`       | folder ignored in URL — group routes by team / feature / auth | `(admin)/stats.py` → `/stats`                                 |
 | `_middleware.py` | wraps every route in the subtree                              | runs in order: app → tree → leaf                              |
-| `_layout.py`     | scoped dependencies + lifespan hooks for the subtree          | exports `provide()` and optionally `startup()` / `shutdown()` |
+| `_scope.py`      | scoped dependencies + lifespan hooks for the subtree          | exports `provide()` and optionally `startup()` / `shutdown()` |
 | `_*.py`          | private, not routed                                           | for colocated helpers                                         |
 
 ### Method decorators
@@ -86,10 +86,10 @@ async def require_admin(req): ...
 middleware = [require_admin]
 ```
 
-## Layouts
+## Scopes
 
 ```python
-# src/app/routes/users/_layout.py
+# src/app/routes/users/_scope.py
 from quay import provide
 
 @provide("db")

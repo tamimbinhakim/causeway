@@ -17,7 +17,7 @@ src/app/routes/**/*.py
         │                       │
         ▼                       ▼
   _middleware.py             quay.toml manifest
-  _layout.py                       │
+  _scope.py                       │
         │                          ▼
         ▼                       Generated client.ts (Dyadpy's job)
    Scoped DI graph
@@ -25,7 +25,7 @@ src/app/routes/**/*.py
 
 Two flows: **server start** walks the `routes/` tree and registers everything
 into Dyadpy; **at request time** the ASGI runtime composes middleware +
-layouts + handler from the precomputed graph.
+scopes + handler from the precomputed graph.
 
 ## Layer by layer
 
@@ -46,7 +46,7 @@ Two file conventions are special:
 
 - `_middleware.py` — its `middleware = [...]` list wraps every route in
   the same subtree.
-- `_layout.py` — its `provide(...)` registrations are available to every
+- `_scope.py` — its `provide(...)` registrations are available to every
   handler in the subtree, request-scoped.
 
 ### 2. Config + DI (`quay.config`, `quay.di`)
@@ -59,8 +59,8 @@ Two file conventions are special:
   client can know about feature flags without leaking secrets.
 
 DI is `Annotated[T, provider]` (the same form Dyadpy uses). Quay's
-addition is **scope**: `_layout.py` providers attach to a subtree, so a
-provider declared in `routes/users/_layout.py` is only resolved for
+addition is **scope**: `_scope.py` providers attach to a subtree, so a
+provider declared in `routes/users/_scope.py` is only resolved for
 routes under `/users/*`.
 
 ### 3. Plugin registry (`quay.plugins`)
@@ -104,7 +104,7 @@ class TaskAdapter(Protocol):
 
 1. Auto-discovery of `src/app/routes/` → register handlers into Dyadpy →
    trigger TS regeneration.
-2. Hot-reload of `_middleware.py` and `_layout.py` without losing
+2. Hot-reload of `_middleware.py` and `_scope.py` without losing
    in-memory state where safe.
 3. A diagnostics page at `http://localhost:8000/__quay` showing the
    route tree, registered tasks, current config (secrets redacted),

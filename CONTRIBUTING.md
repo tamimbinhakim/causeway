@@ -77,7 +77,7 @@ Branch off `main`. Use whatever naming you like, but a hint:
 
 ```
 feat/file-router-route-groups
-fix/middleware-order-on-nested-layout
+fix/middleware-order-on-nested-scope
 docs/getting-started-typo
 chore/bump-pydantic-settings
 ```
@@ -125,7 +125,7 @@ The package layout:
 packages/quay/
 ├── src/quay/
 │   ├── __init__.py     # public API re-exports
-│   ├── routing/        # file-based router + middleware + layouts
+│   ├── routing/        # file-based router + middleware + scopes
 │   ├── config.py       # pydantic-settings wrapper
 │   ├── di.py           # scoped DI container
 │   ├── tasks.py        # @task contract + Dramatiq reference adapter

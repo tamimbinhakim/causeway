@@ -73,5 +73,5 @@ If the world shifts, the plan shifts:
 | Dramatiq adoption is too low among target users          | Switch the reference to TaskIQ (newer, asyncio-native); keep the contract identical |
 | `pydantic-settings` v3 changes API significantly         | Vendor a thin wrapper that exposes a stable `Settings` interface                    |
 | User demand emerges for server-rendered HTML             | Do not add it. Recommend HTMX + a separate template lib. Hold the line.             |
-| User demand emerges for multi-tenancy                    | Add it in v0.3 as a `tenant` scope on `_layout.py` — not in v0.1                    |
+| User demand emerges for multi-tenancy                    | Add it in v0.3 as a `tenant` scope on `_scope.py` — not in v0.1                     |
 | User demand emerges for built-in LLM helpers             | Do not add them. Point to LangGraph / Pydantic AI / Mastra. Hold the line.          |

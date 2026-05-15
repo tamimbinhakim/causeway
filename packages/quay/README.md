@@ -8,9 +8,9 @@ uv add 'quay==0.1.0a0'   # alpha — drop the pin once v0.1.0 ships
 
 This is the core Python package of [Quay](https://github.com/tamimbinhakim/quay). It ships:
 
-- A **file-based router** that walks `src/app/routes/**/*.py`, picks up `[id].py`, `(group)/`, `_middleware.py`, and `_layout.py`, and registers handlers into Dyadpy.
+- A **file-based router** that walks `src/app/routes/**/*.py`, picks up `[id].py`, `(group)/`, `_middleware.py`, and `_scope.py`, and registers handlers into Dyadpy.
 - A **typed config layer** that wraps `pydantic-settings` and integrates with Dyadpy's IR.
-- A **scoped DI container** driven by `_layout.py` providers.
+- A **scoped DI container** driven by `_scope.py` providers.
 - A **`@task` contract** for background jobs with a Dramatiq reference adapter.
 - A **plugin registry** with Python-entry-point discovery.
 - A **CLI** (`quay new`, `quay dev`, `quay build`, `quay deploy <target>`) that runs the whole loop.
@@ -30,7 +30,7 @@ my-app/
         ├── _middleware.py
         ├── index.py
         └── users/
-            ├── _layout.py
+            ├── _scope.py
             ├── index.py
             └── [id].py
 ```
@@ -66,7 +66,7 @@ quay dev
 | Primitive                                        | Purpose                                                               |
 | ------------------------------------------------ | --------------------------------------------------------------------- |
 | File router (`[id].py`, `(group)/`)              | Discovery + URL pattern generation.                                   |
-| `_middleware.py` / `_layout.py`                  | Per-subtree middleware + scoped DI providers.                         |
+| `_middleware.py` / `_scope.py`                   | Per-subtree middleware + scoped DI providers.                         |
 | `Settings` (wraps `pydantic-settings`)           | Typed config with IR exposure for non-secret fields.                  |
 | `@get` / `@post` / `@put` / `@patch` / `@delete` | HTTP method decorators on top of Dyadpy's existing surface.           |
 | `@task(...)`                                     | Background-job contract; adapter-agnostic.                            |
