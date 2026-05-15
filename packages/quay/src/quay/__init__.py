@@ -27,9 +27,11 @@ from __future__ import annotations
 
 from dyadpy import Bytes, Depends, raises, stream
 
+from quay import errors
 from quay._methods import delete, get, patch, post, put
 from quay.config import Manifest, Settings
 from quay.middleware import Middleware, guard
+from quay.observability import RequestIdMiddleware, configure_logging, configure_otel
 from quay.plugins import register
 from quay.scope import provide
 from quay.tasks import cron, task, tasks_eager
@@ -41,10 +43,14 @@ __all__ = [
     "Depends",
     "Manifest",
     "Middleware",
+    "RequestIdMiddleware",
     "Settings",
     "__version__",
+    "configure_logging",
+    "configure_otel",
     "cron",
     "delete",
+    "errors",
     "get",
     "guard",
     "patch",
