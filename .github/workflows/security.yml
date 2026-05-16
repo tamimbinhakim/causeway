@@ -1,0 +1,42 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Catch advisories that land between PRs.
+    - cron: "27 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    name: Python dependency audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v7.1.1
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Install core + every plugin into an audit venv
+        run: |
+          set -euo pipefail
+          uv venv .venv-audit
+          uv pip install --python .venv-audit/bin/python \
+            "./packages/causeway[all]" \
+            ./packages/causeway-*
+          uv pip install --python .venv-audit/bin/python pip-audit
+      - name: pip-audit (fails on any known vuln)
+        run: .venv-audit/bin/pip-audit --strict
