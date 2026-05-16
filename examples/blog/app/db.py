@@ -38,7 +38,9 @@ class Post(Base):
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text)
     published: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
 
     comments: Mapped[list[Comment]] = relationship(
         back_populates="post",
@@ -53,7 +55,9 @@ class Comment(Base):
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
     author: Mapped[str] = mapped_column(String(100))
     body: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
 
     post: Mapped[Post] = relationship(back_populates="comments")
 

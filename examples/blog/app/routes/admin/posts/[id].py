@@ -2,13 +2,11 @@
 
 from typing import Annotated
 
-from msgspec import Struct
-
-from causeway import delete, patch, raises
-from causeway.errors import NotFound, Unauthorized
-
 from app.db import AsyncSession, Post, select
 from app.deps import current_admin, db_session
+from causeway import delete, patch, raises
+from causeway.errors import NotFound, Unauthorized
+from msgspec import Struct
 
 
 class PostPatch(Struct):

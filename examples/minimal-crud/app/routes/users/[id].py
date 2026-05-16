@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from msgspec import Struct
-
+from app.store import User, delete_user, get_user, update_user
 from causeway import delete, get, patch, raises
 from causeway.errors import NotFound
-
-from app.store import User, delete_user, get_user, update_user
+from msgspec import Struct
 
 
 class UserPatch(Struct):

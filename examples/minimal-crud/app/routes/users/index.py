@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from msgspec import Struct
-
+from app.store import User, all_users, create_user
 from causeway import get, post, raises
 from causeway.errors import BadRequest
-
-from app.store import User, all_users, create_user
+from msgspec import Struct
 
 
 class NewUser(Struct):
