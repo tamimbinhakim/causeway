@@ -37,7 +37,7 @@ from causeway.plugins import env, register
 from causeway.scope import provide
 from causeway.tasks import cron, task, tasks_eager
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Bytes",
