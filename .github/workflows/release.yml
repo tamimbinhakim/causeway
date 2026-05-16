@@ -32,7 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # OIDC for PyPI Trusted Publishing
+    # `pypi` env scopes the PYPI_API_TOKEN secret and locks deployments to
+    # main. Swap to Trusted Publishing (id-token: write, no token) once each
+    # PyPI project has a registered publisher.
     environment:
       name: pypi
     strategy:
@@ -53,3 +55,4 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
           packages-dir: ${{ matrix.path }}/dist
+          password: ${{ secrets.PYPI_API_TOKEN }}
