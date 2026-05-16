@@ -17,15 +17,13 @@ jobs:
     environment: pypi
     strategy:
       fail-fast: false
+      # Serialize uploads — PyPI rate-limits new project creation.
+      max-parallel: 1
       matrix:
         path:
           - packages/causeway-auth-jwt
           - packages/causeway-cache-redis
-          - packages/causeway-db-sqlmodel
-          - packages/causeway-deploy-docker
           - packages/causeway-deploy-fly
-          - packages/causeway-deploy-modal
-          - packages/causeway-flags-growthbook
           - packages/causeway-mailer-smtp
           - packages/causeway-observe-sentry
           - packages/causeway-storage-fs
