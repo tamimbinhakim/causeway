@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import types
+
+import pytest
+from pydantic import SecretStr
+from sqlalchemy import text
+
+import causeway.plugins as plugin_registry
+from causeway_db_sqlmodel import SqlModelSession, plugin
+
+_DSN = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def _clear_registry() -> None:
+    plugin_registry.clear()
+
+
+async def test_startup_initializes_engine_and_factory() -> None:
+    db = SqlModelSession(dsn=_DSN)
+    assert await db.ready() is False
+    await db.startup(None)
+    try:
+        assert await db.ready() is True
+        async with db.session() as s:
+            result = await s.execute(text("SELECT 1"))
+            assert result.scalar_one() == 1
+    finally:
+        await db.shutdown()
+    assert await db.ready() is False
+
+
+async def test_session_outside_startup_raises() -> None:
+    db = SqlModelSession(dsn=_DSN)
+    with pytest.raises(RuntimeError, match="used before startup"):
+        async with db.session():
+            pass
+
+
+async def test_transaction_commits_on_success() -> None:
+    db = SqlModelSession(dsn=_DSN)
+    await db.startup(None)
+    try:
+        async with db.session() as s:
+            await s.execute(text("CREATE TABLE t (id INTEGER)"))
+            await s.commit()
+
+        async with db.transaction() as s:
+            await s.execute(text("INSERT INTO t VALUES (1)"))
+
+        async with db.session() as s:
+            count = (await s.execute(text("SELECT COUNT(*) FROM t"))).scalar_one()
+            assert count == 1
+    finally:
+        await db.shutdown()
+
+
+async def test_transaction_rolls_back_on_error() -> None:
+    db = SqlModelSession(dsn=_DSN)
+    await db.startup(None)
+    try:
+        async with db.session() as s:
+            await s.execute(text("CREATE TABLE t (id INTEGER)"))
+            await s.commit()
+
+        with pytest.raises(RuntimeError, match="boom"):
+            async with db.transaction() as s:
+                await s.execute(text("INSERT INTO t VALUES (1)"))
+                raise RuntimeError("boom")
+
+        async with db.session() as s:
+            count = (await s.execute(text("SELECT COUNT(*) FROM t"))).scalar_one()
+            assert count == 0
+    finally:
+        await db.shutdown()
+
+
+async def test_health_checks_db_connectivity() -> None:
+    db = SqlModelSession(dsn=_DSN)
+    assert await db.health() is False
+    await db.startup(None)
+    try:
+        assert await db.health() is True
+    finally:
+        await db.shutdown()
+    assert await db.health() is False
+
+
+async def test_health_false_when_dsn_unreachable() -> None:
+    db = SqlModelSession(dsn="sqlite+aiosqlite:////no/such/dir/db.sqlite")
+    await db.startup(None)
+    try:
+        assert await db.health() is False
+    finally:
+        await db.shutdown()
+
+
+def test_plugin_no_op_without_dsn() -> None:
+    plugin(types.SimpleNamespace())
+    assert plugin_registry.registered() == []
+
+
+def test_plugin_registers_when_dsn_present() -> None:
+    plugin(types.SimpleNamespace(database_url=_DSN))
+    [adapter] = plugin_registry.registered()
+    assert isinstance(adapter, SqlModelSession)
+    assert adapter.dsn == _DSN
+
+
+def test_plugin_unwraps_secret_dsn() -> None:
+    plugin(types.SimpleNamespace(database_url=SecretStr(_DSN)))
+    [adapter] = plugin_registry.registered()
+    assert isinstance(adapter, SqlModelSession)
+    assert adapter.dsn == _DSN
