@@ -1,0 +1,59 @@
+name: Publish plugins (one-shot)
+
+# Recovery workflow: release-please published the core but missed the 12
+# plugins because the squash-merge dropped per-component PR metadata.
+# Triggered manually once; delete this file after the plugins land on PyPI.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.path }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    strategy:
+      fail-fast: false
+      matrix:
+        path:
+          - packages/causeway-auth-jwt
+          - packages/causeway-cache-redis
+          - packages/causeway-db-sqlmodel
+          - packages/causeway-deploy-docker
+          - packages/causeway-deploy-fly
+          - packages/causeway-deploy-modal
+          - packages/causeway-flags-growthbook
+          - packages/causeway-mailer-smtp
+          - packages/causeway-observe-sentry
+          - packages/causeway-storage-fs
+          - packages/causeway-storage-s3
+          - packages/causeway-tasks-dramatiq
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v7.1.1
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
+        with:
+          python-version: "3.13"
+      - name: Build
+        working-directory: ${{ matrix.path }}
+        run: uv build
+      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        with:
+          packages-dir: ${{ matrix.path }}/dist
+          password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Tag and release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          NAME=$(basename "${{ matrix.path }}")
+          TAG="${NAME}-v0.1.0"
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes "Initial release of \`$NAME\` 0.1.0. See packages/$NAME/CHANGELOG.md." \
+            --target main
