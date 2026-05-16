@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-storage-s3"
-version = "0.1.0a0"
+version = "0.1.0"
 description = "S3 / R2 / MinIO storage adapter for Causeway."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-dependencies = ["causeway>=0.1.0a0", "aioboto3>=13.0"]
+dependencies = ["causeway>=0.1.0", "aioboto3>=13.0"]
 
 [project.entry-points."causeway.plugins"]
 storage-s3 = "causeway_storage_s3:plugin"

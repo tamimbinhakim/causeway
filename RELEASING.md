@@ -3,9 +3,21 @@
 A maintainer-facing checklist. Everything in here must be true before
 `causeway-v0.1.0` (PyPI) gets published. Run top to bottom, tick boxes as you go.
 
-> Causeway is a **monorepo with one publishable package**: `causeway` on PyPI.
+> Causeway is a **monorepo with 13 publishable packages** on PyPI: `causeway`
+> (core) plus 12 plugins (`causeway-auth-jwt`, `causeway-cache-redis`,
+> `causeway-db-sqlmodel`, `causeway-deploy-docker`, `causeway-deploy-fly`,
+> `causeway-deploy-modal`, `causeway-flags-growthbook`, `causeway-mailer-smtp`,
+> `causeway-observe-sentry`, `causeway-storage-fs`, `causeway-storage-s3`,
+> `causeway-tasks-dramatiq`).
 >
-> Tags follow `release-please-config.json`: `<component>-vX.Y.Z`.
+> Each has its own changelog and version, managed by release-please. Tags
+> follow `release-please-config.json`: `<component>-vX.Y.Z`. `release.yml`
+> fans out a publish job per package via dynamic matrix; only packages
+> release-please actually released in a given cycle get built and published.
+>
+> **Prerequisite (one-time, manual on pypi.org):** each of the 13 package
+> names needs a Pending Trusted Publisher configured pointing at
+> `tamimbinhakim/causeway`, workflow `release.yml`, environment `pypi`.
 
 ---
 

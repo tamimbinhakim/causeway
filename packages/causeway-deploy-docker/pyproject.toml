@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-deploy-docker"
-version = "0.1.0a0"
+version = "0.1.0"
 description = "Docker deploy target: emit a Dockerfile and compose.yaml."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-dependencies = ["causeway>=0.1.0a0"]
+dependencies = ["causeway>=0.1.0"]
 
 [project.entry-points."causeway.plugins"]
 deploy-docker = "causeway_deploy_docker:plugin"

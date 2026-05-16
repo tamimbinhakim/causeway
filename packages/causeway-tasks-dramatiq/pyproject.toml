@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-tasks-dramatiq"
-version = "0.1.0a0"
+version = "0.1.0"
 description = "Dramatiq adapter for Causeway's background-task contract."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 authors = [{ name = "Tamim Bin Hakim" }]
 dependencies = [
-  "causeway>=0.1.0a0",
+  "causeway>=0.1.0",
   "dramatiq[redis]>=2.1.0",
 ]
 
