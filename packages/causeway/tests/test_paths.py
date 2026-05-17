@@ -1,4 +1,4 @@
-"""URL translation rules from docs/routing.md."""
+"""URL translation rules from docs/building/routing/."""
 
 from __future__ import annotations
 

@@ -75,7 +75,7 @@ When you add a public symbol:
 1. Implement it in its module (e.g. `causeway/middleware.py`).
 2. Re-export it from `causeway/__init__.py`.
 3. Add it to that module's `__all__`.
-4. Document it in [`docs/reference.md`](../reference.md).
+4. Document it in [`docs/api-reference/`](../api-reference/index.md).
 5. Write at least one test.
 
 When you remove a public symbol (post-1.0):

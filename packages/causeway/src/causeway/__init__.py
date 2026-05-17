@@ -2,7 +2,7 @@
 
 Public API surface for v0.1. Anything not listed in ``__all__`` (or imported
 from a private underscore module like ``causeway._methods``) is implementation
-detail and may change in any release. See ``docs/semver.md``.
+detail and may change in any release. See ``docs/stability/semver.md``.
 
 Slice landed in this release:
 

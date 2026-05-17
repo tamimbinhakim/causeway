@@ -77,8 +77,8 @@ unzip -l dist/causeway-*-py3-none-any.whl
 ## 4. Docs
 
 - [ ] `README.md` quickstart copy-pastes without edits
-- [ ] `docs/getting-started.md` walks end-to-end from clean install
-- [ ] `docs/reference.md` matches actual exports (`__all__` in
+- [ ] `docs/getting-started/` walks end-to-end from clean install
+- [ ] `docs/api-reference/` matches actual exports (`__all__` in
       `packages/causeway/src/causeway/__init__.py`)
 - [ ] Package README references the right install command
       (`uv add causeway`)

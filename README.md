@@ -9,7 +9,7 @@
 [![PyPI](https://img.shields.io/pypi/v/causeway.svg)](https://pypi.org/project/causeway/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-[**Quickstart**](./docs/getting-started.md) · [**Why Causeway**](./docs/why-causeway.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
+[**Quickstart**](./docs/getting-started/installation.md) · [**Why Causeway**](./docs/why-causeway.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
 
 </div>
 
@@ -31,7 +31,7 @@ That layer is **Causeway.**
 
 A backend-only, Python-native framework that contributes exactly five things to your application surface:
 
-1. **File-based routing** — `[id].py` / `$id` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition. See [`docs/routing.md`](./docs/routing.md).
+1. **File-based routing** — `[id].py` / `$id` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition. See [`docs/building/routing/`](./docs/building/routing/defining-routes.md).
 2. **Typed config & DI** — a `pydantic-settings` wrapper with request-scoped providers. No DI container boilerplate.
 3. **Middleware & scope composition** — one file at the root of a subtree wraps every route below it.
 4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery / Arq / TaskIQ with one line.
@@ -110,7 +110,7 @@ src/app/routes/
 └── users.$id.py              # /users/{id}
 ```
 
-You can mix the two freely in the same tree. Details: [`docs/routing.md`](./docs/routing.md).
+You can mix the two freely in the same tree. Details: [`docs/building/routing/`](./docs/building/routing/defining-routes.md).
 
 ## Why you'd use it
 
