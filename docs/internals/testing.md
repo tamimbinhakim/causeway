@@ -22,6 +22,9 @@ packages/causeway/tests/
 ├── test_routing_register.py     # binding to dyadpy.App
 ├── test_tasks.py                # @task, InMemoryAdapter, cron loop
 ├── test_testing_kit.py          # TestApp behaviors
+├── test_inline_scenarios.py     # scenario/expect runtime
+├── test_inline_snapshots.py     # snapshot rewrite + ellipsis match
+├── test_pytest_plugin.py        # plugin collection + execution (pytester)
 └── test_version.py              # __version__ smoke
 ```
 
@@ -51,7 +54,7 @@ Each public module has a matching test file. New module → new test file.
 
 ```python
 # tests/test_paths.py
-"""URL translation rules from docs/routing.md."""
+"""URL translation rules from docs/building/routing/."""
 
 @pytest.mark.parametrize(
     ("rel", "expected"),

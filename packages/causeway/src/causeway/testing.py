@@ -71,7 +71,7 @@ class TestApp:
 
     @asynccontextmanager
     async def client(self) -> AsyncIterator[httpx.AsyncClient]:
-        transport = httpx.ASGITransport(app=self._app)  # type: ignore[arg-type]
+        transport = httpx.ASGITransport(app=self._app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
 
@@ -120,5 +120,25 @@ async def stub(provider: Callable[..., Any], value: Any) -> AsyncIterator[None]:
 
 
 from causeway.tasks import tasks_eager  # noqa: E402 - module re-export
+from causeway._testing import (  # noqa: E402 - inline-scenario surface
+    Expectation,
+    Response,
+    ScenarioAssertionError,
+    SnapshotValue,
+    expect,
+    scenario,
+    snapshot,
+)
 
-__all__ = ["TestApp", "stub", "tasks_eager"]
+__all__ = [
+    "Expectation",
+    "Response",
+    "ScenarioAssertionError",
+    "SnapshotValue",
+    "TestApp",
+    "expect",
+    "scenario",
+    "snapshot",
+    "stub",
+    "tasks_eager",
+]

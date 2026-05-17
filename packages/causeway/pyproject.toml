@@ -64,6 +64,9 @@ causeway = "causeway.cli:main"
 [project.entry-points."causeway.plugins"]
 # Reference adapters shipped in core register themselves under this group.
 
+[project.entry-points.pytest11]
+causeway = "causeway._pytest_plugin"
+
 [project.urls]
 Homepage = "https://github.com/tamimbinhakim/causeway"
 Documentation = "https://github.com/tamimbinhakim/causeway/tree/main/docs"

@@ -110,6 +110,13 @@ from causeway import get
 @get
 async def root() -> dict[str, str]:
     return {"status": "ok"}
+
+
+if __name__ == "__causeway_test__":
+    from causeway.testing import expect, scenario
+
+    with scenario("root responds ok") as it:
+        expect(it.get("/")).body == {"status": "ok"}
 '''
 
 _APP_PY = '''\

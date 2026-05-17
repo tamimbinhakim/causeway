@@ -126,9 +126,27 @@ Reference adapters shipped in core: `MemoryKV`, `LocalStorage`, `MemoryLimiter`,
 
 The `/__causeway` endpoint. Builds a JSON snapshot — route tree, registered tasks, cron jobs, plugins, non-secret config — for the dev panel.
 
-### `testing.py` — 124 lines
+### `testing.py`
 
-`TestApp.from_routes(routes_root)` / `TestApp.wrap(app)`, an httpx-based async client, `.override(provider, replacement)` for swapping DI providers in tests, `stub(provider, value)` for the common "just return this value" case, and a re-export of `tasks_eager()` for symmetry.
+`TestApp.from_routes(routes_root)` / `TestApp.wrap(app)`, an httpx-based async client, `.override(provider, replacement)` for swapping DI providers in tests, `stub(provider, value)` for the common "just return this value" case, and a re-export of `tasks_eager()` for symmetry. Also re-exports the inline-scenario API (`scenario`, `expect`, `snapshot`, `Response`, `Expectation`, `ScenarioAssertionError`, `SnapshotValue`).
+
+### `_testing/`
+
+The inline-scenario runtime. Lives in a private subpackage so the implementation can evolve without touching the public `testing.py` surface.
+
+- `scenario.py` — `scenario(...)` context manager and the synchronous `_It` client that drives httpx-over-ASGI through a per-scenario event loop.
+- `expect.py` — `expect(...)` proxy with operator-overloaded assertions and path-aware diff messages.
+- `response.py` — `Response` + `PathValue`, the attribute/item walker for JSON bodies.
+- `snapshot.py` — `snapshot(...)` marker, ellipsis-aware structural match, pending-edit registry.
+- `rewrite.py` — tokenize-based source rewriter used when `--update-snapshots` is set.
+- `loader.py` — imports a route file with `__name__ == "__causeway_test__"` by compiling + execing source directly (bypasses importlib's name-match check).
+- `registry.py` — contextvar plumbing the plugin uses to publish a `Registry` into the imported module.
+- `discover.py` — finds routes roots by walking up for `causeway.toml` siblings, with a shallow `app/routes` fallback.
+- `errors.py` — `ScenarioAssertionError(AssertionError)` with rendered unified diffs.
+
+### `_pytest_plugin.py`
+
+Registered via the `pytest11` entry point. Adds `--causeway-routes`, `--update-snapshots`, `--causeway-no-inline`; matches route files via `pytest_collect_file`; yields one `ScenarioItem` per `scenario(...)` block; applies snapshot rewrites in `pytest_sessionfinish`.
 
 ### `cli.py` — 227 lines
 
