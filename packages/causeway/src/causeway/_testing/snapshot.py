@@ -130,12 +130,11 @@ def _matches(expected: Any, actual: Any) -> bool:
     """Structural equality with ``Ellipsis`` as a wildcard at any node."""
     if isinstance(expected, _AnyMatch) or expected is ...:
         return True
-    if type(expected) is not type(actual):
-        # Allow lists and tuples to interoperate (msgspec gives lists from json).
-        if not (
-            isinstance(expected, list | tuple) and isinstance(actual, list | tuple)
-        ):
-            return bool(expected == actual)
+    # Allow lists and tuples to interoperate (msgspec gives lists from json).
+    if type(expected) is not type(actual) and not (
+        isinstance(expected, list | tuple) and isinstance(actual, list | tuple)
+    ):
+        return bool(expected == actual)
     if isinstance(expected, dict) and isinstance(actual, dict):
         if set(expected.keys()) != set(actual.keys()):
             return False

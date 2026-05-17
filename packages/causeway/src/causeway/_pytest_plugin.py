@@ -69,9 +69,7 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-def pytest_collect_file(
-    parent: pytest.Collector, file_path: Path
-) -> pytest.Collector | None:
+def pytest_collect_file(parent: pytest.Collector, file_path: Path) -> pytest.Collector | None:
     config = parent.config
     if getattr(config, "_causeway_disabled", False):
         return None
@@ -91,9 +89,7 @@ def pytest_collect_file(
     routes_root = _pick_root(roots, file_path)
     if routes_root is None:
         return None
-    return RouteFileCollector.from_parent(
-        parent, path=file_path, routes_root=routes_root
-    )
+    return RouteFileCollector.from_parent(parent, path=file_path, routes_root=routes_root)
 
 
 def _pick_root(roots: list[Path], file_path: Path) -> Path | None:
@@ -123,7 +119,7 @@ class RouteFileCollector(pytest.File):
         module_name = f"__causeway_collect_{abs(hash(str(self.path)))}"
         try:
             load_under_test(self.path, registry=registry, module_name=module_name)
-        except Exception as exc:  # noqa: BLE001 - turn into a pytest error
+        except Exception as exc:
             raise pytest.UsageError(
                 f"failed to collect inline scenarios from {self.path}: {exc}"
             ) from exc

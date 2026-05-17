@@ -24,7 +24,9 @@ _log = logging.getLogger("causeway.plugins")
 _registry: OrderedDict[int, Plugin] = OrderedDict()
 _next_id = 0
 _started = False
-_CURRENT_CONTRACT_VERSION = "v1.0"
+# Contract versions accepted without warning. Old versions stay on the list
+# until ecosystem adapters have caught up.
+_ACCEPTED_CONTRACT_VERSIONS = frozenset({"v1.0", "v1.1"})
 
 
 def register(adapter: Plugin) -> None:
@@ -62,6 +64,10 @@ def discover(group: str = "causeway.plugins") -> list[str]:
     itself calls :func:`register`. We swallow ``ImportError`` per-entry so one
     broken plugin doesn't take the whole app down — but we log loudly.
     """
+    # Binary builds bake plugins in at codegen time; runtime lookup would
+    # re-introduce the supply-chain surface we deliberately removed.
+    if os.environ.get("CAUSEWAY_BUILD_MODE") == "binary":
+        return []
     discovered: list[str] = []
     try:
         eps = entry_points(group=group)
@@ -197,10 +203,10 @@ def _check_version(adapter: Plugin) -> None:
             stacklevel=3,
         )
         return
-    if version != _CURRENT_CONTRACT_VERSION:
+    if version not in _ACCEPTED_CONTRACT_VERSIONS:
         warnings.warn(
             f"{type(adapter).__name__} targets contract {version!r}, "
-            f"Causeway supports {_CURRENT_CONTRACT_VERSION!r}",
+            f"Causeway supports {sorted(_ACCEPTED_CONTRACT_VERSIONS)!r}",
             stacklevel=3,
         )
 

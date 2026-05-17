@@ -95,7 +95,7 @@ wheels = [
 
 [[package]]
 name = "causeway"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -114,10 +114,14 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "dramatiq", extra = ["redis"] },
+    { name = "nuitka" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-asgi" },
     { name = "opentelemetry-sdk" },
+]
+binary = [
+    { name = "nuitka" },
 ]
 dramatiq = [
     { name = "dramatiq", extra = ["redis"] },
@@ -143,10 +147,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.13.0" },
-    { name = "causeway", extras = ["dramatiq", "otel"], marker = "extra == 'all'" },
+    { name = "causeway", extras = ["dramatiq", "otel", "binary"], marker = "extra == 'all'" },
     { name = "dramatiq", extras = ["redis"], marker = "extra == 'dramatiq'", specifier = ">=2.1.0" },
     { name = "dyadpy", specifier = ">=0.1.0a0" },
     { name = "msgspec", specifier = ">=0.19" },
+    { name = "nuitka", marker = "extra == 'binary'", specifier = ">=2.5" },
     { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.41.1" },
     { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otel'", specifier = ">=1.41.1" },
     { name = "opentelemetry-instrumentation-asgi", marker = "extra == 'otel'", specifier = ">=0.62b1" },
@@ -160,7 +165,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.47.0" },
     { name = "watchfiles", specifier = ">=1.1.1" },
 ]
-provides-extras = ["dramatiq", "otel", "all"]
+provides-extras = ["dramatiq", "otel", "binary", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -745,6 +750,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", size = 4963, upload-time = "2025-04-22T14:54:22.983Z" },
 ]
+
+[[package]]
+name = "nuitka"
+version = "4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/db/b7a344ad688cd6d8547746869f904b105674ff529a24fa5a3d7bdd95560a/nuitka-4.1.tar.gz", hash = "sha256:99092d26f5f8d5264186924451f7df5872bf6a922297062ace2798ecec7cfa0f", size = 4543258, upload-time = "2026-05-11T07:16:35.483Z" }
 
 [[package]]
 name = "opentelemetry-api"

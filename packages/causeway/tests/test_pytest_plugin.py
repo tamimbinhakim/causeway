@@ -43,9 +43,7 @@ def test_plugin_discovers_and_runs_scenarios(pytester: pytest.Pytester) -> None:
     _setup_routes(pytester)
     result = pytester.runpytest_subprocess("-v", "--causeway-routes", "app/routes")
     result.assert_outcomes(passed=1, failed=1)
-    result.stdout.fnmatch_lines(
-        ["*::lists empty PASSED*", "*::intentionally fails FAILED*"]
-    )
+    result.stdout.fnmatch_lines(["*::lists empty PASSED*", "*::intentionally fails FAILED*"])
 
 
 def test_plugin_can_be_disabled(pytester: pytest.Pytester) -> None:

@@ -35,7 +35,7 @@ wheels = [
 
 [[package]]
 name = "causeway"
-version = "0.1.0a0"
+version = "0.1.0"
 source = { editable = "../../packages/causeway" }
 dependencies = [
     { name = "anyio" },
@@ -54,10 +54,11 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.13.0" },
-    { name = "causeway", extras = ["dramatiq", "otel"], marker = "extra == 'all'" },
+    { name = "causeway", extras = ["dramatiq", "otel", "binary"], marker = "extra == 'all'" },
     { name = "dramatiq", extras = ["redis"], marker = "extra == 'dramatiq'", specifier = ">=2.1.0" },
     { name = "dyadpy", specifier = ">=0.1.0a0" },
     { name = "msgspec", specifier = ">=0.19" },
+    { name = "nuitka", marker = "extra == 'binary'", specifier = ">=2.5" },
     { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.41.1" },
     { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otel'", specifier = ">=1.41.1" },
     { name = "opentelemetry-instrumentation-asgi", marker = "extra == 'otel'", specifier = ">=0.62b1" },
@@ -71,7 +72,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.47.0" },
     { name = "watchfiles", specifier = ">=1.1.1" },
 ]
-provides-extras = ["dramatiq", "otel", "all"]
+provides-extras = ["dramatiq", "otel", "binary", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -95,13 +96,17 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "httpx" },
+    { name = "nuitka" },
 ]
 
 [package.metadata]
 requires-dist = [{ name = "causeway", editable = "../../packages/causeway" }]
 
 [package.metadata.requires-dev]
-dev = [{ name = "httpx", specifier = ">=0.28.1" }]
+dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "nuitka", specifier = ">=4.1" },
+]
 
 [[package]]
 name = "certifi"
@@ -302,6 +307,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ea/1d/0d85cc79d0ccf5508e9c846cc66552a6a16bf92abd1dbd8362617f7b35cd/msgspec-0.21.1-cp314-cp314t-win_amd64.whl", hash = "sha256:740fbf1c9d59992ca3537d6fbe9ebbf9eaf726a65fbf31448e0ecbc710697a63", size = 206650, upload-time = "2026-04-12T21:44:47.601Z" },
     { url = "https://files.pythonhosted.org/packages/90/91/56c5d560f20e6c20e9e4f55bd0e458f7f162aa689ee350346c04c48eac0b/msgspec-0.21.1-cp314-cp314t-win_arm64.whl", hash = "sha256:0d2cc73df6058d811a126ac3a8ad63a4dfa210c82f9cf5a004802eaf4712de90", size = 183149, upload-time = "2026-04-12T21:44:48.833Z" },
 ]
+
+[[package]]
+name = "nuitka"
+version = "4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/db/b7a344ad688cd6d8547746869f904b105674ff529a24fa5a3d7bdd95560a/nuitka-4.1.tar.gz", hash = "sha256:99092d26f5f8d5264186924451f7df5872bf6a922297062ace2798ecec7cfa0f", size = 4543258, upload-time = "2026-05-11T07:16:35.483Z" }
 
 [[package]]
 name = "pydantic"

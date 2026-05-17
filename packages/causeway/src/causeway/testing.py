@@ -119,7 +119,6 @@ async def stub(provider: Callable[..., Any], value: Any) -> AsyncIterator[None]:
         provider.__code__ = original_code
 
 
-from causeway.tasks import tasks_eager  # noqa: E402 - module re-export
 from causeway._testing import (  # noqa: E402 - inline-scenario surface
     Expectation,
     Response,
@@ -129,6 +128,7 @@ from causeway._testing import (  # noqa: E402 - inline-scenario surface
     scenario,
     snapshot,
 )
+from causeway.tasks import tasks_eager  # noqa: E402 - module re-export
 
 __all__ = [
     "Expectation",

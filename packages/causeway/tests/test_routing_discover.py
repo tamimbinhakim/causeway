@@ -19,8 +19,12 @@ def _write(root: Path, rel: str, body: str) -> Path:
 
 def test_discovers_basic_routes(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
-    _write(routes, "index.py", "from causeway import get\n@get\nasync def root() -> dict: return {}\n")
-    _write(routes, "health.py", "from causeway import get\n@get\nasync def show() -> dict: return {}\n")
+    _write(
+        routes, "index.py", "from causeway import get\n@get\nasync def root() -> dict: return {}\n"
+    )
+    _write(
+        routes, "health.py", "from causeway import get\n@get\nasync def show() -> dict: return {}\n"
+    )
     _write(
         routes,
         "users/[id].py",
@@ -42,7 +46,9 @@ def test_discovers_basic_routes(tmp_path: Path) -> None:
 def test_strips_route_groups(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(
-        routes, "(admin)/stats.py", "from causeway import get\n@get\nasync def s() -> dict: return {}\n"
+        routes,
+        "(admin)/stats.py",
+        "from causeway import get\n@get\nasync def s() -> dict: return {}\n",
     )
     found = discover(routes)
     assert [(r.method, r.path) for r in found.routes] == [("GET", "/stats")]

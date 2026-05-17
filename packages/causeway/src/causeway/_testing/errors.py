@@ -52,6 +52,4 @@ class ScenarioAssertionError(AssertionError):
 def _diff(expected: Any, actual: Any) -> str:
     e = pprint.pformat(expected, width=80, sort_dicts=True).splitlines()
     a = pprint.pformat(actual, width=80, sort_dicts=True).splitlines()
-    return "\n".join(
-        difflib.unified_diff(e, a, fromfile="expected", tofile="actual", lineterm="")
-    )
+    return "\n".join(difflib.unified_diff(e, a, fromfile="expected", tofile="actual", lineterm=""))

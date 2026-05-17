@@ -7,6 +7,7 @@ The framework doesn't own deploys. Three official plugins wrap the common target
 - **[Docker](./docker.md)** — `causeway-deploy-docker`. Builds an image from your project.
 - **[Fly.io](./fly.md)** — `causeway-deploy-fly`. Wraps `flyctl` deploy.
 - **[Modal](./modal.md)** — `causeway-deploy-modal`. Wraps the Modal SDK for ephemeral function-as-a-service.
+- **[Binary export](./binary.md)** — `causeway build --binary`. Single AOT-compiled executable for self-hosting; pairs with `FROM scratch` containers.
 
 Every deploy plugin implements the [`DeployTarget`](../api-reference/classes/contracts.md#deploytarget) contract — `manifest()`, `package()`, `push(target)`.
 

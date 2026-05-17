@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, ClassVar, Protocol, runtime_checkable
+from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
 
 AsyncContextManager = AbstractAsyncContextManager
 
@@ -69,13 +70,45 @@ class TaskAdapter(Plugin, Protocol):
 
 @runtime_checkable
 class Storage(Plugin, Protocol):
-    contract_version: ClassVar[str] = "v1.0"
+    """Object-storage adapter contract.
+
+    ``v1.1`` adds :meth:`presigned_put` and :meth:`presigned_get` so clients
+    can upload and download direct to the bucket without routing bytes through
+    the ASGI process. ``signed_url`` is kept as an alias of ``presigned_get``
+    for v0.1 callers; new code should use the explicit names.
+    """
+
+    contract_version: ClassVar[str] = "v1.1"
 
     async def put(self, key: str, body: bytes, *, content_type: str | None = None) -> None: ...
     async def get(self, key: str) -> bytes: ...
     async def delete(self, key: str) -> None: ...
     async def signed_url(self, key: str, *, expires: int = 3600) -> str: ...
     async def list(self, prefix: str = "") -> AsyncIterator[str]: ...
+
+    async def presigned_put(
+        self,
+        key: str,
+        *,
+        expires: int = 3600,
+        content_type: str | None = None,
+        max_size_bytes: int | None = None,
+    ) -> str:
+        """Return a URL the client can ``PUT`` directly to.
+
+        ``content_type`` and ``max_size_bytes`` are policy hints for adapters
+        that support them (S3 enforces both via signed policy fields). Adapters
+        that can't enforce them should still honor the call as best-effort.
+        """
+        ...
+
+    async def presigned_get(self, key: str, *, expires: int = 3600) -> str:
+        """Return a URL the client can ``GET`` directly from.
+
+        Same semantics as :meth:`signed_url`; the explicit name pairs with
+        :meth:`presigned_put` so call sites read symmetrically.
+        """
+        ...
 
 
 @runtime_checkable
@@ -172,12 +205,29 @@ class DBSession(Plugin, Protocol):
 
 @runtime_checkable
 class AuthProvider(Plugin, Protocol):
-    contract_version: ClassVar[str] = "v1.0"
+    """Identity and authorization adapter contract.
+
+    ``v1.1`` adds :meth:`has_permission`. Plugin authors that don't have a
+    custom hierarchy can delegate to :func:`causeway.auth.check_permission`
+    for the default ``domain:read/write/manage`` + ``*`` expansion.
+    """
+
+    contract_version: ClassVar[str] = "v1.1"
 
     async def current_user(self, req: Any) -> Any | None: ...
     async def login(self, creds: dict[str, Any]) -> Any: ...
     async def logout(self, req: Any) -> None: ...
     async def verify(self, token: str) -> Any | None: ...
+
+    async def has_permission(self, user: Any, perm: str) -> bool:
+        """Return ``True`` if ``user`` carries the named permission.
+
+        Plugin authors are free to map permissions however they want;
+        :func:`causeway.auth.check_permission` is the reference behavior
+        (``*`` is superuser; ``X:manage`` implies ``X:write`` implies
+        ``X:read``).
+        """
+        ...
 
 
 @runtime_checkable
@@ -196,11 +246,70 @@ class DeployTarget(Plugin, Protocol):
     async def push(self, target: str) -> str: ...
 
 
+DeliveryState = Literal["pending", "in_flight", "delivered", "failed"]
+
+
+@dataclass(slots=True)
+class WebhookDelivery:
+    """Snapshot of a single webhook delivery's retry chain."""
+
+    delivery_id: str
+    state: DeliveryState
+    attempts: int
+    last_error: str | None = None
+    next_retry_at: datetime | None = None
+
+
+@runtime_checkable
+class Webhooks(Plugin, Protocol):
+    """Outgoing webhook delivery + incoming signature verification.
+
+    Outgoing side: :meth:`send` enqueues a delivery; the adapter retries on
+    5xx/transport failures and exposes per-delivery state via
+    :meth:`delivery_status`. Incoming side: :meth:`verify_incoming` checks
+    HMAC + timestamp on a request and returns the verified body (or raises
+    :class:`~causeway.errors.Unauthorized`).
+    """
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def send(
+        self,
+        endpoint_id: str,
+        event: str,
+        payload: dict[str, Any],
+        *,
+        idempotency_key: str | None = None,
+    ) -> str: ...
+
+    async def register_endpoint(
+        self,
+        endpoint_id: str,
+        *,
+        url: str,
+        secret: str,
+        events: list[str],
+    ) -> None: ...
+
+    async def disable_endpoint(self, endpoint_id: str) -> None: ...
+
+    async def delivery_status(self, delivery_id: str) -> WebhookDelivery: ...
+
+    def verify_incoming(
+        self,
+        req: Any,
+        *,
+        secret: str,
+        max_skew_seconds: int = 300,
+    ) -> bytes: ...
+
+
 __all__ = [
     "KV",
     "AuthProvider",
     "BlobScanner",
     "DBSession",
+    "DeliveryState",
     "DeployTarget",
     "FeatureFlags",
     "LogSink",
@@ -215,4 +324,6 @@ __all__ = [
     "TaskAdapter",
     "TaskRef",
     "TaskStatus",
+    "WebhookDelivery",
+    "Webhooks",
 ]

@@ -1,15 +1,18 @@
 """Causeway CLI.
 
-Five commands, each a thin shell over dyadpy plus the convention layer:
+Each command is a thin shell over dyadpy plus the convention layer:
 
-- ``causeway new <name>``   — scaffold a project from the template tree.
-- ``causeway dev``          — uvicorn + watcher + TS codegen + diagnostics.
-- ``causeway build``        — IR + ``client.ts`` + wheel.
-- ``causeway plugins``      — list registered adapters.
-- ``causeway diff``         — delegate to ``dyadpy diff``.
+- ``causeway new <name>``        — scaffold a project from the template tree.
+- ``causeway dev``               — uvicorn + watcher + TS codegen.
+- ``causeway build``             — IR + ``client.ts`` + wheel. ``--binary`` AOT-compiles via Nuitka.
+- ``causeway freeze``            — emit the AOT build tree without compiling.
+- ``causeway plugins``           — list registered adapters.
+- ``causeway diff``              — delegate to ``dyadpy diff``.
+- ``causeway deploy <target>``   — invoke the matching ``DeployTarget`` adapter.
+- ``causeway plugin new <name>`` — scaffold a sibling plugin package.
 
-The CLI is intentionally thin. Anything that needs heavy logic (codegen,
-diff) is dyadpy's job; Causeway supplies the project shape.
+Anything heavy (codegen, diff) is dyadpy's job; Causeway supplies the
+project shape.
 """
 
 from __future__ import annotations
@@ -96,15 +99,50 @@ def dev(
 
 @app.command()
 def build(
-    target: Annotated[Path, typer.Option(help="Output directory.")] = Path("dist"),
+    target: Annotated[
+        Path,
+        typer.Option("--target", "-o", help="Output directory."),
+    ] = Path("dist"),
+    binary: Annotated[
+        bool,
+        typer.Option(
+            "--binary",
+            help="Build a self-contained AOT-compiled binary instead of a wheel. "
+            "Requires `causeway[binary]`.",
+        ),
+    ] = False,
+    sign: Annotated[
+        bool,
+        typer.Option("--sign", help="Sign the binary with cosign sign-blob (--binary only)."),
+    ] = False,
+    sbom: Annotated[
+        bool,
+        typer.Option("--sbom", help="Emit a CycloneDX SBOM via syft (--binary only)."),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help="Run freeze + plan but skip the Nuitka build (--binary only).",
+        ),
+    ] = False,
 ) -> None:
     """Produce the deployable artifact.
 
-    Three outputs land in ``<target>/``: the IR snapshot
+    Default build emits three outputs into ``<target>/``: the IR snapshot
     (``ir.json``), the generated TypeScript client (``client.ts``), and a
-    Python wheel built via ``hatch build``. ``causeway diff`` consumes the IR
-    snapshot for CI breaking-change detection.
+    Python wheel.
+
+    ``--binary`` switches to a self-contained, AOT-compiled binary
+    (single-file, standalone). Requires ``pip install causeway[binary]``.
+
+    Routes, plugins, and settings paths are discovered by convention
+    (``app/routes``, ``app/plugins.py``, ``app/config.py:Settings``).
     """
+    if binary:
+        _build_binary(target=target, sign=sign, sbom=sbom, dry_run=dry_run)
+        return
+
     target.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
         [sys.executable, "-m", "dyadpy", "codegen", "--out", str(target / "client.ts")],
@@ -118,6 +156,84 @@ def build(
         check=False,
     )
     console.print(f"[green]built[/green] -> {target}")
+
+
+def _build_binary(*, target: Path, sign: bool, sbom: bool, dry_run: bool) -> None:
+    from causeway._binary import build_binary
+
+    project = Path.cwd()
+    artifact = build_binary(
+        project_root=project,
+        out=target,
+        routes_root=_discover_routes(project),
+        user_plugins_module=_discover_user_plugins(project),
+        settings_target=_discover_settings(project),
+        sign=sign,
+        sbom=sbom,
+        dry_run=dry_run,
+    )
+    if dry_run:
+        console.print("[yellow]dry run[/yellow] — freeze complete, Nuitka skipped")
+        return
+    console.print(
+        f"[green]built[/green] {artifact.path} ({artifact.size_mb:.1f} MB)",
+    )
+    if artifact.signature_path:
+        console.print(f"  signature: {artifact.signature_path}")
+    if artifact.sbom_path:
+        console.print(f"  sbom: {artifact.sbom_path}")
+
+
+def _discover_routes(project: Path) -> Path:
+    """Convention: ``app/routes`` under cwd or ``src/``."""
+    for candidate in (project / "app" / "routes", project / "src" / "app" / "routes"):
+        if candidate.is_dir():
+            return candidate
+    console.print("[red]error[/red]: no routes directory found (looked for app/routes)")
+    raise typer.Exit(code=1)
+
+
+def _discover_user_plugins(project: Path) -> str | None:
+    """Convention: ``app/plugins.py``. None for minimal apps."""
+    for candidate in (project / "app" / "plugins.py", project / "src" / "app" / "plugins.py"):
+        if candidate.is_file():
+            return "app.plugins"
+    return None
+
+
+def _discover_settings(project: Path) -> str | None:
+    """Convention: ``app/config.py`` exporting ``Settings``. None for minimal apps."""
+    for candidate in (project / "app" / "config.py", project / "src" / "app" / "config.py"):
+        if candidate.is_file():
+            return "app.config:Settings"
+    return None
+
+
+@app.command()
+def freeze(
+    out: Annotated[
+        Path,
+        typer.Option("--out", "-o", help="Output directory for the frozen build tree."),
+    ] = Path(".causeway/build"),
+) -> None:
+    """Generate the AOT-frozen build tree. Standalone of ``causeway build --binary``.
+
+    Routes, plugins, and settings paths are discovered by convention
+    (``app/routes``, ``app/plugins.py``, ``app/config.py:Settings``).
+    """
+    from causeway._freeze import freeze as _freeze
+
+    project = Path.cwd()
+    manifest = _freeze(
+        routes_root=_discover_routes(project),
+        out_dir=out,
+        user_plugins_module=_discover_user_plugins(project),
+        settings_target=_discover_settings(project),
+    )
+    console.print(
+        f"[green]frozen[/green] {manifest.route_count} route(s), "
+        f"{manifest.plugin_count} plugin(s) -> {out}/_causeway_build/",
+    )
 
 
 @app.command()

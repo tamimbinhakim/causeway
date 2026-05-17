@@ -33,6 +33,12 @@ Per-concept guides for everything you do day-to-day.
 - **[Responses](./building/handlers/responses.md)** — return types, status codes, custom headers.
 - **[Errors](./building/handlers/errors.md)** — `HttpError`, `@raises`, problem+json.
 - **[Streaming](./building/handlers/streaming.md)** — `stream[T]` for SSE.
+- **[Pagination](./building/handlers/pagination.md)** — `Paginated[T]`, `Cursor`.
+- **[Batch endpoints](./building/handlers/batch.md)** — `BatchResult[T, E]`, `@batch`, HTTP 207.
+- **[Idempotency keys](./building/handlers/idempotency.md)** — replaying responses for retried requests.
+- **[File uploads](./building/handlers/file-uploads.md)** — presigned PUTs to object storage.
+- **[Permissions](./building/handlers/permissions.md)** — `require_permission` and the default model.
+- **[Multi-tenant apps](./building/multi-tenant.md)** — workspace-scoped routes via `_scope.py`.
 
 ### Application primitives
 
@@ -42,6 +48,8 @@ Per-concept guides for everything you do day-to-day.
 - **[Testing](./building/testing/index.md)** — `TestApp`, inline scenarios, snapshots.
 - **[Observability](./building/observability/index.md)** — request IDs, structured logs, OTel.
 - **[Typed client](./building/typed-client/index.md)** — what's in `client.ts` and how to consume it.
+- **[Webhooks (outgoing)](./building/webhooks/index.md)** — register endpoints, send events, retry behavior.
+- **[Verifying incoming webhooks](./building/webhooks/incoming.md)** — HMAC + timestamp checks for inbound calls.
 
 ## API Reference
 
@@ -50,7 +58,7 @@ Per-symbol pages.
 - **[Decorators](./api-reference/decorators/get.md)** — `@get`, `@post`, …, `@task`, `@cron`, `@provide`, `@guard`, `@raises`.
 - **[Functions](./api-reference/functions/create-app.md)** — `create_app`, `register`, `env`, `configure_logging`, `configure_otel`, `tasks_eager`, `discover`.
 - **[Classes](./api-reference/classes/Middleware.md)** — `Middleware`, `Settings`, `Manifest`, `TestApp`, `RequestIdMiddleware`, `TaskRef`, `TaskState`, contracts, errors.
-- **[CLI](./api-reference/cli/index.md)** — `causeway new`, `dev`, `build`, `plugins`, `plugin new`, `diff`, `deploy`, `version`.
+- **[CLI](./api-reference/cli/index.md)** — `causeway new`, `dev`, `build` (with `--binary`), `freeze`, `plugins`, `plugin new`, `diff`, `deploy`, `version`.
 - **[File conventions](./api-reference/file-conventions/index.md)** — `index.py`, `[name].py`, `$name`, `(group)/`, `_middleware.py`, `_scope.py`, `causeway.toml`.
 
 Full index: **[API Reference](./api-reference/index.md)**.
@@ -66,7 +74,7 @@ What happens under the hood.
 ## Deploying
 
 - **[Deploying overview](./deploying/index.md)** — health checks, env, the production checklist.
-- **[Docker](./deploying/docker.md)** · **[Fly.io](./deploying/fly.md)** · **[Modal](./deploying/modal.md)**
+- **[Docker](./deploying/docker.md)** · **[Fly.io](./deploying/fly.md)** · **[Modal](./deploying/modal.md)** · **[Binary export](./deploying/binary.md)**
 
 ## Upgrading
 

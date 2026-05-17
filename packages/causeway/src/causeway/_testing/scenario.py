@@ -24,7 +24,8 @@ import asyncio
 import contextvars
 import inspect
 from collections.abc import Callable, Iterator
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, suppress
+from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
 from causeway._testing.errors import ScenarioAssertionError
@@ -170,17 +171,15 @@ class _It:
 
     def _close(self) -> None:
         for cleanup in reversed(self._cleanups):
-            try:
+            with suppress(Exception):
                 cleanup()
-            except Exception:  # noqa: BLE001 - best-effort teardown
-                pass
         self._cleanups.clear()
 
 
 class _NullResponse(Response):
     """Returned by ``_It.*`` during collection. Every attribute is benign."""
 
-    def __init__(self) -> None:  # noqa: D401 - trivial
+    def __init__(self) -> None:
         self._raw = None  # type: ignore[assignment]
         self._body_cache = None
 
@@ -247,15 +246,13 @@ class _ScenarioContextManager(AbstractContextManager["_It"]):
             return self._it
 
         # execute mode
-        reg.scenarios.append(
-            RegisteredScenario(label=self._label, body=_NOOP, lineno=self._lineno)
-        )
+        reg.scenarios.append(RegisteredScenario(label=self._label, body=_NOOP, lineno=self._lineno))
         self._index = index
         target = reg.target_index
         # Either index match, or label match if target_index unset.
-        active = (
-            target is not None and target == index
-        ) or (target is None and reg.target_label == self._label)
+        active = (target is not None and target == index) or (
+            target is None and reg.target_label == self._label
+        )
 
         if not active:
             self._it = _It(None, None, collecting=True)
@@ -269,7 +266,7 @@ class _ScenarioContextManager(AbstractContextManager["_It"]):
         # Detach any ambient loop so pytest-asyncio doesn't claim ours.
         try:
             self._token = _LOOP_VAR.set(loop)
-        except Exception:  # noqa: BLE001
+        except Exception:
             self._token = None
         asyncio.set_event_loop(loop)
 
@@ -277,7 +274,12 @@ class _ScenarioContextManager(AbstractContextManager["_It"]):
         self._active_token = _ACTIVE_VAR.set(True)
         return self._it
 
-    def __exit__(self, _exc_type: Any, exc: Any, _tb: Any) -> None:
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        _tb: TracebackType | None,
+    ) -> None:
         if self._active_token is not None:
             _ACTIVE_VAR.reset(self._active_token)
             self._active_token = None
@@ -343,20 +345,12 @@ def _shutdown_loop(loop: asyncio.AbstractEventLoop) -> None:
         for t in pending:
             t.cancel()
         if pending:
-            try:
-                loop.run_until_complete(
-                    asyncio.gather(*pending, return_exceptions=True)
-                )
-            except Exception:  # noqa: BLE001
-                pass
-        try:
+            with suppress(Exception):
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+        with suppress(Exception):
             loop.run_until_complete(loop.shutdown_asyncgens())
-        except Exception:  # noqa: BLE001
-            pass
-        try:
+        with suppress(Exception):
             loop.run_until_complete(loop.shutdown_default_executor())
-        except Exception:  # noqa: BLE001
-            pass
     finally:
         loop.close()
 

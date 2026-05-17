@@ -1,14 +1,15 @@
 """Application factory.
 
-:func:`create_app` is the single entry point a Causeway project uses. It
-discovers routes, applies class-based middleware via Starlette, attaches
-health endpoints, and wires the request-id middleware and error renderer.
-The factory pattern keeps ``app:app`` import-safe under uvicorn ``--reload``.
+Two entry points: :func:`create_app` (dynamic, walks the routes tree at
+import time) and :func:`create_app_frozen` (AOT, takes a pre-built
+:class:`Discovered`). They share assembly via :func:`_assemble`; the
+binary build path goes through the frozen variant.
 """
 
 from __future__ import annotations
 
 import contextlib
+import os
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,7 @@ from causeway.errors import error_renderer
 from causeway.health import attach as attach_health
 from causeway.middleware import Middleware as CausewayMiddleware
 from causeway.observability import RequestIdMiddleware
-from causeway.routing import discover, register
+from causeway.routing import Discovered, discover, register
 
 
 def create_app(
@@ -43,8 +44,49 @@ def create_app(
     Health endpoints (``/healthz``, ``/readyz``) attach unconditionally; the
     diagnostics endpoint (``/__causeway``) is opt-out via ``diagnostics=False``.
     """
-    inner = App()
     found = discover(routes_root)
+    return _assemble(
+        found,
+        settings=settings,
+        diagnostics=diagnostics,
+        request_id=request_id,
+        error_renderer_=error_renderer_,
+    )
+
+
+def create_app_frozen(
+    found: Discovered,
+    *,
+    settings: Any = None,
+    diagnostics: bool = False,
+    request_id: bool = True,
+    error_renderer_: bool = True,
+) -> Any:
+    """Build a runnable ASGI app from a :class:`Discovered` produced at build time.
+
+    The dev surface (``/__causeway``) is always stripped in binary mode
+    regardless of the caller's preference.
+    """
+    if _build_mode_is_binary() and diagnostics:
+        diagnostics = False
+    return _assemble(
+        found,
+        settings=settings,
+        diagnostics=diagnostics,
+        request_id=request_id,
+        error_renderer_=error_renderer_,
+    )
+
+
+def _assemble(
+    found: Discovered,
+    *,
+    settings: Any,
+    diagnostics: bool,
+    request_id: bool,
+    error_renderer_: bool,
+) -> Any:
+    inner = App()
     register(inner, found)
     attach_health(inner)
     if diagnostics:
@@ -78,6 +120,10 @@ def create_app(
     )
 
 
+def _build_mode_is_binary() -> bool:
+    return os.environ.get("CAUSEWAY_BUILD_MODE") == "binary"
+
+
 def _collect_class_middleware(found: Any) -> list[CausewayMiddleware]:
     """Pull every class-based ``Middleware`` instance off the discovered routes.
 
@@ -95,4 +141,4 @@ def _collect_class_middleware(found: Any) -> list[CausewayMiddleware]:
     return list(seen.values())
 
 
-__all__ = ["create_app"]
+__all__ = ["create_app", "create_app_frozen"]

@@ -33,14 +33,8 @@ def guard(fn: GuardFn) -> GuardFn:
     """Mark a function as a lightweight guard.
 
     Guards run before the handler. Raise an exception to short-circuit the
-    request (a ``PermissionError`` becomes a 403; a ``LookupError`` becomes
-    a 404; everything else lands in the error renderer).
-
-    >>> @guard
-    >>> async def require_admin(req):
-    ...     user = await current_user(req)
-    ...     if not user or not user.is_admin:
-    ...         raise PermissionError("admin only")
+    request — ``PermissionError`` becomes a 403, ``LookupError`` becomes a
+    404, everything else lands in the error renderer.
     """
     fn.__causeway_guard__ = True  # type: ignore[attr-defined]
     return fn
@@ -50,4 +44,17 @@ def is_guard(obj: Any) -> bool:
     return bool(getattr(obj, "__causeway_guard__", False))
 
 
-__all__ = ["CallNext", "GuardFn", "Middleware", "Request", "Response", "guard", "is_guard"]
+# Re-export at package root. Late import avoids a circular dependency:
+# ``idempotency`` types-check against ``CallNext`` defined above.
+from causeway.middleware.idempotency import IdempotencyMiddleware  # noqa: E402
+
+__all__ = [
+    "CallNext",
+    "GuardFn",
+    "IdempotencyMiddleware",
+    "Middleware",
+    "Request",
+    "Response",
+    "guard",
+    "is_guard",
+]

@@ -97,7 +97,7 @@ class Expectation:
 
     # ---- assertions ----------------------------------------------------------
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         from causeway._testing.snapshot import SnapshotValue
 
         if _is_collecting():
@@ -121,7 +121,7 @@ class Expectation:
             )
         return True
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         if _is_collecting():
             return True
         actual = self._resolved()
@@ -238,9 +238,7 @@ def expect(target: Any) -> Expectation:
         if resp is None:
             if _is_collecting() or target.collecting:
                 return Expectation(None)
-            raise ScenarioAssertionError(
-                message="no requests have been sent in this scenario yet"
-            )
+            raise ScenarioAssertionError(message="no requests have been sent in this scenario yet")
         return Expectation(resp, response=resp)
     if isinstance(target, Response):
         return Expectation(target, response=target)

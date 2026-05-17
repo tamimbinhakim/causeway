@@ -27,11 +27,7 @@ def load_under_test(
     """
     resolved = file.resolve()
     label = (
-        resolved.with_suffix("")
-        .as_posix()
-        .replace("/", "_")
-        .replace("[", "_")
-        .replace("]", "_")
+        resolved.with_suffix("").as_posix().replace("/", "_").replace("[", "_").replace("]", "_")
     )
     name = module_name or f"__causeway_test_{label}"
 
