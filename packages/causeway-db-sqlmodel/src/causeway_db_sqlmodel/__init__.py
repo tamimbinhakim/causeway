@@ -8,11 +8,15 @@ so handlers pull it via ``Annotated[AsyncSession, db_session]``.
 from __future__ import annotations
 
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import Any, ClassVar
 
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 
 class SqlModelSession:
@@ -24,11 +28,11 @@ class SqlModelSession:
         self._engine: AsyncEngine | None = None
         self._factory: Any = None
 
-    async def startup(self, settings: Any) -> None:  # noqa: ARG002
+    async def startup(self, settings: Any) -> None:
+        del settings
         self._engine = create_async_engine(self.dsn, echo=self.echo, future=True)
-        self._factory = sessionmaker(
+        self._factory = async_sessionmaker(
             self._engine,
-            class_=AsyncSession,
             expire_on_commit=False,
         )
 
@@ -45,7 +49,7 @@ class SqlModelSession:
         return self._session_ctx()
 
     @contextlib.asynccontextmanager
-    async def _session_ctx(self) -> AsyncIterator[AsyncSession]:
+    async def _session_ctx(self) -> AsyncGenerator[AsyncSession]:
         if self._factory is None:
             msg = "SqlModelSession used before startup()"
             raise RuntimeError(msg)
@@ -56,7 +60,7 @@ class SqlModelSession:
         return self._transaction_ctx()
 
     @contextlib.asynccontextmanager
-    async def _transaction_ctx(self) -> AsyncIterator[AsyncSession]:
+    async def _transaction_ctx(self) -> AsyncGenerator[AsyncSession]:
         async with self._session_ctx() as session, session.begin():
             yield session
 
