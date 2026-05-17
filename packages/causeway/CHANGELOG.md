@@ -7,6 +7,14 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.1.0...causeway-v0.1.1) (2026-05-17)
+
+
+### Features
+
+* **causeway:** inline test scenarios with snapshot rewriting ([e897442](https://github.com/tamimbinhakim/causeway/commit/e89744226ba6a2bcd72ea4cda1ef6416d795c044))
+* **causeway:** v0.2 — pagination, batch, idempotency, permissions, webhooks, binary export ([45852fd](https://github.com/tamimbinhakim/causeway/commit/45852fd2d6f80aa69d99770e4acdec0aeb67bf03))
+
 ## 0.1.0 (2026-05-16)
 
 
