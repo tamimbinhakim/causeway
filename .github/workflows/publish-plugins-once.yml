@@ -1,8 +1,9 @@
 name: Publish plugins (one-shot)
 
-# Recovery workflow: release-please published the core but missed the 12
-# plugins because the squash-merge dropped per-component PR metadata.
-# Triggered manually once; delete this file after the plugins land on PyPI.
+# Recovery workflow: the remaining 4 plugins that still need a first PyPI
+# release after the rate-limit window. Configure a trusted publisher for
+# each on PyPI before running. Triggered manually once; delete this file
+# after the plugins land on PyPI.
 
 on:
   workflow_dispatch:
@@ -14,6 +15,9 @@ jobs:
   publish:
     name: Publish ${{ matrix.path }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     environment: pypi
     strategy:
       fail-fast: false
@@ -21,13 +25,9 @@ jobs:
       max-parallel: 1
       matrix:
         path:
-          - packages/causeway-auth-jwt
-          - packages/causeway-cache-redis
           - packages/causeway-deploy-fly
           - packages/causeway-mailer-smtp
-          - packages/causeway-observe-sentry
           - packages/causeway-storage-fs
-          - packages/causeway-storage-s3
           - packages/causeway-tasks-dramatiq
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
@@ -41,7 +41,6 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
           packages-dir: ${{ matrix.path }}/dist
-          password: ${{ secrets.PYPI_API_TOKEN }}
       - name: Tag and release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
