@@ -79,6 +79,43 @@ async def test_logout_is_a_no_op() -> None:
     await JwtAuth(secret=_SECRET).logout(_req("Bearer x"))
 
 
+async def test_has_permission_reads_permissions_claim() -> None:
+    auth = JwtAuth(secret=_SECRET)
+    user = {"sub": "u1", "permissions": ["customers:write", "*"]}
+    assert await auth.has_permission(user, "anything:delete") is True
+
+    user_limited = {"sub": "u1", "permissions": ["customers:read"]}
+    assert await auth.has_permission(user_limited, "customers:read") is True
+    assert await auth.has_permission(user_limited, "customers:write") is False
+
+
+async def test_has_permission_expands_implicit_grants() -> None:
+    auth = JwtAuth(secret=_SECRET)
+    user = {"sub": "u1", "permissions": ["customers:manage"]}
+    assert await auth.has_permission(user, "customers:write") is True
+    assert await auth.has_permission(user, "customers:read") is True
+
+
+async def test_has_permission_accepts_perms_alias() -> None:
+    auth = JwtAuth(secret=_SECRET)
+    user = {"sub": "u1", "perms": ["work:read"]}
+    assert await auth.has_permission(user, "work:read") is True
+
+
+async def test_has_permission_denies_anonymous() -> None:
+    auth = JwtAuth(secret=_SECRET)
+    assert await auth.has_permission(None, "customers:read") is False
+    assert await auth.has_permission({}, "customers:read") is False
+
+
+async def test_contract_version_is_v1_1() -> None:
+    from causeway.contracts import AuthProvider
+
+    auth = JwtAuth(secret=_SECRET)
+    assert auth.contract_version == "v1.1"
+    assert isinstance(auth, AuthProvider)
+
+
 async def test_lifecycle_methods() -> None:
     auth = JwtAuth(secret=_SECRET)
     await auth.startup(None)

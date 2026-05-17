@@ -10,10 +10,11 @@ from __future__ import annotations
 from typing import Any, ClassVar
 
 import jwt
+from causeway.auth import check_permission
 
 
 class JwtAuth:
-    contract_version: ClassVar[str] = "v1.0"
+    contract_version: ClassVar[str] = "v1.1"
 
     def __init__(
         self,
@@ -62,6 +63,21 @@ class JwtAuth:
             )
         except jwt.InvalidTokenError:
             return None
+
+    async def has_permission(self, user: Any, perm: str) -> bool:
+        """Check ``perm`` against the ``permissions`` claim on the JWT.
+
+        Apps that resolve permissions from a database (role membership, etc.)
+        should subclass and override — the JWT plugin only knows about claims.
+        """
+        if user is None:
+            return False
+        granted: set[str] = set()
+        if isinstance(user, dict):
+            raw = user.get("permissions") or user.get("perms") or ()
+            if isinstance(raw, (list, tuple, set)):
+                granted = {str(p) for p in raw}
+        return check_permission(granted, perm)
 
 
 def plugin(settings: Any) -> None:
