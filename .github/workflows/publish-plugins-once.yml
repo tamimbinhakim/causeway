@@ -1,56 +1,63 @@
 name: Publish plugins (one-shot)
 
-# Recovery workflow: the remaining 4 plugins that still need a first PyPI
-# release after the rate-limit window. Configure a trusted publisher for
-# each on PyPI before running. Triggered manually once; delete this file
-# after the plugins land on PyPI.
+# Recovery workflow for ad-hoc PyPI releases when release-please skipped a
+# package (e.g. it landed the bump but didn't tag). Triggered manually with
+# the package path; reads the version from the package's pyproject.toml,
+# builds, publishes via OIDC, then tags + creates a GitHub release.
 
 on:
   workflow_dispatch:
+    inputs:
+      path:
+        description: "Package path under packages/ (e.g. causeway-auth-jwt)"
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   publish:
-    name: Publish ${{ matrix.path }}
+    name: Publish ${{ inputs.path }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
     environment: pypi
-    strategy:
-      fail-fast: false
-      # Serialize uploads — PyPI rate-limits new project creation.
-      max-parallel: 1
-      matrix:
-        path:
-          - packages/causeway-deploy-fly
-          - packages/causeway-mailer-smtp
-          - packages/causeway-storage-fs
-          - packages/causeway-tasks-dramatiq
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v7.1.1
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
         with:
           python-version: "3.13"
+
+      - name: Read version
+        id: ver
+        working-directory: packages/${{ inputs.path }}
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.+)"/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build
-        working-directory: ${{ matrix.path }}
+        working-directory: packages/${{ inputs.path }}
         run: uv build
+
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
-          packages-dir: ${{ matrix.path }}/dist
+          packages-dir: packages/${{ inputs.path }}/dist
+
       - name: Tag and release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          NAME=$(basename "${{ matrix.path }}")
-          TAG="${NAME}-v0.1.0"
+          NAME="${{ inputs.path }}"
+          VERSION="${{ steps.ver.outputs.version }}"
+          TAG="${NAME}-v${VERSION}"
           git tag "$TAG"
           git push origin "$TAG"
           gh release create "$TAG" \
             --title "$TAG" \
-            --notes "Initial release of \`$NAME\` 0.1.0. See packages/$NAME/CHANGELOG.md." \
+            --notes "Release of \`$NAME\` $VERSION. See packages/$NAME/CHANGELOG.md." \
             --target main
