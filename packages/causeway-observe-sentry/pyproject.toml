@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-observe-sentry"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sentry error-tracking integration for Causeway."
 readme = "README.md"
 license = { text = "MIT" }
