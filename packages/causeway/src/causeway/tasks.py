@@ -10,14 +10,18 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import json
 import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, ClassVar, Literal
+from datetime import date, datetime
+from decimal import Decimal
+from functools import wraps
+from typing import Any, ClassVar, Literal, get_type_hints
+from uuid import UUID
 
 _log = logging.getLogger("causeway.tasks")
 
@@ -79,16 +83,23 @@ def task(
     forcing users through ``.enqueue(...)``. That keeps the failure mode
     obvious: you can't accidentally execute a task in-band by forgetting
     the ``.enqueue``.
+
+    Task args are JSON-serialized by :func:`_encode`. UUID / datetime / date /
+    Decimal values survive the wire as their string forms; the decorator reads
+    the function's type hints once and casts incoming string args back to the
+    annotated type before calling the body. Untyped args pass through unchanged,
+    so existing tasks keep working.
     """
 
     def decorator(fn: Callable[..., Awaitable[Any]]) -> TaskRef:
+        wrapped = _wrap_with_coercion(fn)
         ref = TaskRef(
             module=getattr(fn, "__module__", "?"),
             name=fn.__name__,
             queue=queue,
             retries=retries,
             backoff=backoff,
-            fn=fn,
+            fn=wrapped,
         )
         key = f"{ref.module}.{ref.name}"
         _registered_tasks[key] = ref
@@ -146,13 +157,79 @@ def _active_adapter() -> Any:
         raise RuntimeError(msg) from exc
 
 
+_DEFAULT_ENCODERS: dict[type, Callable[[Any], Any]] = {
+    UUID: str,
+    datetime: lambda v: v.isoformat(),
+    date: lambda v: v.isoformat(),
+    Decimal: str,
+}
+
+
+_DEFAULT_DECODERS: dict[type, Callable[[Any], Any]] = {
+    UUID: lambda v: v if isinstance(v, UUID) else UUID(v),
+    datetime: lambda v: v if isinstance(v, datetime) else datetime.fromisoformat(v),
+    date: lambda v: v if isinstance(v, date) else date.fromisoformat(v),
+    Decimal: lambda v: v if isinstance(v, Decimal) else Decimal(v),
+}
+
+
+def _json_default(value: Any) -> Any:
+    for cls, enc in _DEFAULT_ENCODERS.items():
+        if isinstance(value, cls):
+            return enc(value)
+    msg = f"unencodable task arg: {type(value).__name__}"
+    raise TypeError(msg)
+
+
 def _encode(args: tuple[Any, ...], kwargs: dict[str, Any]) -> bytes:
-    return json.dumps({"args": list(args), "kwargs": kwargs}).encode()
+    return json.dumps(
+        {"args": list(args), "kwargs": kwargs}, default=_json_default
+    ).encode()
 
 
 def _decode(payload: bytes) -> tuple[tuple[Any, ...], dict[str, Any]]:
     data = json.loads(payload)
     return tuple(data.get("args", [])), data.get("kwargs", {})
+
+
+def _wrap_with_coercion(
+    fn: Callable[..., Awaitable[Any]],
+) -> Callable[..., Awaitable[Any]]:
+    """Wrap ``fn`` so JSON-decoded args are cast to their annotated types.
+
+    JSON has no native UUID / datetime / Decimal — those round-trip as strings.
+    Reading hints once at registration time keeps the call-time path cheap;
+    functions whose args are all plain JSON-friendly types get no wrapper.
+    """
+    try:
+        hints = get_type_hints(fn)
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError, NameError):
+        return fn
+
+    coercers: dict[str, Callable[[Any], Any]] = {}
+    for name in sig.parameters:
+        ann = hints.get(name)
+        coercer = _DEFAULT_DECODERS.get(ann) if ann is not None else None
+        if coercer is not None:
+            coercers[name] = coercer
+
+    if not coercers:
+        return fn
+
+    @wraps(fn)
+    async def coerced(*args: Any, **kwargs: Any) -> Any:
+        try:
+            bound = sig.bind_partial(*args, **kwargs)
+        except TypeError:
+            return await fn(*args, **kwargs)
+        for name, value in bound.arguments.items():
+            c = coercers.get(name)
+            if c is not None and value is not None:
+                bound.arguments[name] = c(value)
+        return await fn(*bound.args, **bound.kwargs)
+
+    return coerced
 
 
 @dataclass(slots=True)

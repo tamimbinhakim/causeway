@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -156,3 +159,120 @@ def test_cron_parser_step_field() -> None:
     # */5 fires at 0, 5, 10, ... — from 12:01 the next is 12:05.
     delay = next_fire("*/5 * * * *", _dt(2026, 1, 1, 12, 1, 0))
     assert delay == 4 * 60.0
+
+
+# ---- typed-arg coercion -----------------------------------------------------
+
+
+async def test_uuid_arg_survives_round_trip(adapter: InMemoryAdapter) -> None:
+    """``enqueue(UUID(...))`` and ``async def handler(id: UUID)`` both work."""
+
+    received: list[Any] = []
+
+    @task()
+    async def process(customer_id: UUID) -> None:
+        received.append(customer_id)
+
+    cid = uuid4()
+    async with tasks_eager():
+        await process.enqueue(cid)
+
+    assert len(received) == 1
+    assert isinstance(received[0], UUID)
+    assert received[0] == cid
+
+
+async def test_datetime_and_decimal_coerce(adapter: InMemoryAdapter) -> None:
+    received: list[Any] = []
+
+    @task()
+    async def charge(when: datetime, amount: Decimal) -> None:
+        received.append((when, amount))
+
+    now = datetime(2026, 1, 2, 3, 4, 5)
+    amount = Decimal("123.45")
+    async with tasks_eager():
+        await charge.enqueue(now, amount)
+
+    assert received == [(now, amount)]
+
+
+async def test_date_coerces_separately_from_datetime(
+    adapter: InMemoryAdapter,
+) -> None:
+    received: list[Any] = []
+
+    @task()
+    async def expire(on: date) -> None:
+        received.append(on)
+
+    async with tasks_eager():
+        await expire.enqueue(date(2026, 5, 17))
+
+    assert received == [date(2026, 5, 17)]
+    assert not isinstance(received[0], datetime)
+
+
+async def test_untyped_args_pass_through(adapter: InMemoryAdapter) -> None:
+    """A task with no recognized annotations gets no wrapper — args arrive raw."""
+
+    received: list[Any] = []
+
+    @task()
+    async def noop(payload: dict[str, Any]) -> None:
+        received.append(payload)
+
+    async with tasks_eager():
+        await noop.enqueue({"k": "v"})
+
+    assert received == [{"k": "v"}]
+
+
+async def test_optional_arg_passes_none_through(adapter: InMemoryAdapter) -> None:
+    received: list[Any] = []
+
+    @task()
+    async def maybe(id: UUID, hint: str | None = None) -> None:
+        received.append((id, hint))
+
+    cid = uuid4()
+    async with tasks_eager():
+        await maybe.enqueue(cid)
+        await maybe.enqueue(cid, hint="x")
+
+    assert received == [(cid, None), (cid, "x")]
+
+
+async def test_string_arg_still_coerces_to_uuid(adapter: InMemoryAdapter) -> None:
+    """Callers that pass ``str(uuid)`` (legacy code, queue replays) still work."""
+
+    received: list[Any] = []
+
+    @task()
+    async def legacy(id: UUID) -> None:
+        received.append(id)
+
+    cid = uuid4()
+    async with tasks_eager():
+        await legacy.enqueue(str(cid))
+
+    assert received == [cid]
+    assert isinstance(received[0], UUID)
+
+
+def test_unencodable_arg_raises_typeerror() -> None:
+    """Unknown types surface as a clear ``TypeError`` from the encoder."""
+
+    class CustomThing:
+        pass
+
+    @task()
+    async def takes_thing(t: Any) -> None:
+        pass
+
+    # _encode is called inside .enqueue(); easier to assert by invoking it
+    # directly with the same shape.
+    from causeway.tasks import _encode
+
+    with pytest.raises(TypeError, match="unencodable"):
+        _encode((CustomThing(),), {})
