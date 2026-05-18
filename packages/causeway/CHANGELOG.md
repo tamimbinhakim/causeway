@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.0...causeway-v0.3.1) (2026-05-18)
+
+
+### Features
+
+* **causeway:** auto-coerce typed task args via annotations ([a3d9bb9](https://github.com/tamimbinhakim/causeway/commit/a3d9bb9f960e5e5997cef990811f698fa4427952))
+
 ## [0.3.0](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.2.1...causeway-v0.3.0) (2026-05-17)
 
 

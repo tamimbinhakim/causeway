@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-deploy-modal"
-version = "0.2.0"
+version = "0.3.0"
 description = "Modal deploy target for Causeway."
 readme = "README.md"
 license = { text = "MIT" }
