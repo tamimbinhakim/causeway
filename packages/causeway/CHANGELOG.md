@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.1...causeway-v0.3.2) (2026-05-18)
+
+
+### Bug Fixes
+
+* **causeway:** exercise class middleware in TestApp; correct codegen entry ([d54a7f4](https://github.com/tamimbinhakim/causeway/commit/d54a7f48f3710729335f131202c8ca3110be0268))
+
 ## [0.3.1](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.0...causeway-v0.3.1) (2026-05-18)
 
 

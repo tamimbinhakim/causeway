@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-deploy-docker"
-version = "0.3.0"
+version = "0.4.0"
 description = "Docker deploy target: emit a Dockerfile and compose.yaml."
 readme = "README.md"
 license = { text = "MIT" }
