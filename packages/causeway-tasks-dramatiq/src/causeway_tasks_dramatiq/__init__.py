@@ -29,7 +29,7 @@ class DramatiqAdapter:
     pin the floor to 100 ms to match the in-memory adapter).
     """
 
-    contract_version: ClassVar[str] = "v1.0"
+    contract_version: ClassVar[str] = "v1.1"
 
     def __init__(self, broker_url: str) -> None:
         self.broker_url = broker_url
@@ -123,6 +123,17 @@ class DramatiqAdapter:
         msg = (
             "Dramatiq doesn't expose results without the Results middleware. "
             "Enable it on the broker or use a TaskAdapter that does."
+        )
+        raise NotImplementedError(msg)
+
+    async def cancel(self, task_id: str, *, grace: float = 5.0) -> bool:
+        # Dramatiq has no first-class cancel for in-flight messages; the worker
+        # would need a cooperative protocol on top of the broker. Surface that
+        # honestly rather than pretending the call did something.
+        del task_id, grace
+        msg = (
+            "DramatiqAdapter does not implement cancel(); cancellation requires "
+            "a coordinated worker protocol on top of the broker."
         )
         raise NotImplementedError(msg)
 

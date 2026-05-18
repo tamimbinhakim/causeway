@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -15,8 +15,10 @@ from causeway.tasks import (
     InMemoryAdapter,
     TaskRef,
     _clear,
+    cancel_requested,
     cron,
     cron_jobs,
+    raise_if_cancelled,
     registered_tasks,
     set_adapter,
     task,
@@ -258,6 +260,112 @@ async def test_string_arg_still_coerces_to_uuid(adapter: InMemoryAdapter) -> Non
 
     assert received == [cid]
     assert isinstance(received[0], UUID)
+
+
+# ---- cancellation -----------------------------------------------------------
+
+
+async def test_cancel_unknown_id_returns_false(adapter: InMemoryAdapter) -> None:
+    assert await adapter.cancel("does-not-exist") is False
+
+
+async def test_cancel_after_complete_returns_false(adapter: InMemoryAdapter) -> None:
+    @task()
+    async def quick() -> str:
+        return "done"
+
+    task_id = await quick.enqueue()
+    await adapter.result(task_id)
+    assert (await adapter.status(task_id)).state == "complete"
+    assert await adapter.cancel(task_id) is False
+
+
+async def test_cooperative_cancel_exits_cleanly(adapter: InMemoryAdapter) -> None:
+    """A task that polls ``cancel_requested`` exits before the grace expires."""
+
+    started = asyncio.Event()
+    iterations: list[int] = []
+
+    @task()
+    async def loop_until_cancelled() -> None:
+        started.set()
+        for i in range(1000):
+            if cancel_requested():
+                return
+            iterations.append(i)
+            await asyncio.sleep(0.01)
+
+    task_id = await loop_until_cancelled.enqueue()
+    await started.wait()
+    assert await adapter.cancel(task_id, grace=1.0) is True
+
+    state = await adapter.status(task_id)
+    assert state.state == "cancelled"
+    # The body returned normally, so the future carries no exception.
+    # ``iterations`` should be far short of the 1000 loop bound.
+    assert len(iterations) < 1000
+
+
+async def test_raise_if_cancelled_marks_state_cancelled(adapter: InMemoryAdapter) -> None:
+    started = asyncio.Event()
+
+    @task()
+    async def loop_with_checkpoints() -> None:
+        started.set()
+        for _ in range(1000):
+            await raise_if_cancelled()
+            await asyncio.sleep(0.01)
+
+    task_id = await loop_with_checkpoints.enqueue()
+    await started.wait()
+    assert await adapter.cancel(task_id, grace=1.0) is True
+
+    state = await adapter.status(task_id)
+    assert state.state == "cancelled"
+    with pytest.raises(asyncio.CancelledError):
+        await adapter.result(task_id)
+
+
+async def test_hard_fallback_when_body_ignores_flag(adapter: InMemoryAdapter) -> None:
+    """A task that never checks the flag is hard-cancelled after the grace."""
+
+    started = asyncio.Event()
+
+    @task()
+    async def stubborn() -> None:
+        started.set()
+        # Never polls cancel_requested; only a hard cancel will stop it.
+        await asyncio.sleep(60)
+
+    task_id = await stubborn.enqueue()
+    await started.wait()
+    assert await adapter.cancel(task_id, grace=0.05) is True
+
+    state = await adapter.status(task_id)
+    assert state.state == "cancelled"
+
+
+async def test_cancel_before_scheduled_dispatch(adapter: InMemoryAdapter) -> None:
+    """Cancelling a scheduled task before its delay elapses skips dispatch."""
+
+    ran = False
+
+    @task()
+    async def later() -> None:
+        nonlocal ran
+        ran = True
+
+    from datetime import timedelta
+
+    when = datetime.now(UTC) + timedelta(seconds=10)
+    task_id = await later.schedule(when)
+    assert await adapter.cancel(task_id) is True
+
+    state = await adapter.status(task_id)
+    assert state.state == "cancelled"
+    # Give the scheduled wrapper a chance to wake up; it should bail.
+    await asyncio.sleep(0.05)
+    assert ran is False
 
 
 def test_unencodable_arg_raises_typeerror() -> None:

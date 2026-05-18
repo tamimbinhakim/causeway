@@ -45,6 +45,7 @@ Per-concept guides for everything you do day-to-day.
 - **[Configuration](./building/config/index.md)** — `Settings`, `causeway.toml`, secrets.
 - **[Plugins](./building/plugins/index.md)** — install adapters, write your own.
 - **[Background tasks](./building/tasks/index.md)** — `@task`, `@cron`, adapter swap.
+- **[Events](./building/events/index.md)** — file-based listeners and `emit` for in-process fan-out.
 - **[Testing](./building/testing/index.md)** — `TestApp`, inline scenarios, snapshots.
 - **[Observability](./building/observability/index.md)** — request IDs, structured logs, OTel.
 - **[Typed client](./building/typed-client/index.md)** — what's in `client.ts` and how to consume it.
@@ -56,7 +57,7 @@ Per-concept guides for everything you do day-to-day.
 Per-symbol pages.
 
 - **[Decorators](./api-reference/decorators/get.md)** — `@get`, `@post`, …, `@task`, `@cron`, `@provide`, `@guard`, `@raises`.
-- **[Functions](./api-reference/functions/create-app.md)** — `create_app`, `register`, `env`, `configure_logging`, `configure_otel`, `tasks_eager`, `discover`.
+- **[Functions](./api-reference/functions/create-app.md)** — `create_app`, `register`, `env`, `configure_logging`, `configure_otel`, `emit`, `tasks_eager`, `discover`.
 - **[Classes](./api-reference/classes/Middleware.md)** — `Middleware`, `Settings`, `Manifest`, `TestApp`, `RequestIdMiddleware`, `TaskRef`, `TaskState`, contracts, errors.
 - **[CLI](./api-reference/cli/index.md)** — `causeway new`, `dev`, `build` (with `--binary`), `freeze`, `plugins`, `plugin new`, `diff`, `deploy`, `version`.
 - **[File conventions](./api-reference/file-conventions/index.md)** — `index.py`, `[name].py`, `$name`, `(group)/`, `_middleware.py`, `_scope.py`, `causeway.toml`.

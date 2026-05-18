@@ -32,7 +32,7 @@ Backoff = Literal["fixed", "linear", "exponential"]
 class TaskState:
     """Snapshot returned by ``adapter.status()``."""
 
-    state: Literal["pending", "running", "complete", "failed"]
+    state: Literal["pending", "running", "complete", "failed", "cancelled"]
     result: Any = None
     error: str | None = None
 
@@ -157,6 +157,35 @@ def _active_adapter() -> Any:
         raise RuntimeError(msg) from exc
 
 
+# Adapters install a per-run probe here so the task body can poll
+# ``cancel_requested()`` without holding a reference to the adapter. The
+# default returns False so calls outside a task body are harmless.
+_cancel_check_var: ContextVar[Callable[[], bool]] = ContextVar(
+    "_causeway_cancel_check", default=lambda: False
+)
+
+
+def cancel_requested() -> bool:
+    """Return True if cancellation has been requested for the current task.
+
+    Long-running task bodies should poll this between units of work and exit
+    cleanly when it flips. Outside a task (or for adapters that don't support
+    cancellation) it always returns False.
+    """
+    return _cancel_check_var.get()()
+
+
+async def raise_if_cancelled() -> None:
+    """Raise :class:`asyncio.CancelledError` if cancellation was requested.
+
+    Convenience for tasks that prefer the "checkpoint" pattern over checking
+    a boolean. The adapter recognizes ``CancelledError`` and transitions the
+    task to ``cancelled`` instead of ``failed``.
+    """
+    if cancel_requested():
+        raise asyncio.CancelledError
+
+
 _DEFAULT_ENCODERS: dict[type, Callable[[Any], Any]] = {
     UUID: str,
     datetime: lambda v: v.isoformat(),
@@ -236,6 +265,10 @@ class _RunRecord:
     fut: asyncio.Future[Any] = field(
         default_factory=lambda: asyncio.get_event_loop().create_future()
     )
+    # The asyncio.Task running the body. ``cancel()`` hard-cancels it after
+    # the cooperative grace window expires.
+    runner: asyncio.Task[Any] | None = None
+    cancel_requested: bool = False
 
 
 class InMemoryAdapter:
@@ -250,7 +283,7 @@ class InMemoryAdapter:
     ``exponential`` with a 100 ms base.
     """
 
-    contract_version: ClassVar[str] = "v1.0"
+    contract_version: ClassVar[str] = "v1.1"
 
     def __init__(self) -> None:
         self._records: dict[str, _RunRecord] = {}
@@ -258,10 +291,14 @@ class InMemoryAdapter:
         self._inflight: set[asyncio.Task[None]] = set()
         self._eager = False
 
-    def _spawn(self, coro: Awaitable[None]) -> None:
-        t = asyncio.create_task(coro)  # type: ignore[arg-type]
-        self._inflight.add(t)
-        t.add_done_callback(self._inflight.discard)
+    def _track(self, record: _RunRecord, coro: Awaitable[None]) -> asyncio.Task[None]:
+        """Create an asyncio task for ``coro``, record it on ``record`` for cancel,
+        and keep a strong reference so the event loop doesn't garbage-collect it."""
+        runner = asyncio.create_task(coro)  # type: ignore[arg-type]
+        record.runner = runner
+        self._inflight.add(runner)
+        runner.add_done_callback(self._inflight.discard)
+        return runner
 
     async def startup(self, settings: Any) -> None:
         set_adapter(self)
@@ -289,7 +326,7 @@ class InMemoryAdapter:
         if self._eager:
             await coro
         else:
-            self._spawn(coro)
+            self._track(record, coro)
         return task_id
 
     async def schedule(self, task: TaskRef, when: datetime, payload: bytes) -> str:
@@ -300,9 +337,12 @@ class InMemoryAdapter:
 
         async def later() -> None:
             await asyncio.sleep(delay)
+            # Cancelled while still in the sleep window — skip dispatch.
+            if record.cancel_requested:
+                return
             await self._run(task, task_id, payload)
 
-        self._spawn(later())
+        self._track(record, later())
         return task_id
 
     async def cron(self, task: TaskRef, expr: str) -> None:
@@ -326,6 +366,47 @@ class InMemoryAdapter:
             return TaskState(state="failed", error=f"unknown task {task_id}")
         return record.state
 
+    async def cancel(self, task_id: str, *, grace: float = 5.0) -> bool:
+        """Request cancellation of ``task_id``.
+
+        Cooperative first: flips a flag the body polls via
+        ``cancel_requested()`` / ``raise_if_cancelled()``. If the task is still
+        running after ``grace`` seconds, hard-cancel the underlying
+        ``asyncio.Task``. Returns True if a cancel was issued, False if the
+        task is unknown or already terminal.
+        """
+        record = self._records.get(task_id)
+        if record is None:
+            return False
+        if record.state.state in ("complete", "failed", "cancelled"):
+            return False
+        record.cancel_requested = True
+
+        # If the runner is still queued (``schedule()`` sleep window), tear it
+        # down now so the body never starts and status() reflects the cancel.
+        if record.state.state == "pending" and record.runner is not None:
+            record.runner.cancel()
+            record.state = TaskState(state="cancelled")
+            return True
+
+        runner = record.runner
+        if runner is None or runner.done():
+            if record.state.state != "cancelled":
+                record.state = TaskState(state="cancelled")
+            return True
+
+        try:
+            await asyncio.wait_for(asyncio.shield(runner), timeout=grace)
+        except TimeoutError:
+            runner.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await runner
+        except (asyncio.CancelledError, Exception):
+            # Body finished (cleanly or with an error) within the grace window;
+            # _run already wrote the terminal state.
+            pass
+        return True
+
     async def result(self, task_id: str) -> Any:
         record = self._records.get(task_id)
         if record is None:
@@ -341,26 +422,47 @@ class InMemoryAdapter:
             return
         args, kwargs = _decode(payload)
         record.state = TaskState(state="running")
+        # Bind the cancel probe so the body's ``cancel_requested()`` /
+        # ``raise_if_cancelled()`` calls see this record.
+        token = _cancel_check_var.set(lambda: record.cancel_requested)
         attempt = 0
         last_exc: BaseException | None = None
-        while attempt <= task.retries:
-            try:
-                result = await task.fn(*args, **kwargs)
-            except Exception as exc:
-                last_exc = exc
-                if attempt == task.retries:
-                    break
-                await asyncio.sleep(_backoff_delay(task.backoff, attempt))
-                attempt += 1
-                continue
-            record.state = TaskState(state="complete", result=result)
+        try:
+            while attempt <= task.retries:
+                try:
+                    result = await task.fn(*args, **kwargs)
+                except asyncio.CancelledError:
+                    # Cooperative raise or hard cancel — either way terminal,
+                    # not a retry candidate.
+                    record.state = TaskState(state="cancelled")
+                    if not record.fut.done():
+                        record.fut.set_exception(asyncio.CancelledError())
+                    return
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt == task.retries:
+                        break
+                    await asyncio.sleep(_backoff_delay(task.backoff, attempt))
+                    attempt += 1
+                    continue
+                # Body returned cleanly after seeing the cancel flag — record
+                # it as a cancel so callers can tell "you stopped because I
+                # asked" apart from "you finished the work."
+                if record.cancel_requested:
+                    record.state = TaskState(state="cancelled")
+                    if not record.fut.done():
+                        record.fut.set_exception(asyncio.CancelledError())
+                else:
+                    record.state = TaskState(state="complete", result=result)
+                    if not record.fut.done():
+                        record.fut.set_result(result)
+                return
+            record.state = TaskState(state="failed", error=str(last_exc))
             if not record.fut.done():
-                record.fut.set_result(result)
-            return
-        record.state = TaskState(state="failed", error=str(last_exc))
-        if not record.fut.done():
-            assert last_exc is not None
-            record.fut.set_exception(last_exc)
+                assert last_exc is not None
+                record.fut.set_exception(last_exc)
+        finally:
+            _cancel_check_var.reset(token)
 
     async def _cron_loop(self, task: TaskRef, expr: str) -> None:
         try:
@@ -394,8 +496,10 @@ __all__ = [
     "InMemoryAdapter",
     "TaskRef",
     "TaskState",
+    "cancel_requested",
     "cron",
     "cron_jobs",
+    "raise_if_cancelled",
     "registered_tasks",
     "set_adapter",
     "task",

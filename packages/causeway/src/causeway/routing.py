@@ -11,12 +11,13 @@ mutates the App.
 
 from __future__ import annotations
 
-import importlib.util
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
+from causeway._loader import import_path
+from causeway._loader import reset_module_cache as _reset_module_cache
 from causeway._methods import HttpMethod, method_of
 from causeway._paths import url_for
 from causeway.middleware import Middleware, is_guard
@@ -189,35 +190,13 @@ def _check_method_conflicts(routes: list[DiscoveredRoute]) -> None:
         seen[key] = r.source
 
 
-_module_cache: dict[Path, Any] = {}
-
-
 def _import_path(file: Path) -> Any:
-    """Load a Python file by path, cached by resolved physical path.
-
-    Caching matters so the router and any handler that imports a scope file
-    end up with the same module instance — provider identity comparisons
-    in :func:`_bind_providers` rely on it.
-    """
-    resolved = file.resolve()
-    cached = _module_cache.get(resolved)
-    if cached is not None:
-        return cached
-    label = file.with_suffix("").as_posix().replace("/", ".").replace("[", "_").replace("]", "_")
-    module_name = f"_causeway_routes_{label}"
-    spec = importlib.util.spec_from_file_location(module_name, file)
-    if spec is None or spec.loader is None:
-        msg = f"could not build import spec for {file}"
-        raise ImportError(msg)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    _module_cache[resolved] = module
-    return module
+    return import_path(file, label_prefix="_causeway_routes")
 
 
 def reset_module_cache() -> None:
     """Drop the import cache. Hot-reload calls this between scans."""
-    _module_cache.clear()
+    _reset_module_cache()
 
 
 def _decorator_for(app: App, method: HttpMethod) -> Callable[[str], Callable[[Handler], Handler]]:

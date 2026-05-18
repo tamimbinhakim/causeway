@@ -122,17 +122,88 @@ This is part of the `TaskAdapter` contract — adapters that can't provide eager
 
 ```python
 task_id = await send_welcome.enqueue(user_id)
-state = await adapter.status(task_id)          # "pending" | "running" | "complete" | "failed"
+state = await adapter.status(task_id)          # "pending" | "running" | "complete" | "failed" | "cancelled"
 result = await adapter.result(task_id)          # blocks until the task is done
 ```
 
 The result surface is intentionally small. For workflows / DAGs, reach for Temporal / Prefect — Causeway isn't trying to be a workflow engine.
 
+## Cancellation
+
+Long-running tasks can be cancelled by id. The model is **cooperative first, hard fallback after a grace window** — so well-behaved tasks get to release resources, and stuck tasks still stop.
+
+```python
+from causeway.tasks import cancel_requested, raise_if_cancelled, task
+
+
+@task()
+async def reindex_everything() -> None:
+    async for doc in stream_docs():
+        if cancel_requested():
+            return                    # exit cleanly; adapter marks state="cancelled"
+        await search.index(doc)
+```
+
+Or with the checkpoint shorthand:
+
+```python
+@task()
+async def reindex_everything() -> None:
+    async for doc in stream_docs():
+        await raise_if_cancelled()    # raises asyncio.CancelledError at checkpoints
+        await search.index(doc)
+```
+
+Asking for a cancel:
+
+```python
+ok: bool = await adapter.cancel(task_id, grace=5.0)
+```
+
+- Cooperative path: `cancel_requested()` flips to `True`; the body returns or `raise_if_cancelled()` raises. State transitions to `"cancelled"`; awaiting `adapter.result(task_id)` raises `asyncio.CancelledError`.
+- Hard fallback: if the body never checks the flag, the adapter cancels the underlying `asyncio.Task` once `grace` seconds elapse.
+- Cancelling a `schedule()`'d task before its delay expires skips dispatch entirely.
+- Cancelling an unknown id or an already-terminal task returns `False`.
+
+Wiring it into an HTTP surface. Keep a reference to the adapter you registered in `plugins.py` and import it from your handlers:
+
+```python
+# src/app/plugins.py
+from causeway import register
+from causeway.tasks import InMemoryAdapter
+
+task_adapter = InMemoryAdapter()
+register(task_adapter)
+```
+
+```python
+# src/app/routes/jobs/[id].py
+from app.plugins import task_adapter
+from causeway import delete, get
+from causeway.errors import NotFound
+from causeway.tasks import TaskState
+
+
+@delete
+async def cancel_job(id: str) -> dict:
+    cancelled = await task_adapter.cancel(id, grace=2.0)
+    if not cancelled:
+        raise NotFound("job not found or already done")
+    return {"status": "cancelled"}
+
+
+@get
+async def job_status(id: str) -> TaskState:
+    return await task_adapter.status(id)
+```
+
+> Adapter support: `InMemoryAdapter` implements cancel natively. Adapters that don't have a coordinated worker protocol (e.g. `DramatiqAdapter` without a custom middleware) raise `NotImplementedError` — that's intentional rather than pretending the call did something.
+
 ## Contract shape
 
 ```python
 class TaskAdapter(Protocol):
-    contract_version: ClassVar[str] = "v1.0"
+    contract_version: ClassVar[str] = "v1.1"
 
     async def enqueue(self, task: TaskRef, payload: bytes) -> str: ...
     async def schedule(self, task: TaskRef, when: datetime, payload: bytes) -> str: ...
@@ -140,6 +211,7 @@ class TaskAdapter(Protocol):
     def eager(self) -> AsyncContextManager[None]: ...
     async def status(self, task_id: str) -> TaskStatus: ...
     async def result(self, task_id: str) -> Any: ...
+    async def cancel(self, task_id: str, *, grace: float = 5.0) -> bool: ...
 ```
 
 Small on purpose. Real adapters layer their own features (Dramatiq middleware, Celery workflows, Arq pipelines) under the same surface.
@@ -155,4 +227,5 @@ Small on purpose. Real adapters layer their own features (Dramatiq middleware, C
 - [Reference — `@task`](../../api-reference/decorators/task.md)
 - [Reference — `@cron`](../../api-reference/decorators/cron.md)
 - [Reference — `TaskRef`](../../api-reference/classes/TaskRef.md)
+- [Reference — `cancel_requested`](../../api-reference/functions/cancel-requested.md) / [`raise_if_cancelled`](../../api-reference/functions/raise-if-cancelled.md)
 - [Testing](../testing/index.md)

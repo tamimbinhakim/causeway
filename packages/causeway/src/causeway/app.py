@@ -20,6 +20,7 @@ from starlette.middleware import Middleware as StarletteMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Mount
 
+import causeway.events as _events
 from causeway.diagnostics import attach as attach_diagnostics
 from causeway.errors import error_renderer
 from causeway.health import attach as attach_health
@@ -31,6 +32,7 @@ from causeway.routing import Discovered, discover, register
 def create_app(
     routes_root: str | Path = "app/routes",
     *,
+    events_root: str | Path = "app/events",
     settings: Any = None,
     diagnostics: bool = True,
     request_id: bool = True,
@@ -43,10 +45,16 @@ def create_app(
     Errors raised from inside any handler land in the problem+json renderer.
     Health endpoints (``/healthz``, ``/readyz``) attach unconditionally; the
     diagnostics endpoint (``/__causeway``) is opt-out via ``diagnostics=False``.
+
+    If ``events_root`` exists, files in it are discovered as event listeners
+    and a default :class:`~causeway.events.InMemoryEventBus` is installed.
+    Missing folder = no event bus = ``await emit(...)`` raises.
     """
     found = discover(routes_root)
+    events = _discover_events(events_root)
     return _assemble(
         found,
+        events=events,
         settings=settings,
         diagnostics=diagnostics,
         request_id=request_id,
@@ -57,6 +65,7 @@ def create_app(
 def create_app_frozen(
     found: Discovered,
     *,
+    events: _events.Discovered | None = None,
     settings: Any = None,
     diagnostics: bool = False,
     request_id: bool = True,
@@ -71,6 +80,7 @@ def create_app_frozen(
         diagnostics = False
     return _assemble(
         found,
+        events=events,
         settings=settings,
         diagnostics=diagnostics,
         request_id=request_id,
@@ -81,6 +91,7 @@ def create_app_frozen(
 def _assemble(
     found: Discovered,
     *,
+    events: _events.Discovered | None,
     settings: Any,
     diagnostics: bool,
     request_id: bool,
@@ -102,8 +113,15 @@ def _assemble(
     if error_renderer_:
         exception_handlers[Exception] = error_renderer
 
+    bus: _events.InMemoryEventBus | None = None
+    if events is not None:
+        bus = _events.InMemoryEventBus()
+
     @contextlib.asynccontextmanager
     async def lifespan(_: Any) -> AsyncIterator[None]:
+        if bus is not None and events is not None:
+            await bus.startup(settings)
+            bus.install(events)
         for hook in found.startup_hooks:
             await hook()
         try:
@@ -111,6 +129,8 @@ def _assemble(
         finally:
             for hook in found.shutdown_hooks:
                 await hook()
+            if bus is not None:
+                await bus.shutdown()
 
     return Starlette(
         routes=[Mount("/", app=inner)],
@@ -118,6 +138,13 @@ def _assemble(
         exception_handlers=exception_handlers,
         lifespan=lifespan,
     )
+
+
+def _discover_events(events_root: str | Path) -> _events.Discovered | None:
+    """Return the discovered events, or ``None`` if the folder is absent."""
+    if not Path(events_root).is_dir():
+        return None
+    return _events.discover(events_root)
 
 
 def _build_mode_is_binary() -> bool:

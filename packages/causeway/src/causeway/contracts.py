@@ -50,15 +50,20 @@ class TaskRef(Protocol):
 
 
 class TaskStatus(Protocol):
-    state: str  # "pending" | "running" | "complete" | "failed"
+    state: str  # "pending" | "running" | "complete" | "failed" | "cancelled"
     result: Any | None
 
 
 @runtime_checkable
 class TaskAdapter(Plugin, Protocol):
-    """Background-task broker contract."""
+    """Background-task broker contract.
 
-    contract_version: ClassVar[str] = "v1.0"
+    ``v1.1`` adds :meth:`cancel`. Plugin authors that haven't implemented it
+    can raise :class:`NotImplementedError`; callers should treat a False
+    return as "couldn't cancel" and fall through to status polling.
+    """
+
+    contract_version: ClassVar[str] = "v1.1"
 
     async def enqueue(self, task: TaskRef, payload: bytes) -> str: ...
     async def schedule(self, task: TaskRef, when: datetime, payload: bytes) -> str: ...
@@ -66,6 +71,34 @@ class TaskAdapter(Plugin, Protocol):
     def eager(self) -> AsyncContextManager[None]: ...
     async def status(self, task_id: str) -> TaskStatus: ...
     async def result(self, task_id: str) -> Any: ...
+
+    async def cancel(self, task_id: str, *, grace: float = 5.0) -> bool:
+        """Request cancellation of ``task_id``.
+
+        Cooperative first: the task body polls
+        :func:`causeway.tasks.cancel_requested` (or awaits
+        :func:`causeway.tasks.raise_if_cancelled`) and exits cleanly. If the
+        body is still running after ``grace`` seconds, the adapter hard-cancels
+        the underlying runner. Returns True if a cancel was issued, False if
+        the task is unknown or already terminal.
+        """
+        ...
+
+
+@runtime_checkable
+class EventBus(Plugin, Protocol):
+    """In-process event dispatcher contract.
+
+    Listeners are discovered from ``app/events/`` by
+    :func:`causeway.events.discover`. The bus fans a single :meth:`emit`
+    call out to every registered listener for the event name. Reference
+    implementation is :class:`causeway.events.InMemoryEventBus`; durable
+    buses (transactional outbox, Redis streams) ship as plugin packages.
+    """
+
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def emit(self, name: str, payload: Any) -> None: ...
 
 
 @runtime_checkable
@@ -311,6 +344,7 @@ __all__ = [
     "DBSession",
     "DeliveryState",
     "DeployTarget",
+    "EventBus",
     "FeatureFlags",
     "LogSink",
     "Mailer",

@@ -14,32 +14,35 @@ my-app/
     ├── config.py                # Settings(BaseSettings) — typed config
     ├── plugins.py               # register(DramatiqAdapter(...)), etc.
     ├── lifespan.py              # optional app-level startup / shutdown
-    └── routes/
-        ├── _middleware.py       # wraps every route below this folder
-        └── index.py             # GET /
+    ├── routes/
+    │   ├── _middleware.py       # wraps every route below this folder
+    │   └── index.py             # GET /
+    └── events/
+        └── example.created.py   # listeners for the `example:created` event
 ```
 
 Nothing in that tree is sacred — delete files you don't need, add the ones you do. The router only cares about what's under `src/app/routes/`.
 
 ## The files that matter
 
-| Path                  | What it is                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------ |
-| `causeway.toml`       | Manifest. `[client] expose_settings = [...]` is the allowlist for what flows to the TS client.   |
-| `src/app/config.py`   | Your `Settings(BaseSettings)` subclass and a `settings = Settings()` instance.                   |
-| `src/app/plugins.py`  | `register(...)` calls for adapter plugins (tasks, storage, auth, …).                             |
-| `src/app/lifespan.py` | Optional async `startup` / `shutdown` hooks for the whole app.                                   |
-| `src/app/routes/`     | The route table. Folder layout is the URL layout.                                                |
+| Path                  | What it is                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `causeway.toml`       | Manifest. `[client] expose_settings = [...]` is the allowlist for what flows to the TS client.                      |
+| `src/app/config.py`   | Your `Settings(BaseSettings)` subclass and a `settings = Settings()` instance.                                      |
+| `src/app/plugins.py`  | `register(...)` calls for adapter plugins (tasks, storage, auth, …).                                                |
+| `src/app/lifespan.py` | Optional async `startup` / `shutdown` hooks for the whole app.                                                      |
+| `src/app/routes/`     | The route table. Folder layout is the URL layout.                                                                   |
+| `src/app/events/`     | Event listeners. Filename → event name; every `async def` is a listener. See [Events](../building/events/index.md). |
 
 ## The route directory
 
 The router walks `src/app/routes/` once at boot and registers every handler it finds. Within the tree, three filename conventions are special:
 
-| File              | Role                                                                  |
-| ----------------- | --------------------------------------------------------------------- |
-| `_middleware.py`  | Wraps every route in the current subtree. Composes outermost → leaf.  |
-| `_scope.py`       | Declares request-scoped DI providers + optional lifespan hooks.       |
-| `_*.py`, `_*/`    | Private — colocated helpers, never routed.                            |
+| File             | Role                                                                 |
+| ---------------- | -------------------------------------------------------------------- |
+| `_middleware.py` | Wraps every route in the current subtree. Composes outermost → leaf. |
+| `_scope.py`      | Declares request-scoped DI providers + optional lifespan hooks.      |
+| `_*.py`, `_*/`   | Private — colocated helpers, never routed.                           |
 
 Anything else under `routes/` that ends in `.py` is a route file. The path becomes the URL via the [file conventions](../api-reference/file-conventions/index.md).
 

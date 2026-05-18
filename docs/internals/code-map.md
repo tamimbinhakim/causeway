@@ -8,7 +8,7 @@ Underscore-prefixed modules are internal (`_paths.py`, `_methods.py`, etc.) — 
 
 ## The public surface
 
-### `__init__.py` — 68 lines
+### `__init__.py` — 86 lines
 
 The public API re-export wall. Everything an application author types `from causeway import ...` for lives here:
 
@@ -16,6 +16,7 @@ The public API re-export wall. Everything an application author types `from caus
 - `Middleware`, `guard` — from `middleware.py`.
 - `provide` — from `scope.py`.
 - `task`, `cron`, `tasks_eager` — from `tasks.py`.
+- `emit`, `InMemoryEventBus`, `EventBus` — from `events.py` / `contracts.py`.
 - `Settings`, `Manifest` — from `config.py`.
 - `register`, `env` — from `plugins.py`.
 - `RequestIdMiddleware`, `configure_logging`, `configure_otel` — from `observability.py`.
@@ -23,9 +24,9 @@ The public API re-export wall. Everything an application author types `from caus
 
 When you add a new public symbol, **add it here too**. That's the contract.
 
-### `app.py` — 98 lines
+### `app.py` — 171 lines
 
-`create_app(routes_root, *, plugins=None, settings=None, manifest=None)` — the factory. Walks the routes tree, registers handlers, wires lifespan hooks, attaches health endpoints, returns a `dyadpy.App`. This is the thing `causeway dev` and your `pytest` fixtures both call.
+`create_app(routes_root, *, events_root="app/events", settings=None, ...)` — the factory. Walks the routes tree, optionally walks the events tree, registers handlers, wires lifespan hooks (including event-bus startup when `events_root` exists), attaches health endpoints, returns a Starlette app wrapping the inner `dyadpy.App`. This is the thing `causeway dev` and your `pytest` fixtures both call. The `create_app_frozen` sibling takes a pre-built `Discovered` for the binary build path.
 
 ### `config.py` — 107 lines
 
@@ -43,7 +44,7 @@ URL-pattern translation. Pure functions, no I/O.
 
 The leaf tokenizer is a regex (`_LEAF_TOKEN`) that splits on `.` but keeps `[...]` and `(...)` segments intact, so `[...rest]` doesn't get torn apart by the dot splitter.
 
-### `routing.py` — 360 lines
+### `routing.py` — 340 lines
 
 The walker, the loader, the binder. The biggest module in core, and the one most worth reading first.
 
@@ -55,9 +56,13 @@ Three phases:
 
 Three subtleties worth knowing if you're touching this file:
 
-- Modules are loaded with `importlib.util.spec_from_file_location`. The synthetic module name is `causeway._routes.<hash>` so dotted / bracketed filenames don't confuse Python's import system.
+- Modules are loaded via the shared `causeway._loader.import_path` helper (see below) so dotted / bracketed filenames don't confuse Python's import system, and so `routing.py` and `events.py` share one module cache.
 - Provider matching is by `(source_location, name)` — `[id]` files can be reloaded without losing provider identity.
 - The handler wrapper preserves dyadpy's view of the original signature (`__wrapped__`, `__annotations__`, `__globals__`) so string forward-refs resolve correctly when dyadpy inspects the wrapper.
+
+### `_loader.py` — 42 lines
+
+Path-keyed module cache and the `importlib.util.spec_from_file_location` loader. Shared between `routing.py` and `events.py` so a file imported through one walker is the same module instance as the file imported through the other — provider-identity comparisons in `_bind_providers` rely on it.
 
 ### `_methods.py` — 42 lines
 
@@ -75,9 +80,9 @@ Tiny shim that exposes the HTTP method decorators in a way that's friendly to bo
 
 ## Plugins
 
-### `contracts.py` — 218 lines
+### `contracts.py` — 363 lines
 
-Every official contract as a `typing.Protocol`. `Plugin`, `TaskAdapter`, `Storage`, `KV`, `Mailer`, `AuthProvider`, `DBSession`, `BlobScanner`, `FeatureFlags`, `MetricsSink`, `LogSink`, `PubSub`, `RateLimiter`, `SessionStore`, `DeployTarget`. Each contract declares `contract_version: ClassVar[str] = "v1.0"`.
+Every official contract as a `typing.Protocol`. `Plugin`, `TaskAdapter`, `EventBus`, `Storage`, `KV`, `Mailer`, `AuthProvider`, `DBSession`, `BlobScanner`, `FeatureFlags`, `MetricsSink`, `LogSink`, `PubSub`, `RateLimiter`, `SessionStore`, `DeployTarget`. Each contract declares `contract_version: ClassVar[str] = "v1.0"`.
 
 If you're adding a new official contract, **start here**. Then add a reference adapter in `adapters.py` (or punt to a sibling package), and a test that round-trips against the protocol.
 
@@ -98,13 +103,25 @@ Reference adapters shipped in core: `MemoryKV`, `LocalStorage`, `MemoryLimiter`,
 
 ## Background tasks
 
-### `tasks.py` — 328 lines
+### `tasks.py` — 514 lines
 
-`@task`, `@cron`, `TaskRef`, `tasks_eager()`, and `InMemoryAdapter` (the reference). The module also holds the active-adapter `ContextVar` so test-mode can swap in eager dispatch without leaking across concurrent tests.
+`@task`, `@cron`, `TaskRef`, `tasks_eager()`, `cancel_requested()` / `raise_if_cancelled()`, and `InMemoryAdapter` (the reference). The module holds two `ContextVar`s: one for the active adapter (so eager-mode swaps don't leak across concurrent tests) and one for the per-run cancel probe that the task body polls. The adapter implements both the cooperative cancel (flip a flag, body returns or raises) and the hard-cancel fallback (`runner.cancel()` after the grace window).
 
 ### `_cron.py` — 65 lines
 
 5-field crontab parser used by `InMemoryAdapter._cron_loop`. Pure function, fully tested. Production adapters (Dramatiq, Celery) delegate to a real scheduler instead.
+
+---
+
+## Events
+
+### `events.py` — 188 lines
+
+`emit`, `discover`, `register`, `set_bus`, and `InMemoryEventBus` (the reference). Same shape as `tasks.py`: a `ContextVar` holds the active bus, the reference adapter satisfies the `EventBus` Protocol from `contracts.py`, and `create_app` installs it during lifespan startup when `app/events/` exists.
+
+Discovery: `discover(events_root)` walks the tree via `_loader.import_path`, splits each `*.py` stem on `.`, joins folder segments + stem segments with `:`, and collects every module-level `async def` that doesn't start with `_` into the event's listener list. Two files producing the same name (`customer.create.py` + `customer/create.py`) merge their listeners.
+
+`InMemoryEventBus.emit` runs listeners concurrently via `asyncio.gather` with the default `return_exceptions=False`. Unknown events log once at DEBUG and return. Durable buses (transactional outbox, Redis streams) plug in via the `EventBus` Protocol from sibling packages.
 
 ---
 
@@ -152,7 +169,7 @@ Registered via the `pytest11` entry point. Adds `--causeway-routes`, `--update-s
 
 The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (uvicorn + watcher), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `dyadpy diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
 
-### `_scaffold.py` — 261 lines
+### `_scaffold.py` — 290 lines
 
 Templates for `causeway new` and `causeway plugin new`. The longest non-routing module, almost entirely string literals.
 

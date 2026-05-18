@@ -6,6 +6,7 @@ Every plugin contract in `causeway.contracts`. All are `typing.Protocol`s — du
 from causeway.contracts import (
     Plugin,
     TaskAdapter,
+    EventBus,
     Storage,
     KV,
     SessionStore,
@@ -45,15 +46,37 @@ class Plugin(Protocol):
 
 ```python
 class TaskAdapter(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.1"
+
     async def enqueue(self, task: TaskRef, payload: bytes) -> str: ...
     async def schedule(self, task: TaskRef, when: datetime, payload: bytes) -> str: ...
     async def cron(self, task: TaskRef, expr: str) -> None: ...
     def eager(self) -> AsyncContextManager[None]: ...
     async def status(self, task_id: str) -> TaskStatus: ...
     async def result(self, task_id: str) -> Any: ...
+    async def cancel(self, task_id: str, *, grace: float = 5.0) -> bool: ...
 ```
 
+`v1.1` adds `cancel(task_id, *, grace)`. Cooperative first — the task body polls [`cancel_requested`](../functions/cancel-requested.md) (or awaits [`raise_if_cancelled`](../functions/raise-if-cancelled.md)) and exits. After `grace` seconds, the adapter hard-cancels the underlying runner. Returns `True` if a cancel was issued, `False` if the task is unknown or already terminal. Adapters that can't honestly cancel (e.g. Dramatiq without a coordinated worker protocol) raise `NotImplementedError`.
+
 Reference: `causeway.tasks.InMemoryAdapter`. Real adapters: `causeway-tasks-dramatiq`.
+
+---
+
+## `EventBus`
+
+```python
+class EventBus(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def emit(self, name: str, payload: Any) -> None: ...
+```
+
+In-process event dispatcher. Listeners are discovered from `app/events/` by `causeway.events.discover` and installed on the bus during lifespan startup. The bus's job is to fan out one `emit` call to every listener for the event name.
+
+Reference: `causeway.events.InMemoryEventBus` (concurrent fan-out via `asyncio.gather`). Durable buses (transactional outbox, Redis streams) plug in as sibling packages.
+
+See [Events](../../building/events/index.md) for the file-naming convention and [`emit`](../functions/emit.md) for the call surface.
 
 ---
 

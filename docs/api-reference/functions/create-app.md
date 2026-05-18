@@ -16,6 +16,7 @@ app = create_app("src/app/routes", settings=settings)
 create_app(
     routes_root: str | Path = "app/routes",
     *,
+    events_root: str | Path = "app/events",
     settings: Any = None,
     diagnostics: bool = True,
     request_id: bool = True,
@@ -25,13 +26,14 @@ create_app(
 
 ## Parameters
 
-| Parameter          | Default          | Notes                                                                            |
-| ------------------ | ---------------- | -------------------------------------------------------------------------------- |
-| `routes_root`      | `"app/routes"`   | Directory to walk for route files.                                               |
-| `settings`         | `None`           | Your `Settings` instance. Surfaced on the diagnostics page (secrets redacted).   |
-| `diagnostics`      | `True`           | Mount `/__causeway`. Disable in production.                                      |
-| `request_id`       | `True`           | Install `RequestIdMiddleware` at the app boundary.                               |
-| `error_renderer_`  | `True`           | Install the problem+json renderer for all exceptions.                            |
+| Parameter         | Default        | Notes                                                                           |
+| ----------------- | -------------- | ------------------------------------------------------------------------------- |
+| `routes_root`     | `"app/routes"` | Directory to walk for route files.                                              |
+| `events_root`     | `"app/events"` | Directory to walk for event listeners. Missing folder = no event bus installed. |
+| `settings`        | `None`         | Your `Settings` instance. Surfaced on the diagnostics page (secrets redacted).  |
+| `diagnostics`     | `True`         | Mount `/__causeway`. Disable in production.                                     |
+| `request_id`      | `True`         | Install `RequestIdMiddleware` at the app boundary.                              |
+| `error_renderer_` | `True`         | Install the problem+json renderer for all exceptions.                           |
 
 ## What it does
 
@@ -42,7 +44,8 @@ create_app(
    - `RequestIdMiddleware` (when `request_id=True`),
    - every collected class `Middleware` instance from `_middleware.py` files,
    - the problem+json error renderer (when `error_renderer_=True`).
-5. Wires lifespan: every `_scope.py`'s `startup()` fires on app start, `shutdown()` in reverse.
+5. If `events_root` exists, walks it with `events.discover(...)` and installs an `InMemoryEventBus` populated with the discovered listeners. Missing folder = no bus installed = `await emit(...)` raises.
+6. Wires lifespan: every `_scope.py`'s `startup()` fires on app start (and the event bus starts up here too), `shutdown()` in reverse.
 
 ## Return value
 
@@ -62,4 +65,6 @@ causeway dev
 
 - [Architecture — boot pipeline](../../architecture/boot-pipeline.md)
 - [`discover`](./discover.md)
+- [`emit`](./emit.md) — dispatch an event through the installed bus
+- [Events overview](../../building/events/index.md)
 - [`RequestIdMiddleware`](../classes/RequestIdMiddleware.md)

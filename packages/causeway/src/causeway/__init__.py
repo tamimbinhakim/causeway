@@ -24,6 +24,8 @@ from causeway.app import create_app
 from causeway.auth import check_permission, expand_permissions, require_permission
 from causeway.batch import BatchFailure, BatchResult, batch
 from causeway.config import Manifest, Settings
+from causeway.contracts import EventBus
+from causeway.events import InMemoryEventBus, emit
 from causeway.middleware import IdempotencyMiddleware, Middleware, guard
 from causeway.observability import RequestIdMiddleware, configure_logging, configure_otel
 from causeway.pagination import Cursor, Paginated
@@ -45,7 +47,9 @@ __all__ = [
     "Bytes",
     "Cursor",
     "Depends",
+    "EventBus",
     "IdempotencyMiddleware",
+    "InMemoryEventBus",
     "InMemoryWebhooks",
     "Manifest",
     "Middleware",
@@ -60,6 +64,7 @@ __all__ = [
     "create_app",
     "cron",
     "delete",
+    "emit",
     "env",
     "errors",
     "expand_permissions",

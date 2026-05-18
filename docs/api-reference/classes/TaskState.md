@@ -11,10 +11,12 @@ from causeway.tasks import TaskState
 ```python
 @dataclass
 class TaskState:
-    state: Literal["pending", "running", "complete", "failed"]
+    state: Literal["pending", "running", "complete", "failed", "cancelled"]
     result: Any = None
     error: str | None = None
 ```
+
+`"cancelled"` is terminal — set when `TaskAdapter.cancel(...)` succeeds, either because the task body cooperated (saw `cancel_requested()` and returned / raised) or because the adapter hard-cancelled it after the grace window. The task future, if awaited, raises `asyncio.CancelledError`.
 
 ## Usage
 
@@ -27,6 +29,8 @@ match state.state:
         print(state.result)
     case "failed":
         print(state.error)
+    case "cancelled":
+        print("stopped on request")
     case _:
         print("not done yet")
 ```
@@ -35,3 +39,4 @@ match state.state:
 
 - [`TaskRef`](./TaskRef.md)
 - [`TaskAdapter`](./contracts.md#taskadapter) (in contracts)
+- [`cancel_requested`](../functions/cancel-requested.md) / [`raise_if_cancelled`](../functions/raise-if-cancelled.md)

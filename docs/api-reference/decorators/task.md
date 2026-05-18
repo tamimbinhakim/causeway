@@ -25,11 +25,11 @@ Returns a [`TaskRef`](../classes/TaskRef.md) (not a function). Calling the ref d
 
 ## Options
 
-| Option    | Default        | Notes                                                                          |
-| --------- | -------------- | ------------------------------------------------------------------------------ |
-| `queue`   | `"default"`    | Adapter-specific queue / channel name.                                         |
-| `retries` | `0`            | How many times to retry on exception.                                          |
-| `backoff` | `"exponential"`| `"fixed"` (constant), `"linear"` (`base * (n+1)`), `"exponential"` (`base * 2^n`). |
+| Option    | Default         | Notes                                                                              |
+| --------- | --------------- | ---------------------------------------------------------------------------------- |
+| `queue`   | `"default"`     | Adapter-specific queue / channel name.                                             |
+| `retries` | `0`             | How many times to retry on exception.                                              |
+| `backoff` | `"exponential"` | `"fixed"` (constant), `"linear"` (`base * (n+1)`), `"exponential"` (`base * 2^n`). |
 
 The in-memory reference adapter uses a 100ms base. Real adapters typically use seconds — check the adapter's docs.
 
@@ -56,9 +56,14 @@ async with tasks_eager():
     await send_welcome.enqueue(user_id)   # runs inline, synchronously
 ```
 
+## Cancellation
+
+Long-running tasks can be cancelled by id. Poll [`cancel_requested`](../functions/cancel-requested.md) (or `await` [`raise_if_cancelled`](../functions/raise-if-cancelled.md)) inside the body so the adapter's cooperative cancel works; otherwise the adapter falls back to a hard `asyncio.Task.cancel()` after the grace window. See [Tasks — Cancellation](../../building/tasks/index.md#cancellation).
+
 ## See also
 
 - [Tasks overview](../../building/tasks/index.md)
 - [`@cron`](./cron.md)
 - [`TaskRef`](../classes/TaskRef.md)
 - [`tasks_eager`](../functions/tasks-eager.md)
+- [`cancel_requested`](../functions/cancel-requested.md) / [`raise_if_cancelled`](../functions/raise-if-cancelled.md)
