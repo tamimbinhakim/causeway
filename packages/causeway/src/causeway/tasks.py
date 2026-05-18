@@ -182,9 +182,7 @@ def _json_default(value: Any) -> Any:
 
 
 def _encode(args: tuple[Any, ...], kwargs: dict[str, Any]) -> bytes:
-    return json.dumps(
-        {"args": list(args), "kwargs": kwargs}, default=_json_default
-    ).encode()
+    return json.dumps({"args": list(args), "kwargs": kwargs}, default=_json_default).encode()
 
 
 def _decode(payload: bytes) -> tuple[tuple[Any, ...], dict[str, Any]]:

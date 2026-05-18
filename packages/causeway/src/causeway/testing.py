@@ -16,9 +16,6 @@ from typing import Any
 import httpx
 from dyadpy import App
 
-from causeway.health import attach as attach_health
-from causeway.routing import discover, register
-
 
 class TestApp:
     """Wraps a Causeway app for in-process testing.
@@ -38,11 +35,34 @@ class TestApp:
         self._overrides: dict[Callable[..., Any], Callable[..., Any]] = {}
 
     @classmethod
-    def from_routes(cls, routes_root: str | Path) -> TestApp:
-        """Discover ``routes_root`` and wire a fresh App. Health endpoints attach."""
-        app = App()
-        register(app, discover(routes_root))
-        attach_health(app)
+    def from_routes(
+        cls,
+        routes_root: str | Path,
+        *,
+        settings: Any = None,
+        diagnostics: bool = False,
+        request_id: bool = False,
+    ) -> TestApp:
+        """Discover ``routes_root`` and wire a fresh app for in-process testing.
+
+        Routes through :func:`causeway.app.create_app` so class middleware
+        declared in ``_middleware.py`` files actually fires — without that
+        wrap, inline scenarios silently skip permission guards, idempotency
+        checks, and any other class-based ``Middleware`` the routes declare.
+
+        ``diagnostics`` and ``request_id`` default off so scenarios don't
+        accidentally test the dev surface; flip them on when exercising
+        ``/__causeway`` or request-id flow directly.
+        """
+        from causeway.app import create_app
+
+        app = create_app(
+            routes_root,
+            settings=settings,
+            diagnostics=diagnostics,
+            request_id=request_id,
+            error_renderer_=True,
+        )
         return cls(app)
 
     @classmethod

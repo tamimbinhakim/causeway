@@ -103,6 +103,14 @@ def build(
         Path,
         typer.Option("--target", "-o", help="Output directory."),
     ] = Path("dist"),
+    module: Annotated[
+        str,
+        typer.Option(
+            "--module",
+            "-m",
+            help="``module:attr`` of your ``dyadpy.App`` to introspect for codegen.",
+        ),
+    ] = "app:app",
     binary: Annotated[
         bool,
         typer.Option(
@@ -145,7 +153,15 @@ def build(
 
     target.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
-        [sys.executable, "-m", "dyadpy", "codegen", "--out", str(target / "client.ts")],
+        [
+            sys.executable,
+            "-m",
+            "dyadpy.cli",
+            "codegen",
+            "--out",
+            str(target / "client.ts"),
+            module,
+        ],
         check=False,
     )
     if result.returncode != 0:
@@ -271,7 +287,7 @@ def diff(
     convention; the IR walk + classification is dyadpy's.
     """
     subprocess.run(
-        [sys.executable, "-m", "dyadpy", "diff", str(baseline), str(candidate)],
+        [sys.executable, "-m", "dyadpy.cli", "diff", str(baseline), str(candidate)],
         check=False,
     )
 
