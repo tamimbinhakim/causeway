@@ -1,15 +1,15 @@
 {
-  "packages/causeway": "0.3.2",
+  "packages/causeway": "0.3.3",
   "packages/causeway-auth-jwt": "0.3.0",
   "packages/causeway-cache-redis": "0.4.0",
-  "packages/causeway-db-sqlmodel": "0.4.0",
-  "packages/causeway-deploy-docker": "0.4.0",
-  "packages/causeway-deploy-fly": "0.4.0",
-  "packages/causeway-deploy-modal": "0.4.0",
-  "packages/causeway-flags-growthbook": "0.4.0",
-  "packages/causeway-mailer-smtp": "0.4.0",
-  "packages/causeway-observe-sentry": "0.4.0",
-  "packages/causeway-storage-fs": "0.4.0",
-  "packages/causeway-storage-s3": "0.4.0",
-  "packages/causeway-tasks-dramatiq": "0.4.0"
+  "packages/causeway-db-sqlmodel": "0.5.0",
+  "packages/causeway-deploy-docker": "0.5.0",
+  "packages/causeway-deploy-fly": "0.5.0",
+  "packages/causeway-deploy-modal": "0.5.0",
+  "packages/causeway-flags-growthbook": "0.5.0",
+  "packages/causeway-mailer-smtp": "0.5.0",
+  "packages/causeway-observe-sentry": "0.5.0",
+  "packages/causeway-storage-fs": "0.5.0",
+  "packages/causeway-storage-s3": "0.5.0",
+  "packages/causeway-tasks-dramatiq": "0.5.0"
 }
