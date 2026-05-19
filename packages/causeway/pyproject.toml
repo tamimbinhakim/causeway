@@ -165,7 +165,17 @@ filterwarnings = [
 [tool.coverage.run]
 branch = true
 source = ["causeway"]
-omit = ["src/causeway/cli.py"]
+# Test infrastructure (the in-tree pytest plugin, scenario kit, snapshot
+# rewriter, fixture loaders) is *exercised* by every test in the suite
+# but isn't itself a unit under test — counting its lines against the
+# coverage threshold gives a misleadingly low number and creates noise
+# whenever the kit gets a new feature. CLI is omitted for the same
+# reason: covered indirectly by example projects, not by core tests.
+omit = [
+  "src/causeway/cli.py",
+  "src/causeway/_pytest_plugin.py",
+  "src/causeway/_testing/*",
+]
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError", "\\.\\.\\."]

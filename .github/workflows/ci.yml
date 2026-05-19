@@ -88,9 +88,16 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - working-directory: packages/causeway
+        # Run via ``coverage run -m pytest`` so coverage measurement starts
+        # before pytest loads the in-tree ``causeway`` pytest plugin (entry
+        # point ``pytest11``). Using ``pytest --cov`` here triggers the
+        # ``module-not-measured`` warning and undercounts coverage because
+        # ``causeway`` is already imported by the time the cov plugin runs.
         run: |
           uv sync --all-extras --dev
-          uv run pytest --cov=causeway --cov-report=xml --cov-fail-under=80 -q
+          uv run coverage run --source=causeway -m pytest -q
+          uv run coverage report --fail-under=80
+          uv run coverage xml
       - if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
