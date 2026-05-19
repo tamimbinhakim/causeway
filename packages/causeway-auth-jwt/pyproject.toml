@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-auth-jwt"
-version = "0.3.0"
+version = "0.3.1"
 description = "JWT bearer-token AuthProvider for Causeway."
 readme = "README.md"
 license = { text = "MIT" }
