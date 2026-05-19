@@ -1,13 +1,19 @@
-"""Middleware base class + ``@guard`` decorator.
+"""Middleware base class, ``@guard`` decorator, and the ``@use`` attacher.
 
-The ``_middleware.py`` convention is: each such file exports a ``middleware``
-list. Items in the list are either:
+Two ways to attach guards and middleware:
+
+- ``_middleware.py`` per directory exports a ``middleware`` list applied to
+  every route in that subtree.
+- ``@use(...)`` decorates a single handler, attaching items that run after
+  the inherited scope chain.
+
+List items in either place are either:
 
 - A ``Middleware`` instance (class with an ``async __call__(self, req, call_next)`` method).
 - A function decorated with ``@guard`` (lightweight assertion that runs before the handler).
 
 Composition order is enforced by ``causeway.routing``: app-level → root → ... → leaf
-on the way in; reverse on the way out.
+→ ``@use`` on the way in; reverse on the way out.
 """
 
 from __future__ import annotations
@@ -44,6 +50,33 @@ def is_guard(obj: Any) -> bool:
     return bool(getattr(obj, "__causeway_guard__", False))
 
 
+def use(*items: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Attach guards or middleware to a single handler.
+
+    Equivalent to listing the same items in the directory's ``_middleware.py``
+    but scoped to one route. Stacks: multiple ``@use(...)`` decorators
+    concatenate in declaration order (top-most first).
+
+        @get
+        @use(require_permission("users:read"), RateLimit(per_minute=10))
+        async def show(id: UUID) -> User: ...
+    """
+    for item in items:
+        if not (is_guard(item) or isinstance(item, Middleware)):
+            msg = (
+                "@use(...) entries must be a Middleware instance or a "
+                f"@guard-decorated function, got {item!r}"
+            )
+            raise TypeError(msg)
+
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        existing = getattr(fn, "__causeway_use__", ())
+        fn.__causeway_use__ = (*items, *existing)  # type: ignore[attr-defined]
+        return fn
+
+    return decorator
+
+
 # Re-export at package root. Late import avoids a circular dependency:
 # ``idempotency`` types-check against ``CallNext`` defined above.
 from causeway.middleware.idempotency import IdempotencyMiddleware  # noqa: E402
@@ -57,4 +90,5 @@ __all__ = [
     "Response",
     "guard",
     "is_guard",
+    "use",
 ]

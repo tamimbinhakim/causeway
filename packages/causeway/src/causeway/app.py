@@ -12,13 +12,16 @@ import contextlib
 import os
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import re
 
 from dyadpy import App
 from starlette.applications import Starlette
 from starlette.middleware import Middleware as StarletteMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.routing import Mount
+from starlette.routing import Mount, compile_path
 
 import causeway.events as _events
 from causeway.diagnostics import attach as attach_diagnostics
@@ -42,6 +45,9 @@ def create_app(
 
     Composition (outermost → innermost):
     request-id → class middleware collected across scopes → dyadpy.App.
+    Class middleware is path-gated to the routes that declared it (subtree
+    via ``_middleware.py`` or single-route via ``@use``); a request to a
+    different route walks past the middleware untouched.
     Errors raised from inside any handler land in the problem+json renderer.
     Health endpoints (``/healthz``, ``/readyz``) attach unconditionally; the
     diagnostics endpoint (``/__causeway``) is opt-out via ``diagnostics=False``.
@@ -106,8 +112,7 @@ def _assemble(
     middleware: list[StarletteMiddleware] = []
     if request_id:
         middleware.append(StarletteMiddleware(RequestIdMiddleware))
-    for instance in _collect_class_middleware(found):
-        middleware.append(StarletteMiddleware(BaseHTTPMiddleware, dispatch=instance))
+    middleware.extend(_collect_class_middleware(found))
 
     exception_handlers: dict[Any, Any] = {}
     if error_renderer_:
@@ -151,21 +156,76 @@ def _build_mode_is_binary() -> bool:
     return os.environ.get("CAUSEWAY_BUILD_MODE") == "binary"
 
 
-def _collect_class_middleware(found: Any) -> list[CausewayMiddleware]:
-    """Pull every class-based ``Middleware`` instance off the discovered routes.
+def _collect_class_middleware(found: Any) -> list[StarletteMiddleware]:
+    """Build path-gated Starlette middleware entries for class ``Middleware``.
 
-    Guards live inline on the handler; class middleware wraps the whole ASGI
-    chain. We deduplicate by identity so the same instance attached to
-    multiple subtrees only wraps the app once.
+    Each unique ``Middleware`` instance attaches to the ASGI chain exactly
+    once, but its dispatch only fires for routes that declared it. This makes
+    a ``_middleware.py`` apply only to its subtree, and ``@use(Middleware())``
+    apply only to that handler — without spinning up one Starlette middleware
+    per route.
+
+    Insertion order follows first-occurrence in the discovered route list,
+    which mirrors outer-scope-before-inner-scope because parent middleware
+    is prepended in ``_ScopeFrame.merged_with``.
     """
-    seen: dict[int, CausewayMiddleware] = {}
+    seen: dict[int, tuple[CausewayMiddleware, dict[str, list[re.Pattern[str]]]]] = {}
+    order: list[int] = []
+    # One regex per declared path string, reused across middleware that gate
+    # on the same route — avoids redundant ``compile_path`` work at boot.
+    path_cache: dict[str, re.Pattern[str]] = {}
+
     for route in found.routes:
         recorded = getattr(route.handler, "__causeway_class_middleware__", None)
         if not recorded:
             continue
+        regex = path_cache.get(route.path)
+        if regex is None:
+            regex, _, _ = compile_path(route.path)
+            path_cache[route.path] = regex
+        method = route.method.upper()
         for mw in recorded:
-            seen.setdefault(id(mw), mw)
-    return list(seen.values())
+            mid = id(mw)
+            entry = seen.get(mid)
+            if entry is None:
+                entry = (mw, {})
+                seen[mid] = entry
+                order.append(mid)
+            entry[1].setdefault(method, []).append(regex)
+
+    entries: list[StarletteMiddleware] = []
+    for mid in order:
+        mw, by_method = seen[mid]
+        entries.append(
+            StarletteMiddleware(BaseHTTPMiddleware, dispatch=_gated_dispatch(mw, by_method)),
+        )
+    return entries
+
+
+def _gated_dispatch(
+    mw: CausewayMiddleware,
+    by_method: dict[str, list[re.Pattern[str]]],
+) -> Any:
+    """Wrap ``mw`` so it only runs when the request matches one of its routes.
+
+    ASGI guarantees ``request.method`` is uppercase, so the lookup is a
+    plain dict hit; only paths that map to this middleware are scanned.
+    """
+
+    async def dispatch(request: Any, call_next: Any) -> Any:
+        regexes = by_method.get(request.method)
+        if regexes is not None:
+            path = request.url.path
+            # ``fullmatch`` rather than ``match``: the compiled-path regex
+            # ends in ``$`` which would otherwise accept a trailing ``\n``
+            # (a decoded ``%0A``) and run middleware on a path the router
+            # would later reject.
+            for regex in regexes:
+                if regex.fullmatch(path) is not None:
+                    return await mw(request, call_next)
+        return await call_next(request)
+
+    return dispatch
 
 
 __all__ = ["create_app", "create_app_frozen"]

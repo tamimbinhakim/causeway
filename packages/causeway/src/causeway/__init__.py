@@ -26,11 +26,11 @@ from causeway.batch import BatchFailure, BatchResult, batch
 from causeway.config import Manifest, Settings
 from causeway.contracts import EventBus
 from causeway.events import InMemoryEventBus, emit
-from causeway.middleware import IdempotencyMiddleware, Middleware, guard
+from causeway.middleware import IdempotencyMiddleware, Middleware, guard, use
 from causeway.observability import RequestIdMiddleware, configure_logging, configure_otel
 from causeway.pagination import Cursor, Paginated
 from causeway.plugins import env, register
-from causeway.scope import provide
+from causeway.scope import dependency, provide
 from causeway.tasks import cron, task, tasks_eager
 from causeway.webhooks import (
     InMemoryWebhooks,
@@ -64,6 +64,7 @@ __all__ = [
     "create_app",
     "cron",
     "delete",
+    "dependency",
     "emit",
     "env",
     "errors",
@@ -82,5 +83,6 @@ __all__ = [
     "stream",
     "task",
     "tasks_eager",
+    "use",
     "verify_signature",
 ]
