@@ -35,13 +35,13 @@ causeway/
 
 ## Prereqs
 
-| Tool   | Version          | Why                                                                                 |
-| ------ | ---------------- | ----------------------------------------------------------------------------------- |
-| Node   | ≥ 22             | Runs the toolchain (pnpm, husky, commitlint, prettier).                             |
-| pnpm   | ≥ 10             | Workspace package manager. Don't use npm/yarn here.                                 |
+| Tool   | Version          | Why                                                                                     |
+| ------ | ---------------- | --------------------------------------------------------------------------------------- |
+| Node   | ≥ 22             | Runs the toolchain (pnpm, husky, commitlint, prettier).                                 |
+| pnpm   | ≥ 10             | Workspace package manager. Don't use npm/yarn here.                                     |
 | Python | ≥ 3.11           | Causeway leans on modern typing (`from __future__ import annotations`, `X \| Y`, etc.). |
-| uv     | latest           | Python package manager. Way faster than pip.                                        |
-| Git    | any sane version | Obvious.                                                                            |
+| uv     | latest           | Python package manager. Way faster than pip.                                            |
+| Git    | any sane version | Obvious.                                                                                |
 
 > On macOS, `brew install node pnpm uv python@3.13` covers it.
 

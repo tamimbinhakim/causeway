@@ -19,20 +19,20 @@ out = "client.ts"
 
 Free-form metadata. Surfaced on the diagnostics page (`/__causeway`) and used by the scaffolder.
 
-| Key            | Type      | Notes                              |
-| -------------- | --------- | ---------------------------------- |
-| `name`         | string    | Project name.                      |
-| `description`  | string    | One-line description.              |
-| anything else  | any       | Available in `Manifest.app` dict.  |
+| Key           | Type   | Notes                             |
+| ------------- | ------ | --------------------------------- |
+| `name`        | string | Project name.                     |
+| `description` | string | One-line description.             |
+| anything else | any    | Available in `Manifest.app` dict. |
 
 ### `[client]`
 
 Controls what the TS client gets.
 
-| Key                 | Type        | Default       | Notes                                                                              |
-| ------------------- | ----------- | ------------- | ---------------------------------------------------------------------------------- |
-| `expose_settings`   | list[str]   | `[]`          | Allowlist of non-secret settings fields to bake into `client.ts`.                  |
-| `out`               | string      | `"client.ts"` | Output path for the generated client. Can be a relative path into a sibling repo.  |
+| Key               | Type      | Default       | Notes                                                                             |
+| ----------------- | --------- | ------------- | --------------------------------------------------------------------------------- |
+| `expose_settings` | list[str] | `[]`          | Allowlist of non-secret settings fields to bake into `client.ts`.                 |
+| `out`             | string    | `"client.ts"` | Output path for the generated client. Can be a relative path into a sibling repo. |
 
 ## Secrets are never exposed
 

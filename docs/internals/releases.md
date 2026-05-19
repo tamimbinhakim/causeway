@@ -32,13 +32,13 @@ The whole thing is automated. The only manual step is **merging the release PR**
 
 The commit message drives the bump:
 
-| Prefix                       | Bump  | Example                                                                 |
-| ---------------------------- | ----- | ----------------------------------------------------------------------- |
-| `fix:`                       | patch | `fix(routing): handle empty dotted leaf without crash`                  |
-| `feat:`                      | minor | `feat(tasks): cron decorator emits to active adapter`                   |
-| `feat!:` / `BREAKING CHANGE` | major | `feat(plugins)!: drop register_legacy(), use register()`                |
-| `chore:`, `docs:`, `style:`  | none  | `docs: clarify dot-flat routing examples`                               |
-| `refactor:`, `test:`, `ci:`  | none  | `refactor(_paths): simplify leaf tokenizer`                             |
+| Prefix                       | Bump  | Example                                                  |
+| ---------------------------- | ----- | -------------------------------------------------------- |
+| `fix:`                       | patch | `fix(routing): handle empty dotted leaf without crash`   |
+| `feat:`                      | minor | `feat(tasks): cron decorator emits to active adapter`    |
+| `feat!:` / `BREAKING CHANGE` | major | `feat(plugins)!: drop register_legacy(), use register()` |
+| `chore:`, `docs:`, `style:`  | none  | `docs: clarify dot-flat routing examples`                |
+| `refactor:`, `test:`, `ci:`  | none  | `refactor(_paths): simplify leaf tokenizer`              |
 
 Common scopes: `routing`, `config`, `di`, `tasks`, `plugins`, `cli`, `observability`, `errors`, `testing`, `docs`, `ci`, `deps`.
 

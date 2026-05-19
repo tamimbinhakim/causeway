@@ -14,11 +14,11 @@ causeway dev [--module <path>] [--host <host>] [--port <port>]
 
 ## Options
 
-| Option       | Default        | Description                                            |
-| ------------ | -------------- | ------------------------------------------------------ |
-| `--module`   | `"app:app"`    | ASGI app import path.                                  |
-| `--host`     | `"127.0.0.1"`  | Bind host.                                             |
-| `--port`     | `8000`         | Bind port.                                             |
+| Option     | Default       | Description           |
+| ---------- | ------------- | --------------------- |
+| `--module` | `"app:app"`   | ASGI app import path. |
+| `--host`   | `"127.0.0.1"` | Bind host.            |
+| `--port`   | `8000`        | Bind port.            |
 
 ## What it does
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import msgspec
 from starlette.responses import JSONResponse, Response
@@ -109,7 +109,7 @@ class IdempotencyMiddleware:
 
         for adapter in registered():
             if isinstance(adapter, KVProto):
-                return cast("KV", adapter)
+                return adapter
         return None
 
 
@@ -159,8 +159,8 @@ def _replay_body(req: Request, body: bytes) -> None:
 
     # Setting the private cache attr is the simplest way to make a second
     # ``await req.body()`` return the bytes we already consumed.
-    req._body = body  # type: ignore[attr-defined]
-    req._receive = _receive  # type: ignore[attr-defined]
+    req._body = body
+    req._receive = _receive
 
 
 __all__ = ["IdempotencyMiddleware"]

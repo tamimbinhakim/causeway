@@ -19,13 +19,13 @@ Commands:
 
 ## Per command
 
-| Command                                                 | Page                                  |
-| ------------------------------------------------------- | ------------------------------------- |
-| `causeway new <name>`                                   | [`new`](./new.md)                     |
-| `causeway dev`                                          | [`dev`](./dev.md)                     |
-| `causeway build`                                        | [`build`](./build.md)                 |
-| `causeway plugins`                                      | [`plugins`](./plugins.md)             |
-| `causeway plugin new <name>`                            | [`plugin new`](./plugin-new.md)       |
-| `causeway diff <a> <b>`                                 | [`diff`](./diff.md)                   |
-| `causeway deploy <target>`                              | [`deploy`](./deploy.md)               |
-| `causeway version`                                      | [`version`](./version.md)             |
+| Command                      | Page                            |
+| ---------------------------- | ------------------------------- |
+| `causeway new <name>`        | [`new`](./new.md)               |
+| `causeway dev`               | [`dev`](./dev.md)               |
+| `causeway build`             | [`build`](./build.md)           |
+| `causeway plugins`           | [`plugins`](./plugins.md)       |
+| `causeway plugin new <name>` | [`plugin new`](./plugin-new.md) |
+| `causeway diff <a> <b>`      | [`diff`](./diff.md)             |
+| `causeway deploy <target>`   | [`deploy`](./deploy.md)         |
+| `causeway version`           | [`version`](./version.md)       |

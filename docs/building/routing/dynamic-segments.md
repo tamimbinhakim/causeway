@@ -49,12 +49,12 @@ async def show(userId: UUID, postId: UUID) -> Post: ...
 
 The segment is just a string on the wire. The handler annotation drives parsing — `id: UUID` parses to a `UUID`, `id: int` parses to `int`, and a parse failure returns a `400 bad_request` automatically. The type also flows to the TypeScript client, so the caller can't pass a number where a UUID is expected.
 
-| Annotation               | Wire shape             | Parse failure        |
-| ------------------------ | ---------------------- | -------------------- |
-| `id: int`                | digits only            | 400 bad_request      |
-| `id: UUID`               | RFC 4122 string        | 400 bad_request      |
-| `id: str`                | anything URL-safe      | never fails          |
-| `id: Literal["a", "b"]`  | exact match            | 400 bad_request      |
+| Annotation              | Wire shape        | Parse failure   |
+| ----------------------- | ----------------- | --------------- |
+| `id: int`               | digits only       | 400 bad_request |
+| `id: UUID`              | RFC 4122 string   | 400 bad_request |
+| `id: str`               | anything URL-safe | never fails     |
+| `id: Literal["a", "b"]` | exact match       | 400 bad_request |
 
 > **Good to know.** This is `dyadpy` doing the work — `causeway` is just the file router. Any type `dyadpy` knows how to parse is fair game.
 

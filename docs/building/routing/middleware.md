@@ -87,12 +87,12 @@ middleware = [require_admin]
 
 The error renderer translates common exceptions automatically:
 
-| Exception              | Rendered status |
-| ---------------------- | --------------- |
-| `PermissionError`      | 403             |
-| `LookupError`          | 404             |
-| `causeway.errors.*`    | as declared     |
-| anything else          | 500 (generic)   |
+| Exception           | Rendered status |
+| ------------------- | --------------- |
+| `PermissionError`   | 403             |
+| `LookupError`       | 404             |
+| `causeway.errors.*` | as declared     |
+| anything else       | 500 (generic)   |
 
 > **Good to know.** Guards are for "should this request even reach the handler?" If you need to mutate the request or response, use a class-based `Middleware`.
 
@@ -118,12 +118,12 @@ The router runs guards first, then enters the class-middleware chain.
 
 ## Where it lives matters
 
-| Place                             | Applies to                  |
-| --------------------------------- | --------------------------- |
-| `routes/_middleware.py`           | Every route in the app      |
-| `routes/users/_middleware.py`     | Only `/users/*`             |
-| `routes/(admin)/_middleware.py`   | Only routes inside `(admin)`|
-| `routes/billing/_middleware.py`   | Only `/billing/*`           |
+| Place                           | Applies to                   |
+| ------------------------------- | ---------------------------- |
+| `routes/_middleware.py`         | Every route in the app       |
+| `routes/users/_middleware.py`   | Only `/users/*`              |
+| `routes/(admin)/_middleware.py` | Only routes inside `(admin)` |
+| `routes/billing/_middleware.py` | Only `/billing/*`            |
 
 Use [route groups](./route-groups.md) to scope middleware to a slice of the tree without changing URLs.
 
@@ -134,6 +134,7 @@ For wrappers that should apply even before the route table is hit, register at a
 ## Common patterns
 
 **Auth tier per group:**
+
 ```
 routes/(public)/_middleware.py     →    middleware = []
 routes/(user)/_middleware.py       →    middleware = [require_login]
@@ -141,11 +142,13 @@ routes/(admin)/_middleware.py      →    middleware = [require_admin]
 ```
 
 **Cross-cutting concerns at root:**
+
 ```
 routes/_middleware.py              →    middleware = [RequestId(), Timing()]
 ```
 
 **Per-feature scope:**
+
 ```
 routes/billing/_middleware.py      →    middleware = [verify_stripe_signature]
 ```

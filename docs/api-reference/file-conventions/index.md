@@ -4,20 +4,20 @@ Every filename pattern Causeway recognizes inside `src/app/routes/`.
 
 ## Quick reference
 
-| Pattern               | Style        | URL effect                                                |
-| --------------------- | ------------ | --------------------------------------------------------- |
-| [`index.py`](./index-py.md)              | folder      | the folder's URL itself                                   |
-| `foo.py`                                 | both        | `/foo`                                                    |
-| [`[name].py`](./bracket-name.md)         | folder      | dynamic segment → `/{name}`                               |
-| `[name]/...`                             | folder      | dynamic folder                                            |
-| [`$name`](./dollar-name.md)              | dot-flat    | dynamic segment → `/{name}`                               |
-| `.index`                                 | dot-flat    | trailing `index` is dropped (match parent)                |
-| [`(group)/`](./group.md)                 | both        | stripped from URL                                         |
-| [`_middleware.py`](./middleware-py.md)   | folder      | per-subtree middleware                                    |
-| [`_scope.py`](./scope-py.md)             | folder      | per-subtree DI providers + lifespan                       |
-| `_*.py`, `_*/`                           | folder      | private — colocated helpers, not routed                   |
-| `[...rest].py`                           | folder      | catch-all — **reserved** for v0.2+                        |
-| `$$rest.py`                              | dot-flat    | catch-all — **reserved** for v0.2+                        |
+| Pattern                                | Style    | URL effect                                 |
+| -------------------------------------- | -------- | ------------------------------------------ |
+| [`index.py`](./index-py.md)            | folder   | the folder's URL itself                    |
+| `foo.py`                               | both     | `/foo`                                     |
+| [`[name].py`](./bracket-name.md)       | folder   | dynamic segment → `/{name}`                |
+| `[name]/...`                           | folder   | dynamic folder                             |
+| [`$name`](./dollar-name.md)            | dot-flat | dynamic segment → `/{name}`                |
+| `.index`                               | dot-flat | trailing `index` is dropped (match parent) |
+| [`(group)/`](./group.md)               | both     | stripped from URL                          |
+| [`_middleware.py`](./middleware-py.md) | folder   | per-subtree middleware                     |
+| [`_scope.py`](./scope-py.md)           | folder   | per-subtree DI providers + lifespan        |
+| `_*.py`, `_*/`                         | folder   | private — colocated helpers, not routed    |
+| `[...rest].py`                         | folder   | catch-all — **reserved** for v0.2+         |
+| `$$rest.py`                            | dot-flat | catch-all — **reserved** for v0.2+         |
 
 ## Style mixing
 

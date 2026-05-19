@@ -38,7 +38,7 @@ Streaming responses are not cached. If a handler returns SSE, the middleware pas
 ## Edge cases
 
 - **Concurrent duplicates with the same key**: both run, last write wins. Mid-flight dedup needs a `KV.set_nx` primitive that v0.2 doesn't ship — track [#] for the v0.3 add-on.
-- **TTL refresh on read**: no. Once cached, the entry sticks for `ttl_seconds` from the *first* request.
+- **TTL refresh on read**: no. Once cached, the entry sticks for `ttl_seconds` from the _first_ request.
 - **Key scope**: `(method, path, key)`. The same `Idempotency-Key` against two different endpoints does not collide.
 
 ## Tests

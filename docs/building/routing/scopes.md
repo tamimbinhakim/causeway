@@ -126,6 +126,7 @@ The override uses the same scope machinery as production — there's no separate
 ## Common patterns
 
 **Per-feature pool:**
+
 ```
 routes/_scope.py                @provide("db")          postgres session
 routes/(admin)/_scope.py        @provide("db")          read-replica session
@@ -133,11 +134,13 @@ routes/billing/_scope.py        @provide("stripe")      stripe client
 ```
 
 **Request-scoped current user:**
+
 ```
 routes/(user)/_scope.py         @provide("current_user") parses JWT from header
 ```
 
 **Idempotency keys for write routes:**
+
 ```
 routes/users/_scope.py          @provide("idem")        looks up Idempotency-Key header
 ```

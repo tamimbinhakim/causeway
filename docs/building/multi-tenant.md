@@ -53,7 +53,7 @@ async def test_list_users_scoped_to_tenant(app):
         assert all(u.org_id == "org-1" for u in resp.json())
 ```
 
-## When *not* to do this
+## When _not_ to do this
 
 - **Single-tenant apps.** If there's only ever one customer, the indirection just slows the team down.
 - **Admin routes that span tenants.** Put them under a subtree (`routes/(admin)/`) with a different `_scope.py` that resolves a "superuser" session instead of a tenant-scoped one.

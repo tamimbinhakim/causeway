@@ -34,8 +34,7 @@ The client gets:
 ```ts
 export const client = {
   users: {
-    show: (args: { id: string }) =>
-      Promise<Result<User, NotFound>>,
+    show: (args: { id: string }) => Promise<Result<User, NotFound>>,
   },
 };
 ```
@@ -50,9 +49,9 @@ import { client } from "./generated/client";
 const result = await client.users.show({ id: "..." });
 
 if (result.ok) {
-  console.log(result.value.name);     // typed as `string`
+  console.log(result.value.name); // typed as `string`
 } else if (result.error.kind === "NotFound") {
-  console.log("missing");             // narrowed to NotFound branch
+  console.log("missing"); // narrowed to NotFound branch
 }
 ```
 
@@ -87,8 +86,8 @@ expose_settings = ["env", "feature_flags"]
 ```ts
 import { config } from "./generated/client";
 
-console.log(config.env);            // "prod"
-console.log(config.feature_flags);  // { new_dashboard: true }
+console.log(config.env); // "prod"
+console.log(config.feature_flags); // { new_dashboard: true }
 ```
 
 Secret fields (`SecretStr`, `SecretBytes`) are filtered before codegen — listing them in `expose_settings` is a no-op.

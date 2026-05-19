@@ -21,6 +21,7 @@ from causeway._loader import reset_module_cache as _reset_module_cache
 from causeway._methods import HttpMethod, method_of
 from causeway._paths import url_for
 from causeway.middleware import Middleware, is_guard
+from causeway.scope import is_dependency
 
 if TYPE_CHECKING:
     from dyadpy import App
@@ -167,12 +168,13 @@ def _load_route_file(
         method = method_of(obj)
         if method is None:
             continue
+        per_handler = list(getattr(obj, "__causeway_use__", ()))
         out.routes.append(
             DiscoveredRoute(
                 method=method,
                 path=url,
                 handler=obj,
-                middleware=list(scope.middleware),
+                middleware=[*scope.middleware, *per_handler],
                 providers=dict(scope.providers),
                 source=file,
             ),
@@ -204,24 +206,25 @@ def _decorator_for(app: App, method: HttpMethod) -> Callable[[str], Callable[[Ha
 
 
 def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler:
-    """Rewrite ``Annotated[T, provider]`` parameters to use ``Depends(provider)``.
+    """Rewrite ``Annotated[T, resolver]`` parameters to use ``Depends(resolver)``.
 
-    The docs let route handlers write ``db: Annotated[Session, get_session]``
-    where ``get_session`` is a function decorated with ``@provide`` in a
-    parent ``_scope.py``. The dyadpy runtime expects ``Depends(get_session)``,
-    so we rewrite the signature before handing the function off.
+    Two kinds of resolvers are recognized in the ``Annotated`` extras:
+
+    - A ``@provide``-decorated function from a parent ``_scope.py`` —
+      matched by source location + qualname against the scope's provider
+      dict, so re-imports of the same scope file (Python creates fresh
+      function objects each time) still resolve to the same logical provider.
+    - A ``@dependency``-decorated function — bound directly without needing
+      to be registered in any ``_scope.py``.
+
+    The dyadpy runtime expects ``Depends(fn)``, so we rewrite the signature
+    before handing the function off.
     """
-    if not providers:
-        return handler
-
     import inspect as _inspect
     import typing as _typing
 
     from dyadpy import Depends
 
-    # Match providers by source location + name so re-imports of the same
-    # ``_scope.py`` (Python creates fresh function objects each time) still
-    # resolve to the same logical provider.
     def _key(fn: Callable[..., Any]) -> tuple[str, str] | None:
         code = getattr(fn, "__code__", None)
         if code is None:
@@ -253,10 +256,13 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
         new_extras: list[Any] = []
         bound: Callable[..., Any] | None = None
         for extra in extras:
-            if callable(extra):
+            if bound is None and callable(extra):
                 key = _key(extra)
                 if key is not None and key in provider_keys:
                     bound = provider_keys[key]
+                    continue
+                if is_dependency(extra):
+                    bound = extra
                     continue
             new_extras.append(extra)
         if bound is None:
@@ -281,8 +287,12 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
     Class-based ``Middleware`` instances ride on the wrapped function as
     ``__causeway_class_middleware__`` for the ASGI layer to pick up.
     """
+    # ``isinstance(fn, Middleware)`` is True for any async callable because the
+    # Protocol is runtime-checkable on ``__call__`` alone — partition explicitly
+    # so a ``@guard`` doesn't double up as class middleware and crash when the
+    # ASGI layer hands it ``(req, call_next)``.
     guards = [m for m in middleware if is_guard(m)]
-    mws = [m for m in middleware if isinstance(m, Middleware)]
+    mws = [m for m in middleware if not is_guard(m) and isinstance(m, Middleware)]
 
     if not guards and not mws:
         return handler
@@ -307,7 +317,7 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
     with_guards.__annotations__ = dict(getattr(handler, "__annotations__", {}))
     handler_globals = getattr(handler, "__globals__", None)
     if handler_globals is not None:
-        with_guards.__globals__.update(handler_globals)  # type: ignore[attr-defined]
+        with_guards.__globals__.update(handler_globals)
         with_guards.__dyadpy_localns__ = dict(handler_globals)  # type: ignore[attr-defined]
     if mws:
         with_guards.__causeway_class_middleware__ = mws  # type: ignore[attr-defined]

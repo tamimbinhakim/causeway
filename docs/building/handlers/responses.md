@@ -43,6 +43,7 @@ Returns `204 No Content` and the client function returns `void`.
 ## Status codes
 
 Defaults:
+
 - `GET`, `PUT`, `PATCH` → `200 OK`
 - `POST` → `201 Created` when the function name is `create`; `200 OK` otherwise.
 - `DELETE` with `-> None` → `204 No Content`.

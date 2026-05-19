@@ -16,10 +16,10 @@ configure_logging(*, level: str = "INFO", json: bool = True) -> None
 
 ## Parameters
 
-| Parameter | Default   | Notes                                                                            |
-| --------- | --------- | -------------------------------------------------------------------------------- |
-| `level`   | `"INFO"`  | Log level. One of `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`.              |
-| `json`    | `True`    | `True` → JSON renderer (production). `False` → console renderer (local dev).    |
+| Parameter | Default  | Notes                                                                        |
+| --------- | -------- | ---------------------------------------------------------------------------- |
+| `level`   | `"INFO"` | Log level. One of `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`.           |
+| `json`    | `True`   | `True` → JSON renderer (production). `False` → console renderer (local dev). |
 
 ## What it sets up
 

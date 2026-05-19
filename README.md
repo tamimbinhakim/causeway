@@ -122,7 +122,7 @@ You can mix the two freely in the same tree. Details: [`docs/building/routing/`]
 
 ## How it compares
 
-|                     | **Causeway**          | FastAPI        | Django + Ninja | Encore.ts        | NestJS          |
+|                     | **Causeway**      | FastAPI        | Django + Ninja | Encore.ts        | NestJS          |
 | ------------------- | ----------------- | -------------- | -------------- | ---------------- | --------------- |
 | Scope               | Backend framework | Router lib     | Full framework | Backend + infra  | Structural      |
 | Owns ORM?           | **No**            | No             | Yes            | Declarative      | No              |
@@ -154,8 +154,8 @@ Details in [`docs/stability/`](./docs/stability) — semver, IR stability, LTS.
 
 ## Packages
 
-| Package                          | What it is                                                   | Status |
-| -------------------------------- | ------------------------------------------------------------ | ------ |
+| Package                                  | What it is                                                   | Status |
+| ---------------------------------------- | ------------------------------------------------------------ | ------ |
 | [`causeway`](./packages/causeway) (PyPI) | Core framework: routing, config, DI, tasks, plugin registry. | v0.1 α |
 
 The official plugin set (`causeway-tasks-dramatiq`, `causeway-storage-s3`, `causeway-auth-jwt`, `causeway-db-sqlmodel`, etc.) lives under [`packages/`](./packages). Full inventory and roadmap in [`ROADMAP.md`](./ROADMAP.md#plugin-ecosystem).

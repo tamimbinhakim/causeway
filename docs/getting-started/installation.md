@@ -4,10 +4,10 @@ Get Causeway onto your machine and into a project. This page is the smallest pos
 
 ## System requirements
 
-| Tool   | Version | Notes                                                                 |
-| ------ | ------- | --------------------------------------------------------------------- |
-| Python | ≥ 3.11  | Causeway uses modern type syntax — `X \| Y`, `Annotated[T, …]`.       |
-| `uv`   | latest  | Recommended package manager. `brew install uv` on macOS.              |
+| Tool   | Version | Notes                                                           |
+| ------ | ------- | --------------------------------------------------------------- |
+| Python | ≥ 3.11  | Causeway uses modern type syntax — `X \| Y`, `Annotated[T, …]`. |
+| `uv`   | latest  | Recommended package manager. `brew install uv` on macOS.        |
 
 > **Good to know.** Causeway works with `pip` and `pipx` too — `uv` is just what the docs use because it's faster and ships a lockfile.
 

@@ -20,24 +20,24 @@ Causeway accepts both Next.js-style folders and TanStack-style dotted leaves in 
 
 ### Folder style
 
-| Pattern         | URL                                       |
-| --------------- | ----------------------------------------- |
-| `index.py`      | the folder's URL itself                   |
-| `foo.py`        | `/foo`                                    |
-| `[id].py`       | `/users/{id}` (with `id` in the handler)  |
-| `[id]/posts.py` | `/users/{id}/posts`                       |
-| `(admin)/x.py`  | `/x` — parens are stripped from the URL   |
+| Pattern         | URL                                      |
+| --------------- | ---------------------------------------- |
+| `index.py`      | the folder's URL itself                  |
+| `foo.py`        | `/foo`                                   |
+| `[id].py`       | `/users/{id}` (with `id` in the handler) |
+| `[id]/posts.py` | `/users/{id}/posts`                      |
+| `(admin)/x.py`  | `/x` — parens are stripped from the URL  |
 
 ### Dot-flat style
 
 The leaf filename is split on `.` and each piece becomes a URL segment. A trailing `index` is dropped (means "match parent exactly").
 
-| Pattern               | URL                                  |
-| --------------------- | ------------------------------------ |
-| `billing.webhooks.py` | `/billing/webhooks`                  |
-| `users.$id.py`        | `/users/{id}`                        |
-| `users.$id.index.py`  | `/users/{id}`                        |
-| `(admin).stats.py`    | `/stats`                             |
+| Pattern               | URL                 |
+| --------------------- | ------------------- |
+| `billing.webhooks.py` | `/billing/webhooks` |
+| `users.$id.py`        | `/users/{id}`       |
+| `users.$id.index.py`  | `/users/{id}`       |
+| `(admin).stats.py`    | `/stats`            |
 
 ### Mixing them
 

@@ -14,10 +14,10 @@ causeway plugin new <name> [--target <dir>]
 
 ## Arguments
 
-| Argument           | Default       | Description                                                |
-| ------------------ | ------------- | ---------------------------------------------------------- |
-| `<name>`           | —             | Plugin package name (e.g. `causeway-mailer-resend`).       |
-| `--target` / `-t`  | current dir   | Parent directory.                                          |
+| Argument          | Default     | Description                                          |
+| ----------------- | ----------- | ---------------------------------------------------- |
+| `<name>`          | —           | Plugin package name (e.g. `causeway-mailer-resend`). |
+| `--target` / `-t` | current dir | Parent directory.                                    |
 
 ## What it creates
 

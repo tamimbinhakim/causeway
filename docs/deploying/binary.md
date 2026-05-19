@@ -16,12 +16,12 @@ Python to C, then to machine code. Compared to PyInstaller/PyOxidizer:
 
 ## When to use this
 
-| Use it when… | Don't use it when… |
-|---|---|
-| You self-host on Linux servers / VMs / Docker. | You target Vercel / Cloudflare / Lambda — those want a Python or Node handler, not a binary. |
-| You want a `FROM scratch` container image (~15 MB). | You're iterating on routes in dev — `causeway dev` is the right loop. |
-| You ship to customers who shouldn't read the source. | Your app loads route files at runtime via `importlib` (binary freeze is AOT — runtime discovery breaks). |
-| You want one artifact to sign / SBOM / promote between environments. | You use plugins that register through entry points *at runtime* outside the standard `causeway.plugins` group. |
+| Use it when…                                                         | Don't use it when…                                                                                             |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| You self-host on Linux servers / VMs / Docker.                       | You target Vercel / Cloudflare / Lambda — those want a Python or Node handler, not a binary.                   |
+| You want a `FROM scratch` container image (~15 MB).                  | You're iterating on routes in dev — `causeway dev` is the right loop.                                          |
+| You ship to customers who shouldn't read the source.                 | Your app loads route files at runtime via `importlib` (binary freeze is AOT — runtime discovery breaks).       |
+| You want one artifact to sign / SBOM / promote between environments. | You use plugins that register through entry points _at runtime_ outside the standard `causeway.plugins` group. |
 
 ## Build flow
 
@@ -81,7 +81,7 @@ PORT=9000 HOST=127.0.0.1 ./dist/myapp-0.1.0-linux-x86_64
 Settings come from the same `pydantic-settings` class your dev server uses
 (`app.config.Settings`); environment variables and `.env` files work as
 they did before. The binary embeds the class definition; only the
-*values* are read at runtime.
+_values_ are read at runtime.
 
 ## Threat model
 

@@ -20,11 +20,13 @@ How to upgrade Causeway across versions. Until 1.0, expect minor APIs to shift b
 ## Deprecation policy
 
 Pre-1.0:
+
 - Minor versions may break the public API.
 - Patch versions only fix bugs (no API changes).
 - The plugin contract version (`v1.0`) signals what plugins target. Mismatch warns but doesn't fail.
 
 Post-1.0 ([`semver`](../stability/semver.md)):
+
 - Patch + minor never break.
 - Major bumps follow a deprecation cycle: one full minor of `DeprecationWarning` before removal.
 - The plugin contract is part of the stable surface.

@@ -33,13 +33,13 @@ The cron loop is owned by the registered [`TaskAdapter`](../classes/contracts.md
 
 ## Common expressions
 
-| Expression       | Meaning                       |
-| ---------------- | ----------------------------- |
-| `* * * * *`      | every minute                  |
-| `0 * * * *`      | top of every hour             |
-| `0 0 * * *`      | midnight UTC every day        |
-| `0 0 * * 0`      | midnight every Sunday         |
-| `*/15 * * * *`   | every 15 minutes              |
+| Expression     | Meaning                |
+| -------------- | ---------------------- |
+| `* * * * *`    | every minute           |
+| `0 * * * *`    | top of every hour      |
+| `0 0 * * *`    | midnight UTC every day |
+| `0 0 * * 0`    | midnight every Sunday  |
+| `*/15 * * * *` | every 15 minutes       |
 
 ## See also
 

@@ -5,11 +5,11 @@ self-contained, has its own `pyproject.toml` that pins `causeway` against
 the in-repo workspace via `tool.uv.sources`, and is **not** part of the
 publish pipeline — they exist to demo features and catch regressions.
 
-| Example                                 | Demonstrates                                                                                              |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [`minimal/`](./minimal)                 | The smallest possible Causeway app — one handler, zero plugins. Sanity-checks the dev loop.                   |
-| [`minimal-crud/`](./minimal-crud)       | CRUD on one resource: file routing (`index.py` + `[id].py`), msgspec models, typed errors, `@raises` envelope. |
-| [`blog/`](./blog)                       | The deep example. SQLAlchemy + SQLite, scoped DI, admin auth via providers, nested subtrees, background `@task` + `@cron`, lifespan + plugin startup, full test suite. |
+| Example                           | Demonstrates                                                                                                                                                           |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`minimal/`](./minimal)           | The smallest possible Causeway app — one handler, zero plugins. Sanity-checks the dev loop.                                                                            |
+| [`minimal-crud/`](./minimal-crud) | CRUD on one resource: file routing (`index.py` + `[id].py`), msgspec models, typed errors, `@raises` envelope.                                                         |
+| [`blog/`](./blog)                 | The deep example. SQLAlchemy + SQLite, scoped DI, admin auth via providers, nested subtrees, background `@task` + `@cron`, lifespan + plugin startup, full test suite. |
 
 ## Running an example
 

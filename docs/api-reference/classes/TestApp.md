@@ -16,11 +16,13 @@ r = await app.post("/users", json={"name": "ada"})
 ```python
 TestApp.from_routes(routes_root: str | Path) -> TestApp
 ```
+
 Walks `routes_root`, builds a fresh `dyadpy.App`, attaches health endpoints, returns a `TestApp`.
 
 ```python
 TestApp.wrap(app: dyadpy.App) -> TestApp
 ```
+
 Wraps an existing `dyadpy.App` — useful for app-factory patterns.
 
 ## HTTP methods

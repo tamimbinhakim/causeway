@@ -43,27 +43,27 @@ causeway/                                     # monorepo root (pnpm workspace)
 
 ## Where things live, at a glance
 
-| Concern                      | Lives in                                    |
-| ---------------------------- | ------------------------------------------- |
-| File-based router            | `packages/causeway/src/causeway/routing.py`         |
-| URL pattern translation      | `packages/causeway/src/causeway/_paths.py`          |
-| Handler decorators           | `packages/causeway/src/causeway/_methods.py`        |
-| App factory                  | `packages/causeway/src/causeway/app.py`             |
-| Config (`Settings`)          | `packages/causeway/src/causeway/config.py`          |
-| Scoped DI                    | `packages/causeway/src/causeway/scope.py`           |
-| Plugin registry              | `packages/causeway/src/causeway/plugins.py`         |
-| Plugin contracts (Protocols) | `packages/causeway/src/causeway/contracts.py`       |
-| Reference adapters in core   | `packages/causeway/src/causeway/adapters.py`        |
-| Background tasks             | `packages/causeway/src/causeway/tasks.py`           |
-| Cron parser                  | `packages/causeway/src/causeway/_cron.py`           |
-| Middleware base + `@guard`   | `packages/causeway/src/causeway/middleware.py`      |
+| Concern                          | Lives in                                          |
+| -------------------------------- | ------------------------------------------------- |
+| File-based router                | `packages/causeway/src/causeway/routing.py`       |
+| URL pattern translation          | `packages/causeway/src/causeway/_paths.py`        |
+| Handler decorators               | `packages/causeway/src/causeway/_methods.py`      |
+| App factory                      | `packages/causeway/src/causeway/app.py`           |
+| Config (`Settings`)              | `packages/causeway/src/causeway/config.py`        |
+| Scoped DI                        | `packages/causeway/src/causeway/scope.py`         |
+| Plugin registry                  | `packages/causeway/src/causeway/plugins.py`       |
+| Plugin contracts (Protocols)     | `packages/causeway/src/causeway/contracts.py`     |
+| Reference adapters in core       | `packages/causeway/src/causeway/adapters.py`      |
+| Background tasks                 | `packages/causeway/src/causeway/tasks.py`         |
+| Cron parser                      | `packages/causeway/src/causeway/_cron.py`         |
+| Middleware base + `@guard`       | `packages/causeway/src/causeway/middleware.py`    |
 | Observability (request id, OTel) | `packages/causeway/src/causeway/observability.py` |
-| Errors + handlers            | `packages/causeway/src/causeway/errors.py`          |
-| Health endpoints             | `packages/causeway/src/causeway/health.py`          |
-| Diagnostics (`/__causeway`)      | `packages/causeway/src/causeway/diagnostics.py`     |
-| Testing kit                  | `packages/causeway/src/causeway/testing.py`         |
-| CLI                          | `packages/causeway/src/causeway/cli.py`             |
-| Scaffolding (`causeway new`)     | `packages/causeway/src/causeway/_scaffold.py`       |
+| Errors + handlers                | `packages/causeway/src/causeway/errors.py`        |
+| Health endpoints                 | `packages/causeway/src/causeway/health.py`        |
+| Diagnostics (`/__causeway`)      | `packages/causeway/src/causeway/diagnostics.py`   |
+| Testing kit                      | `packages/causeway/src/causeway/testing.py`       |
+| CLI                              | `packages/causeway/src/causeway/cli.py`           |
+| Scaffolding (`causeway new`)     | `packages/causeway/src/causeway/_scaffold.py`     |
 
 ## The rule that decides most arguments
 

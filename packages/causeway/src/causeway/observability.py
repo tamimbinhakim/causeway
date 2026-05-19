@@ -40,8 +40,8 @@ class RequestIdMiddleware:
         headers = dict(scope.get("headers", []) or [])
         existing = headers.get(self.HEADER.encode())
         request_id = existing.decode() if existing else uuid.uuid4().hex
-        scope.setdefault("state", {})  # type: ignore[typeddict-item]
-        scope["state"]["request_id"] = request_id  # type: ignore[typeddict-item]
+        scope.setdefault("state", {})
+        scope["state"]["request_id"] = request_id
 
         async def send_with_header(message: Message) -> None:
             if message["type"] == "http.response.start":
@@ -61,7 +61,7 @@ def configure_logging(*, level: str = "INFO", json: bool = True) -> None:
     keep ``json=True`` so a log shipper can ingest the lines directly.
     """
     timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
-    pre_chain = [
+    pre_chain: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.StackInfoRenderer(),
