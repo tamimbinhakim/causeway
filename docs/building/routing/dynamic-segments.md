@@ -75,6 +75,17 @@ Handlers under that folder all see the parameter:
 async def list_posts(id: UUID) -> list[Post]: ...
 ```
 
+## Literal siblings beat dynamic ones
+
+When a folder contains both `[id].py` and a literal sibling (e.g. `risk-overrides/index.py`), the literal route always wins for matching requests:
+
+```
+routes/customers/[id].py                   →  /customers/{id}
+routes/customers/risk-overrides/index.py   →  /customers/risk-overrides
+```
+
+`GET /customers/risk-overrides` hits the literal handler; `GET /customers/abc-123` falls through to `[id]`. Discovery sorts routes by specificity (literal segments outrank parametric ones at every depth) before registration, so filesystem walk order doesn't shadow literal siblings.
+
 ## Catch-all (reserved)
 
 `[...rest].py` and `$$rest.py` are reserved for v0.2+. Today they raise `NotImplementedError` at boot. Track [the roadmap](../../../ROADMAP.md) for status.

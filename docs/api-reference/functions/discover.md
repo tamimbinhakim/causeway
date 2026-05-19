@@ -41,7 +41,7 @@ class DiscoveredRoute:
 ## Properties
 
 - **Pure.** No global state mutated, no `dyadpy.App` touched.
-- **Sorted.** Routes appear in walk order (`os.walk` + sorted directory entries).
+- **Sorted by specificity.** `Discovered.routes` is re-sorted so literal segments outrank parametric (`{name}`) ones at every depth — `/users/me` always registers before `/users/{id}` regardless of filesystem walk order. Ties preserve walk order (stable sort).
 - **Boot-checked.** Method conflicts (two `@get` for the same URL) raise `TypeError` here, not at request time.
 
 ## Use cases

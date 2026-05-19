@@ -353,3 +353,109 @@ def test_dependency_requires_return_annotation() -> None:
 
     with pytest.raises(TypeError, match="must declare a return type"):
         dependency(resolver)
+
+
+@pytest.mark.asyncio
+async def test_pep563_route_binds_providers(tmp_path: Path) -> None:
+    """A route file using ``from __future__ import annotations`` must still
+    have its ``Annotated[T, dep]`` providers bound.
+
+    Regression: ``_bind_providers`` used ``inspect.signature`` without
+    ``eval_str=True``, so the annotation came back as the string
+    ``'Annotated[...]'`` and ``get_origin`` returned ``None`` — every
+    provider was silently skipped and the request 422'd as "missing
+    required parameter 'me'".
+    """
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "items.py",
+        """from __future__ import annotations
+
+from causeway import dependency, get
+from starlette.requests import Request
+
+
+@dependency
+async def CurrentUser(req: Request) -> str:
+    return "ada"
+
+
+@get
+async def show(me: CurrentUser) -> dict:
+    return {"me": me}
+""",
+    )
+
+    app = App()
+    register(app, discover(routes))
+
+    transport = httpx.ASGITransport(app=app)  # type: ignore[arg-type]
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+        resp = await client.get("/items")
+    assert resp.status_code == 200
+    assert resp.json() == {"me": "ada"}
+
+
+@pytest.mark.asyncio
+async def test_provider_param_followed_by_path_param(tmp_path: Path) -> None:
+    """Handler signature ``(me: CurrentUser, id: str)`` must not raise.
+
+    Regression: ``param.replace(...)`` rewrote the provider param in place,
+    giving it a ``Depends(...)`` default while the following ``id`` param
+    still had no default — ``Signature(...)`` then refused to build the
+    rewritten signature with "non-default argument follows default
+    argument" at app boot.
+    """
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "items/[id].py",
+        """from causeway import dependency, get
+from starlette.requests import Request
+
+
+@dependency
+async def CurrentUser(req: Request) -> str:
+    return "ada"
+
+
+@get
+async def show(me: CurrentUser, id: str) -> dict:
+    return {"me": me, "id": id}
+""",
+    )
+
+    app = App()
+    register(app, discover(routes))
+
+    transport = httpx.ASGITransport(app=app)  # type: ignore[arg-type]
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+        resp = await client.get("/items/abc")
+    assert resp.status_code == 200
+    assert resp.json() == {"me": "ada", "id": "abc"}
+
+
+def test_literal_sibling_outranks_parametric(tmp_path: Path) -> None:
+    """``/things/risk-overrides`` must register before ``/things/{id}``.
+
+    Regression: ``_walk`` iterates entries in lex order, so ``[id].py``
+    (which sorts before letters because ``[`` < ``r``) was registered
+    first — Starlette then matched the parametric route first and a
+    request to the literal sibling shadowed by ``[id]``.
+    """
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "things/[id].py",
+        "from causeway import get\n@get\nasync def show(id: str) -> dict: return {'id': id}\n",
+    )
+    _write(
+        routes,
+        "things/risk-overrides/index.py",
+        "from causeway import get\n@get\nasync def show() -> dict: return {'literal': True}\n",
+    )
+    found = discover(routes)
+    paths = [r.path for r in found.routes]
+    # Literal must come before the parametric sibling.
+    assert paths.index("/things/risk-overrides") < paths.index("/things/{id}"), paths

@@ -35,7 +35,7 @@ wheels = [
 
 [[package]]
 name = "causeway"
-version = "0.1.0"
+version = "0.3.4"
 source = { editable = "../../packages/causeway" }
 dependencies = [
     { name = "anyio" },
@@ -56,7 +56,7 @@ requires-dist = [
     { name = "anyio", specifier = ">=4.13.0" },
     { name = "causeway", extras = ["dramatiq", "otel", "binary"], marker = "extra == 'all'" },
     { name = "dramatiq", extras = ["redis"], marker = "extra == 'dramatiq'", specifier = ">=2.1.0" },
-    { name = "dyadpy", specifier = ">=0.1.0a0" },
+    { name = "dyadpy", specifier = ">=0.1.1" },
     { name = "msgspec", specifier = ">=0.19" },
     { name = "nuitka", marker = "extra == 'binary'", specifier = ">=2.5" },
     { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.41.1" },
@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "dyadpy"
-version = "0.1.0a0"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -152,9 +152,9 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/73/96/5711295e04dda5cf19701ac955f0367f453dd757dd217590d0d01bff4c54/dyadpy-0.1.0a0.tar.gz", hash = "sha256:a105e59281b49552d3653cadec2bfe7c6ca5c1a1d0eff5a9c3e141382f62536a", size = 66723, upload-time = "2026-05-14T11:19:02.946Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/53/6d20a6a61cba014f238ae5f0c49589613bbebd907165b8330de9b771cd35/dyadpy-0.1.1.tar.gz", hash = "sha256:c4263cea022d74f3e3fe73b45e54eac26a9e033b2a1fa15c53fd4402f2c107e9", size = 67796, upload-time = "2026-05-17T12:18:58.65Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/53/5d1298ade9048c6a680ffb303c87e3ce9f9150b24aab274497bc1c263382/dyadpy-0.1.0a0-py3-none-any.whl", hash = "sha256:d170d4c12671c0d6cf20bce765f0c83f75a9e8cfbbb2ff28328a2d8e857701ec", size = 54212, upload-time = "2026-05-14T11:19:05.083Z" },
+    { url = "https://files.pythonhosted.org/packages/92/16/d1624dc5290fd692cfa877dfbc4e41ab97fc70ca1d90f8021ce7e495e18b/dyadpy-0.1.1-py3-none-any.whl", hash = "sha256:b5fb31e1cfe5a9de4b034a5e9d6bd294cdf62dfb01dd985b3440321cba561adb", size = 54707, upload-time = "2026-05-17T12:18:57.276Z" },
 ]
 
 [[package]]
