@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -233,15 +234,16 @@ async def show(me: CurrentUser) -> dict:
             await client.get("/me")
 
 
-@pytest.mark.asyncio
-async def test_guard_does_not_leak_into_class_middleware(tmp_path: Path) -> None:
-    """A guard listed alone in ``_middleware.py`` must not crash at request time.
+def test_guard_does_not_leak_into_class_middleware(tmp_path: Path) -> None:
+    """A guard listed alone in ``_middleware.py`` must not become class middleware.
 
     Regression: ``Middleware`` is a runtime-checkable Protocol matching any
     async callable with ``__call__``, so ``@guard`` functions used to land in
-    both the guard partition AND the class-middleware partition — the ASGI
-    layer then invoked them with ``(req, call_next)`` and they blew up with
-    ``TypeError: takes 1 positional argument but 2 were given``.
+    both partitions — the ASGI layer would then invoke them with
+    ``(req, call_next)`` and crash with ``TypeError: takes 1 positional
+    argument but 2 were given``. Asserted at the partition layer so the test
+    doesn't drag in Starlette/anyio (which leak ResourceWarnings under the
+    bare ``ASGITransport`` we use elsewhere).
     """
     routes = tmp_path / "routes"
     _write(
@@ -267,37 +269,36 @@ async def r() -> dict:
 """,
     )
 
-    from causeway import create_app
-
-    app = create_app(routes_root=str(routes), diagnostics=False, request_id=False)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
-        resp = await client.get("/")
-    assert resp.status_code == 200
-    assert resp.json() == {"ok": True}
+    found = discover(routes)
+    assert len(found.routes) == 1
+    handler = found.routes[0].handler
+    recorded = getattr(handler, "__causeway_class_middleware__", None)
+    assert not recorded, f"guard leaked into class-middleware partition: {recorded!r}"
 
 
 @pytest.mark.asyncio
 async def test_class_middleware_is_path_gated(tmp_path: Path) -> None:
     """A ``Middleware`` attached via ``@use`` runs only for its handler.
 
-    Regression test for the prior global-ASGI-chain limitation: requests
-    to other routes must not see the middleware's side effects (here, a
-    response header) even though the middleware is registered on the
-    Starlette app.
+    Regression for the prior global-ASGI-chain limitation: the gated dispatch
+    must invoke the wrapped middleware for the route that declared it and
+    fall through to ``call_next`` for any other path or method. Exercised at
+    the dispatch level rather than through Starlette+httpx, both because we
+    only need to test the gating behaviour and because ``BaseHTTPMiddleware``
+    under ``ASGITransport`` leaks task-group resources that fail under
+    ``filterwarnings = error``.
     """
+    from causeway.app import _collect_class_middleware
+
     routes = tmp_path / "routes"
     _write(
         routes,
         "tagged.py",
         """from causeway import get, use
-from starlette.responses import Response
 
 class StampHeader:
     async def __call__(self, req, call_next):
-        resp: Response = await call_next(req)
-        resp.headers["x-stamp"] = "tagged"
-        return resp
+        return ("stamped", req.url.path)
 
 @get
 @use(StampHeader())
@@ -316,17 +317,30 @@ async def r() -> dict:
 """,
     )
 
-    from causeway import create_app
+    found = discover(routes)
+    entries = _collect_class_middleware(found)
+    assert len(entries) == 1, "exactly one Middleware instance was registered"
+    dispatch: Any = entries[0].kwargs["dispatch"]
 
-    app = create_app(routes_root=str(routes), diagnostics=False, request_id=False)
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
-        tagged = await client.get("/tagged")
-        plain = await client.get("/plain")
-    assert tagged.status_code == 200
-    assert tagged.headers.get("x-stamp") == "tagged"
-    assert plain.status_code == 200
-    assert "x-stamp" not in plain.headers, "middleware leaked onto unrelated route"
+    class _FakeURL:
+        def __init__(self, path: str) -> None:
+            self.path = path
+
+    class _FakeReq:
+        def __init__(self, method: str, path: str) -> None:
+            self.method = method
+            self.url = _FakeURL(path)
+
+    async def _call_next(_req: object) -> tuple[str, str]:
+        return ("passthrough", _req.url.path)  # type: ignore[attr-defined]
+
+    matched = await dispatch(_FakeReq("GET", "/tagged"), _call_next)
+    bypassed_path = await dispatch(_FakeReq("GET", "/plain"), _call_next)
+    bypassed_method = await dispatch(_FakeReq("POST", "/tagged"), _call_next)
+
+    assert matched == ("stamped", "/tagged")
+    assert bypassed_path == ("passthrough", "/plain")
+    assert bypassed_method == ("passthrough", "/tagged")
 
 
 def test_dependency_requires_return_annotation() -> None:
