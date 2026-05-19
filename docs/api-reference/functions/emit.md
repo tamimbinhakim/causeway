@@ -1,47 +1,49 @@
-# `emit`
+# `Event.emit()`
 
-Dispatch a domain event to every listener registered for it.
+Dispatch a typed event to its in-process listeners and (when `webhook = True`) outbound subscribers.
 
 ```python
-from causeway import emit
+from app.events.customer_created import CustomerCreated
 
-await emit("customer:create", customer)
+await CustomerCreated(id=user.id, email=user.email).emit()
 ```
+
+> **Note.** The 0.1 `emit(name: str, payload: Any)` function has been removed. Events are now class-based — see [Events](../../building/events/index.md) for the new model.
 
 ## Signature
 
 ```python
-async def emit(name: str, payload: Any = None) -> None
+async def emit(self) -> EmitResult: ...
 ```
 
-Delegates to the active `EventBus`. `create_app` installs an `InMemoryEventBus` when `app/events/` exists.
-
-## Parameters
-
-| Parameter | Default | Notes                                                               |
-| --------- | ------- | ------------------------------------------------------------------- |
-| `name`    | —       | Event name, e.g. `"customer:create"`. Matches the filename mapping. |
-| `payload` | `None`  | Single positional value passed to every listener as-is.             |
+`emit` is an instance method on `Event` subclasses. It takes no arguments (the payload is `self`).
 
 ## Behavior
 
-- Listeners run concurrently via `asyncio.gather(*coros)`.
-- The first listener to raise propagates out of `emit`. Other listeners' coroutines are not awaited.
-- Emitting an event with no listeners is a no-op (logs once at DEBUG).
-- Calling `emit` without an active bus raises `RuntimeError`.
+1. **In-process fan-out.** Runs every `@<Cls>.listen` listener registered against the class. Listeners run concurrently via `asyncio.gather`. The first listener to raise propagates out of `emit`; the remaining listeners' coroutines are not awaited.
+2. **Webhook fan-out** (only when `<Cls>.webhook = True`). Walks `_subscribers` (static, file-discovered) plus the active `WebhookStore`'s rows (dynamic, if installed). For each subscriber whose `where` filter matches the event instance, enqueues one `_deliver` task. Tasks are not awaited; the caller never blocks on outbound HTTP.
 
-## Filename → event name
+Returns an `EmitResult`:
 
-| File                                  | Event name                 |
-| ------------------------------------- | -------------------------- |
-| `app/events/customer.create.py`       | `customer:create`          |
-| `app/events/billing/refund.issued.py` | `billing:refund:issued`    |
-| `app/events/customer/create.py`       | `customer:create` (merged) |
+```python
+@dataclass
+class EmitResult:
+    delivery_ids: list[str]  # task ids of enqueued webhook deliveries
+```
 
-See [Events](../../building/events/index.md) for the full convention.
+Empty list when the class has `webhook = False` or no subscribers matched.
+
+## Failure modes
+
+| Source                      | Surface                                                          |
+| --------------------------- | ---------------------------------------------------------------- |
+| Listener raises             | First exception propagates out of `emit`                         |
+| Webhook enqueue fails       | Logged, that subscriber's delivery skipped, others continue      |
+| Webhook delivery POST fails | Handled by the task adapter's retry chain; not visible to `emit` |
 
 ## See also
 
 - [Events overview](../../building/events/index.md)
-- [`EventBus` contract](../classes/contracts.md)
-- [Background tasks](../../building/tasks/index.md) — what listeners typically enqueue
+- [Webhooks](../../building/webhooks/index.md)
+- [Subscribers](../../building/subscribers/index.md)
+- [Testing — `captured()` / `captured_webhooks()`](../../building/testing/index.md)

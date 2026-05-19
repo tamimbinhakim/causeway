@@ -24,8 +24,8 @@ from causeway.app import create_app
 from causeway.auth import check_permission, expand_permissions, require_permission
 from causeway.batch import BatchFailure, BatchResult, batch
 from causeway.config import Manifest, Settings
-from causeway.contracts import EventBus
-from causeway.events import InMemoryEventBus, emit
+from causeway.contracts import Webhooks, WebhookStore
+from causeway.events import Event
 from causeway.middleware import IdempotencyMiddleware, Middleware, guard, use
 from causeway.observability import RequestIdMiddleware, configure_logging, configure_otel
 from causeway.pagination import Cursor, Paginated
@@ -33,9 +33,14 @@ from causeway.plugins import env, register
 from causeway.scope import dependency, provide
 from causeway.tasks import cron, task, tasks_eager
 from causeway.webhooks import (
+    IncomingWebhook,
     InMemoryWebhooks,
+    InMemoryWebhookStore,
+    Subscriber,
+    WebhookDeliveryFailed,
     new_secret,
     sign_payload,
+    verify,
     verify_signature,
 )
 
@@ -47,15 +52,20 @@ __all__ = [
     "Bytes",
     "Cursor",
     "Depends",
-    "EventBus",
+    "Event",
     "IdempotencyMiddleware",
-    "InMemoryEventBus",
+    "InMemoryWebhookStore",
     "InMemoryWebhooks",
+    "IncomingWebhook",
     "Manifest",
     "Middleware",
     "Paginated",
     "RequestIdMiddleware",
     "Settings",
+    "Subscriber",
+    "WebhookDeliveryFailed",
+    "WebhookStore",
+    "Webhooks",
     "__version__",
     "batch",
     "check_permission",
@@ -65,7 +75,6 @@ __all__ = [
     "cron",
     "delete",
     "dependency",
-    "emit",
     "env",
     "errors",
     "expand_permissions",
@@ -84,5 +93,6 @@ __all__ = [
     "task",
     "tasks_eager",
     "use",
+    "verify",
     "verify_signature",
 ]

@@ -6,7 +6,8 @@ Every plugin contract in `causeway.contracts`. All are `typing.Protocol`s — du
 from causeway.contracts import (
     Plugin,
     TaskAdapter,
-    EventBus,
+    Webhooks,
+    WebhookStore,
     Storage,
     KV,
     SessionStore,
@@ -23,6 +24,8 @@ from causeway.contracts import (
     DeployTarget,
 )
 ```
+
+> **Note.** `EventBus` and the old `Webhooks` (with `register_endpoint`/`send`) are gone in 0.2+. Events are class-based (see `causeway.events.Event`); webhook delivery is a `@task` inside `causeway.webhooks`; subscription storage is split out into `WebhookStore`.
 
 Every contract carries a `contract_version: ClassVar[str] = "v1.0"` so the registry can warn when a plugin targets an older protocol.
 
@@ -63,20 +66,45 @@ Reference: `causeway.tasks.InMemoryAdapter`. Real adapters: `causeway-tasks-dram
 
 ---
 
-## `EventBus`
+## `Webhooks`
 
 ```python
-class EventBus(Plugin, Protocol):
-    contract_version: ClassVar[str] = "v1.0"
-
-    async def emit(self, name: str, payload: Any) -> None: ...
+class Webhooks(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v2.0"
 ```
 
-In-process event dispatcher. Listeners are discovered from `app/events/` by `causeway.events.discover` and installed on the bus during lifespan startup. The bus's job is to fan out one `emit` call to every listener for the event name.
+Lifecycle adapter for the outbound webhook surface. Holds no subscription state — static subscribers live on the `Event` class itself; dynamic ones live in a `WebhookStore`. Delivery is a `@task` inside `causeway.webhooks`, not a method on this contract.
 
-Reference: `causeway.events.InMemoryEventBus` (concurrent fan-out via `asyncio.gather`). Durable buses (transactional outbox, Redis streams) plug in as sibling packages.
+Reference: `causeway.webhooks.InMemoryWebhooks`.
 
-See [Events](../../building/events/index.md) for the file-naming convention and [`emit`](../functions/emit.md) for the call surface.
+See [Webhooks](../../building/webhooks/index.md) for the model and [Subscribers](../../building/subscribers/index.md) for the registration surface.
+
+---
+
+## `WebhookStore`
+
+```python
+class WebhookStore(Plugin, Protocol):
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def subscribe(
+        self,
+        *,
+        url: str,
+        secret: str,
+        events: list[str],
+        where: dict[str, Any] | None = None,
+    ) -> str: ...
+    async def unsubscribe(self, endpoint_id: str) -> None: ...
+    async def disable(self, endpoint_id: str) -> None: ...
+    def subscribers_for(self, wire_name: str) -> AsyncIterator[Any]: ...
+```
+
+Durable storage for runtime-managed webhook subscriptions (multi-tenant apps, customer-managed integrations). `subscribers_for(wire_name)` yields rows for one event; `Event.emit()` calls it during fan-out and applies each row's `where` filter.
+
+Reference: `causeway.webhooks.InMemoryWebhookStore` (process-local, for tests and single-process apps). Production deployments install a durable plugin (`causeway-webhooks-pg`, etc.).
+
+`InMemoryWebhooks` does **not** implement `WebhookStore` — `subscribe()` raises `NotImplementedError`. The in-memory adapter can't honestly persist subscriptions across restarts.
 
 ---
 

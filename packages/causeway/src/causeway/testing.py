@@ -139,6 +139,12 @@ async def stub(provider: Callable[..., Any], value: Any) -> AsyncIterator[None]:
         provider.__code__ = original_code
 
 
+# ---------------------------------------------------------------------------
+# Event / webhook capture helpers
+# ---------------------------------------------------------------------------
+from dataclasses import dataclass as _dataclass  # noqa: E402
+from typing import TYPE_CHECKING  # noqa: E402
+
 from causeway._testing import (  # noqa: E402 - inline-scenario surface
     Expectation,
     Response,
@@ -150,12 +156,123 @@ from causeway._testing import (  # noqa: E402 - inline-scenario surface
 )
 from causeway.tasks import tasks_eager  # noqa: E402 - module re-export
 
+if TYPE_CHECKING:
+    from causeway.events import Event
+
+
+@_dataclass(slots=True)
+class CapturedDelivery:
+    """One record from :func:`captured_webhooks`. Mirrors what would have
+    been enqueued for outbound delivery."""
+
+    subscriber_id: str
+    url: str
+    event_name: str
+    event: Any
+    where: dict[str, Any] | None
+
+
+@asynccontextmanager
+async def captured(*event_classes: type[Event]) -> AsyncIterator[list[Any]]:
+    """Capture every instance of the given event classes emitted in the block.
+
+    Short-circuits the event's in-process listeners — they don't fire while
+    capture is active — so tests can assert on what would have been emitted
+    without triggering side effects. Webhook fan-out is not suppressed
+    here; pair with :func:`captured_webhooks` for the full short-circuit.
+
+    Example::
+
+        async with captured(CustomerCreated) as events:
+            await client.post("/customers", json={...})
+        assert events == [CustomerCreated(id=..., email="a@b")]
+    """
+    out: list[Any] = []
+    saved: dict[Any, list[Any]] = {}
+    for cls in event_classes:
+        saved[cls] = list(cls._listeners)
+        cls._listeners.clear()
+
+        async def _capture(p: Any, _out: list[Any] = out) -> None:
+            _out.append(p)
+
+        cls._listeners.append(_capture)
+    try:
+        yield out
+    finally:
+        for cls, originals in saved.items():
+            cls._listeners[:] = originals
+
+
+@asynccontextmanager
+async def captured_webhooks() -> AsyncIterator[list[CapturedDelivery]]:
+    """Capture every webhook delivery that would have been enqueued.
+
+    Short-circuits the task adapter — no ``_deliver.enqueue`` runs, no HTTP
+    is attempted. Returned list is one :class:`CapturedDelivery` per
+    matching subscriber per emit (static + dynamic, ``where`` filter applied).
+
+    Example::
+
+        async with captured_webhooks() as deliveries:
+            await client.post("/customers", json={...})
+        assert len(deliveries) == 1
+        assert deliveries[0].url == "https://slack.example"
+    """
+    import causeway.events as _events
+    import causeway.webhooks as _webhooks
+
+    out: list[CapturedDelivery] = []
+    saved = _events._fanout_impl
+
+    async def _capture(event: Any) -> list[str]:
+        cls = type(event)
+        for sub in cls._subscribers:
+            if not _webhooks._matches(event, sub.where):
+                continue
+            out.append(
+                CapturedDelivery(
+                    subscriber_id=sub.id,
+                    url=sub.url,
+                    event_name=cls.wire_name,
+                    event=event,
+                    where=sub.where,
+                )
+            )
+        store = _webhooks.active_store()
+        if store is not None:
+            async for stored in store.subscribers_for(cls.wire_name):
+                if not _webhooks._matches(event, stored.where):
+                    continue
+                out.append(
+                    CapturedDelivery(
+                        subscriber_id=stored.id,
+                        url=stored.url,
+                        event_name=cls.wire_name,
+                        event=event,
+                        where=stored.where,
+                    )
+                )
+        # Return synthetic ids so callers that inspect ``EmitResult`` see
+        # the same shape as a real fan-out.
+        return [f"captured-{i}" for i in range(len(out))]
+
+    _events._fanout_impl = _capture
+    try:
+        yield out
+    finally:
+        _events._fanout_impl = saved
+
+
 __all__ = [
+    "CapturedDelivery",
     "Expectation",
     "Response",
     "ScenarioAssertionError",
     "SnapshotValue",
     "TestApp",
+    "captured",
+    "captured_webhooks",
     "expect",
     "scenario",
     "snapshot",

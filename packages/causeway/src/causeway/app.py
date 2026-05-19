@@ -24,6 +24,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Mount, compile_path
 
 import causeway.events as _events
+import causeway.webhooks as _webhooks  # noqa: F401 — wires fan-out into Event.emit at import
+from causeway._loader import import_path
 from causeway.diagnostics import attach as attach_diagnostics
 from causeway.errors import error_renderer
 from causeway.health import attach as attach_health
@@ -36,6 +38,8 @@ def create_app(
     routes_root: str | Path = "app/routes",
     *,
     events_root: str | Path = "app/events",
+    listeners_root: str | Path = "app/listeners",
+    subscribers_root: str | Path = "app/subscribers",
     settings: Any = None,
     diagnostics: bool = True,
     request_id: bool = True,
@@ -52,12 +56,21 @@ def create_app(
     Health endpoints (``/healthz``, ``/readyz``) attach unconditionally; the
     diagnostics endpoint (``/__causeway``) is opt-out via ``diagnostics=False``.
 
-    If ``events_root`` exists, files in it are discovered as event listeners
-    and a default :class:`~causeway.events.InMemoryEventBus` is installed.
-    Missing folder = no event bus = ``await emit(...)`` raises.
+    File-based discovery walks three trees if they exist:
+
+    - ``events_root`` — :class:`~causeway.events.Event` subclasses register
+      themselves via ``__init_subclass__`` when imported.
+    - ``listeners_root`` — every ``.py`` is imported so its
+      ``@<Event>.listen`` decorators run.
+    - ``subscribers_root`` — every ``.py`` is imported so
+      :class:`~causeway.webhooks.Subscriber` instances register against
+      their event classes' ``_subscribers`` lists.
+
+    Missing folders are skipped silently. The class itself is the bus; no
+    separate ``EventBus`` plugin is installed.
     """
     found = discover(routes_root)
-    events = _discover_events(events_root)
+    events = _discover_events(events_root, listeners_root, subscribers_root)
     return _assemble(
         found,
         events=events,
@@ -80,7 +93,9 @@ def create_app_frozen(
     """Build a runnable ASGI app from a :class:`Discovered` produced at build time.
 
     The dev surface (``/__causeway``) is always stripped in binary mode
-    regardless of the caller's preference.
+    regardless of the caller's preference. ``events`` is accepted for
+    API compatibility with the frozen-runtime path but unused — event
+    classes register themselves at import time.
     """
     if _build_mode_is_binary() and diagnostics:
         diagnostics = False
@@ -118,15 +133,10 @@ def _assemble(
     if error_renderer_:
         exception_handlers[Exception] = error_renderer
 
-    bus: _events.InMemoryEventBus | None = None
-    if events is not None:
-        bus = _events.InMemoryEventBus()
+    _ = events  # discovery already had its side effects; nothing to install
 
     @contextlib.asynccontextmanager
     async def lifespan(_: Any) -> AsyncIterator[None]:
-        if bus is not None and events is not None:
-            await bus.startup(settings)
-            bus.install(events)
         for hook in found.startup_hooks:
             await hook()
         try:
@@ -134,8 +144,6 @@ def _assemble(
         finally:
             for hook in found.shutdown_hooks:
                 await hook()
-            if bus is not None:
-                await bus.shutdown()
 
     return Starlette(
         routes=[Mount("/", app=inner)],
@@ -145,11 +153,29 @@ def _assemble(
     )
 
 
-def _discover_events(events_root: str | Path) -> _events.Discovered | None:
-    """Return the discovered events, or ``None`` if the folder is absent."""
+def _discover_events(
+    events_root: str | Path,
+    listeners_root: str | Path,
+    subscribers_root: str | Path,
+) -> _events.Discovered | None:
+    """Walk the three discovery trees. Returns the snapshot or ``None`` if
+    the events folder is absent."""
     if not Path(events_root).is_dir():
         return None
-    return _events.discover(events_root)
+    snapshot = _events.discover(
+        events_root,
+        listeners_root=listeners_root if Path(listeners_root).is_dir() else None,
+    )
+    # Subscribers register themselves on import; no need to keep references.
+    sub_root = Path(subscribers_root)
+    if sub_root.is_dir():
+        root = sub_root.resolve()
+        for entry in sorted(sub_root.rglob("*.py")):
+            rel = entry.resolve().relative_to(root)
+            if any(p.startswith("_") or p.startswith(".") for p in rel.parts):
+                continue
+            import_path(entry, label_prefix="_causeway_subscribers")
+    return snapshot
 
 
 def _build_mode_is_binary() -> bool:
