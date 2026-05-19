@@ -99,11 +99,11 @@ Full guide: [Inline scenarios](./inline-scenarios.md).
 
 ## When to choose which
 
-| Use inline scenarios when…           | Use external tests when…           |
-| ------------------------------------ | ---------------------------------- |
-| Testing one route file               | Testing across routes              |
-| The test reads the response body     | Heavy fixtures or shared DB state  |
-| You want the test next to the code   | You want cross-cutting setup       |
+| Use inline scenarios when…         | Use external tests when…          |
+| ---------------------------------- | --------------------------------- |
+| Testing one route file             | Testing across routes             |
+| The test reads the response body   | Heavy fixtures or shared DB state |
+| You want the test next to the code | You want cross-cutting setup      |
 
 You don't have to pick globally — most projects use both.
 
@@ -187,11 +187,11 @@ async def test_signup_sends_welcome(app):
 
 The Causeway plugin adds three flags:
 
-| Flag                       | Effect                                                                                         |
-| -------------------------- | ---------------------------------------------------------------------------------------------- |
-| `--causeway-routes=PATH`   | Routes root to scan for inline scenarios. Repeatable. Defaults to `app/routes` if not set.     |
-| `--update-snapshots`       | Record snapshots that have no value; rewrite mismatched ones.                                  |
-| `--causeway-no-inline`     | Skip inline scenario collection entirely.                                                      |
+| Flag                     | Effect                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `--causeway-routes=PATH` | Routes root to scan for inline scenarios. Repeatable. Defaults to `app/routes` if not set. |
+| `--update-snapshots`     | Record snapshots that have no value; rewrite mismatched ones.                              |
+| `--causeway-no-inline`   | Skip inline scenario collection entirely.                                                  |
 
 Pin the routes root in `pyproject.toml`:
 

@@ -67,6 +67,7 @@ For each directory under `routes_root`:
 5. Recurse into non-underscore subdirectories.
 
 After the walk:
+
 - `_check_method_conflicts` raises if two handlers resolve to the same `(method, path)`.
 - For each route, `_bind_providers` rewrites `Annotated[T, provider]` to `Depends(provider)`.
 - For each route, `_compose_guards` wraps the handler to run guards before the body and attaches class middleware via `__causeway_class_middleware__` for the ASGI layer.

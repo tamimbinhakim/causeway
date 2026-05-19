@@ -39,10 +39,10 @@ description = "Hello from Causeway"
 expose_settings = ["env", "feature_flags"]
 ```
 
-| Field                   | Purpose                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------- |
+| Field                      | Purpose                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------- |
 | `[client] expose_settings` | Allowlist of non-secret settings fields to bake into the generated TS client. |
-| `[app]`                 | Arbitrary metadata (name, description) — surfaced in diagnostics.                 |
+| `[app]`                    | Arbitrary metadata (name, description) — surfaced in diagnostics.             |
 
 > **Good to know.** Secrets (`SecretStr`, `SecretBytes`) are **never** exposed to the TS client, even if listed in `expose_settings`. Defense in depth.
 

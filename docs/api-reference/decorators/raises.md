@@ -30,7 +30,7 @@ Re-exported from `dyadpy`. The decorator stamps the handler with the declared er
 A `@raises(NotFound)` declaration produces this on the client:
 
 ```ts
-Result<User, NotFound>
+Result<User, NotFound>;
 ```
 
 `NotFound` is a TypeScript interface mirroring the Python class — `{ kind: "NotFound", status: 404, code: "not_found", detail: string }`.

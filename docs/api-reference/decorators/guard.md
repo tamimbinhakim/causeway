@@ -29,12 +29,12 @@ guard(fn: Callable[[Request], Awaitable[None]]) -> Callable
 
 ## Exception → status mapping
 
-| Raised in guard         | Rendered status      |
-| ----------------------- | -------------------- |
-| `PermissionError`       | 403 `forbidden`      |
-| `LookupError`           | 404 `not_found`      |
-| `causeway.errors.*`     | as declared          |
-| anything else           | 500 `internal`       |
+| Raised in guard     | Rendered status |
+| ------------------- | --------------- |
+| `PermissionError`   | 403 `forbidden` |
+| `LookupError`       | 404 `not_found` |
+| `causeway.errors.*` | as declared     |
+| anything else       | 500 `internal`  |
 
 ## Installing
 

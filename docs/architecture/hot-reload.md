@@ -32,6 +32,7 @@ uvicorn app:app --reload --reload-includes='*.py'
 - **`@task` adapter state** (with `InMemoryAdapter`). Use a real broker for anything that has to survive a code change.
 
 If you want state that survives reloads:
+
 - Put it behind a `_scope.py` `startup()` that's idempotent.
 - Use an external store (Redis, Postgres) accessed via a plugin.
 

@@ -91,7 +91,7 @@ GitHub Actions runs the full suite on every push:
 - uv sync
 - uv run ruff check packages/causeway/src packages/causeway/tests
 - uv run mypy packages/causeway/src
-- uv run pyright           # root pyrightconfig.json
+- uv run pyright # root pyrightconfig.json
 - uv run pytest -q
 ```
 

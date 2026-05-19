@@ -58,23 +58,23 @@ if env() == "prod":
 
 Each contract ships with a reference adapter in core (`causeway.adapters`) or in a sibling package. Picking a real backend is a one-line swap.
 
-| Contract       | Method surface                                                | Reference                    |
-| -------------- | ------------------------------------------------------------- | ---------------------------- |
-| `TaskAdapter`  | `enqueue`, `schedule`, `cron`, `eager`, `status`, `result`    | `causeway.tasks.InMemoryAdapter` |
-| `Storage`      | `put`, `get`, `delete`, `signed_url`, `list`                  | `causeway.adapters.LocalStorage` |
-| `KV`           | `get`, `set` (TTL), `delete`, `incr`, `expire`                | `causeway.adapters.MemoryKV`     |
-| `SessionStore` | `read`, `write`, `destroy`, `rotate`                          | `causeway.adapters.CookieStore`  |
-| `Mailer`       | `send`, `send_template`, `verify_address`                     | bring your own                |
-| `Searchable`   | `index`, `search`, `delete`, `bulk_index`                     | bring your own                |
-| `RateLimiter`  | `acquire`, `peek`, `reset`                                    | `causeway.adapters.MemoryLimiter`|
-| `FeatureFlags` | `is_on`, `variant`, `refresh`                                 | `causeway.adapters.StaticFlags`  |
-| `MetricsSink`  | `counter`, `gauge`, `histogram`, `timer`                      | none                          |
-| `LogSink`      | `emit(record)`                                                | stdout via `structlog`        |
-| `PubSub`       | `publish`, `subscribe`                                        | none                          |
-| `AuthProvider` | `current_user`, `login`, `logout`, `verify`                   | bring your own                |
-| `DBSession`    | `session`, `transaction`, `health`                            | provided by ORM plugins       |
-| `BlobScanner`  | `scan(stream)` — virus / type checks                          | none                          |
-| `DeployTarget` | `manifest`, `package`, `push(target)`                         | provided by deploy plugins    |
+| Contract       | Method surface                                             | Reference                         |
+| -------------- | ---------------------------------------------------------- | --------------------------------- |
+| `TaskAdapter`  | `enqueue`, `schedule`, `cron`, `eager`, `status`, `result` | `causeway.tasks.InMemoryAdapter`  |
+| `Storage`      | `put`, `get`, `delete`, `signed_url`, `list`               | `causeway.adapters.LocalStorage`  |
+| `KV`           | `get`, `set` (TTL), `delete`, `incr`, `expire`             | `causeway.adapters.MemoryKV`      |
+| `SessionStore` | `read`, `write`, `destroy`, `rotate`                       | `causeway.adapters.CookieStore`   |
+| `Mailer`       | `send`, `send_template`, `verify_address`                  | bring your own                    |
+| `Searchable`   | `index`, `search`, `delete`, `bulk_index`                  | bring your own                    |
+| `RateLimiter`  | `acquire`, `peek`, `reset`                                 | `causeway.adapters.MemoryLimiter` |
+| `FeatureFlags` | `is_on`, `variant`, `refresh`                              | `causeway.adapters.StaticFlags`   |
+| `MetricsSink`  | `counter`, `gauge`, `histogram`, `timer`                   | none                              |
+| `LogSink`      | `emit(record)`                                             | stdout via `structlog`            |
+| `PubSub`       | `publish`, `subscribe`                                     | none                              |
+| `AuthProvider` | `current_user`, `login`, `logout`, `verify`                | bring your own                    |
+| `DBSession`    | `session`, `transaction`, `health`                         | provided by ORM plugins           |
+| `BlobScanner`  | `scan(stream)` — virus / type checks                       | none                              |
+| `DeployTarget` | `manifest`, `package`, `push(target)`                      | provided by deploy plugins        |
 
 Contract types live in `causeway.contracts`. All are `typing.Protocol`s — duck-typed.
 

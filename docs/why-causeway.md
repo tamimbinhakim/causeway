@@ -83,15 +83,15 @@ Causeway is the second model. We opinionate on **structure, lifecycle, naming, a
 
 ## Positioning matrix
 
-| Framework          | Scope                | Owns ORM?        | Owns auth? | File routing? | Closest comparison |
-| ------------------ | -------------------- | ---------------- | ---------- | ------------- | ------------------ |
-| FastAPI            | router lib           | no               | no         | no            | building block     |
-| Litestar           | API framework        | partial (SQLA)   | primitives | no            | peer-ish, lower    |
-| Django + Ninja     | full framework       | yes              | yes        | no            | heavy alternative  |
-| AdonisJS / Laravel | full-stack batteries | yes              | yes        | no            | what Causeway isn't    |
-| NestJS             | structural framework | no               | partial    | no            | structural peer    |
-| Encore.ts / .go    | backend + infra      | no (declarative) | partial    | no            | closest ambition   |
-| **Causeway**           | backend framework    | **no**           | **no**     | **yes**       | —                  |
+| Framework          | Scope                | Owns ORM?        | Owns auth? | File routing? | Closest comparison  |
+| ------------------ | -------------------- | ---------------- | ---------- | ------------- | ------------------- |
+| FastAPI            | router lib           | no               | no         | no            | building block      |
+| Litestar           | API framework        | partial (SQLA)   | primitives | no            | peer-ish, lower     |
+| Django + Ninja     | full framework       | yes              | yes        | no            | heavy alternative   |
+| AdonisJS / Laravel | full-stack batteries | yes              | yes        | no            | what Causeway isn't |
+| NestJS             | structural framework | no               | partial    | no            | structural peer     |
+| Encore.ts / .go    | backend + infra      | no (declarative) | partial    | no            | closest ambition    |
+| **Causeway**       | backend framework    | **no**           | **no**     | **yes**       | —                   |
 
 In one sentence:
 

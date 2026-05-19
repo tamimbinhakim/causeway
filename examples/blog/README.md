@@ -8,18 +8,18 @@ isolated test suite that drives the whole thing through `httpx`.
 
 ## What's in it
 
-| Feature                       | Where it lives                                    |
-| ----------------------------- | ------------------------------------------------- |
-| `Settings` (pydantic-settings) | `app/config.py`                                   |
-| SQLAlchemy async engine + ORM | `app/db.py`                                       |
-| Scoped DI providers           | `app/deps.py` + `app/routes/**/_scope.py`         |
-| App-wide middleware           | `app/routes/_middleware.py` (response-time header) |
-| Public read endpoints         | `app/routes/posts/...`                            |
-| Token-gated admin endpoints   | `app/routes/admin/...` (via `current_admin` provider) |
-| `@task` + `@cron`             | `app/tasks.py`                                    |
-| Plugin registration           | `app/plugins.py`                                  |
-| Lifespan hooks                | `app/lifespan.py` + `app/routes/_scope.py`        |
-| Tests                         | `tests/test_blog.py`                              |
+| Feature                        | Where it lives                                        |
+| ------------------------------ | ----------------------------------------------------- |
+| `Settings` (pydantic-settings) | `app/config.py`                                       |
+| SQLAlchemy async engine + ORM  | `app/db.py`                                           |
+| Scoped DI providers            | `app/deps.py` + `app/routes/**/_scope.py`             |
+| App-wide middleware            | `app/routes/_middleware.py` (response-time header)    |
+| Public read endpoints          | `app/routes/posts/...`                                |
+| Token-gated admin endpoints    | `app/routes/admin/...` (via `current_admin` provider) |
+| `@task` + `@cron`              | `app/tasks.py`                                        |
+| Plugin registration            | `app/plugins.py`                                      |
+| Lifespan hooks                 | `app/lifespan.py` + `app/routes/_scope.py`            |
+| Tests                          | `tests/test_blog.py`                                  |
 
 ## Layout
 

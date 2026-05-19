@@ -104,6 +104,7 @@ The framework wires correlation. The transport and storage are the user's choice
 ## Common patterns
 
 **Per-handler timing:**
+
 ```python
 import time
 import structlog
@@ -120,6 +121,7 @@ async def time_request(req):
 For app-wide timing, install a class `Middleware` at the root.
 
 **Sentry:**
+
 ```python
 # src/app/plugins.py
 from causeway_observe_sentry import SentryObserver
@@ -130,6 +132,7 @@ if env() == "prod":
 ```
 
 **OTel with auto-instrumentation:**
+
 ```python
 # src/app/lifespan.py
 from causeway import configure_otel

@@ -20,7 +20,7 @@ Comments we don't want:
 - Narrative explaining the design or "why we chose this." That goes in the PR description, the docs, or — if it's truly load-bearing — a module docstring at the top.
 - References to the current task or fix. `# added for the welcome flow`, `# used by /signup` — those rot the moment the calling code changes.
 
-When in doubt: delete it. If it was important, a reader will notice the thing it pointed at and ask, and then we can write a *better* comment.
+When in doubt: delete it. If it was important, a reader will notice the thing it pointed at and ask, and then we can write a _better_ comment.
 
 ### Docstrings
 

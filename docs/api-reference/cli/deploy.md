@@ -16,10 +16,10 @@ causeway deploy <target> [--output <dir>]
 
 ## Arguments
 
-| Argument          | Default  | Description                                                          |
-| ----------------- | -------- | -------------------------------------------------------------------- |
-| `<target>`        | —        | Adapter name (case-insensitive). Looks up `<Target>Deploy` plugin.   |
-| `--output` / `-o` | `dist/`  | Directory the adapter writes its manifest into.                      |
+| Argument          | Default | Description                                                        |
+| ----------------- | ------- | ------------------------------------------------------------------ |
+| `<target>`        | —       | Adapter name (case-insensitive). Looks up `<Target>Deploy` plugin. |
+| `--output` / `-o` | `dist/` | Directory the adapter writes its manifest into.                    |
 
 ## How it dispatches
 

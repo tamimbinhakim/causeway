@@ -21,6 +21,7 @@ Delegates to the active `TaskAdapter`'s `eager()` method. Every `TaskAdapter` is
 ## Behavior
 
 Inside the block:
+
 - `.enqueue(...)` runs the task body in-process, then returns the task id.
 - `.schedule(...)` likewise — the `when` is ignored, the body runs immediately.
 - Exceptions from the task body propagate to the caller of `.enqueue(...)`.

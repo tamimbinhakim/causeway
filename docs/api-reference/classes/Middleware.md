@@ -23,6 +23,7 @@ class Middleware(Protocol):
 ```
 
 Where:
+
 - `Request` is `starlette.requests.Request`.
 - `Response` is `starlette.responses.Response`.
 - `CallNext = Callable[[Request], Awaitable[Response]]`.
@@ -52,11 +53,11 @@ Response unwinds in reverse: leaf middleware exits first, root last.
 
 ## When to use vs `@guard`
 
-| Use `Middleware` when…                       | Use `@guard` when…                              |
-| -------------------------------------------- | ----------------------------------------------- |
-| You need to mutate the response              | You only need to assert before the handler      |
-| You need to time, log, retry, or transform   | You only need to short-circuit on bad requests  |
-| You need state shared across requests        | You're checking auth, headers, presence         |
+| Use `Middleware` when…                     | Use `@guard` when…                             |
+| ------------------------------------------ | ---------------------------------------------- |
+| You need to mutate the response            | You only need to assert before the handler     |
+| You need to time, log, retry, or transform | You only need to short-circuit on bad requests |
+| You need state shared across requests      | You're checking auth, headers, presence        |
 
 ## See also
 

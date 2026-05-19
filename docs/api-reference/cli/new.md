@@ -14,10 +14,10 @@ causeway new <name> [--target <dir>]
 
 ## Arguments
 
-| Argument           | Default       | Description                                                 |
-| ------------------ | ------------- | ----------------------------------------------------------- |
-| `<name>`           | —             | Project directory name (also becomes the package name).     |
-| `--target` / `-t`  | current dir   | Parent directory to create the project under.               |
+| Argument          | Default     | Description                                             |
+| ----------------- | ----------- | ------------------------------------------------------- |
+| `<name>`          | —           | Project directory name (also becomes the package name). |
+| `--target` / `-t` | current dir | Parent directory to create the project under.           |
 
 ## What it creates
 

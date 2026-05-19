@@ -73,7 +73,7 @@ causeway dev
 | `@cron(...)`                                     | Scheduled tasks via the same adapter.                                    |
 | `register(...)`                                  | Plugin registration (`TaskAdapter`, `Storage`, `KV`, `AuthProvider`, …). |
 | `TestApp`                                        | Test client with DI overrides and `tasks_eager()` mode.                  |
-| `causeway` CLI                                       | `new`, `dev`, `build`, `plugins`, `deploy <target>`.                     |
+| `causeway` CLI                                   | `new`, `dev`, `build`, `plugins`, `deploy <target>`.                     |
 
 Full reference: <https://github.com/tamimbinhakim/causeway/tree/main/docs/api-reference>
 

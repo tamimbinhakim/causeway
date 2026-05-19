@@ -136,11 +136,11 @@ A bare `snapshot()` without a recorded value fails until you run with `--update-
 
 ## CLI flags
 
-| Flag | Effect |
-|---|---|
+| Flag                     | Effect                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
 | `--causeway-routes=PATH` | Routes root to scan. Repeatable. Default: discovered from `causeway.toml` siblings, else `app/routes`. |
-| `--update-snapshots` | Record snapshots that have no value yet; rewrite mismatched ones. |
-| `--causeway-no-inline` | Skip inline collection entirely. |
+| `--update-snapshots`     | Record snapshots that have no value yet; rewrite mismatched ones.                                      |
+| `--causeway-no-inline`   | Skip inline collection entirely.                                                                       |
 
 For convenience, pin the routes root in `pyproject.toml` instead of typing it every time:
 
@@ -149,7 +149,7 @@ For convenience, pin the routes root in `pyproject.toml` instead of typing it ev
 addopts = ["--causeway-routes=app/routes"]
 ```
 
-## When *not* to use inline scenarios
+## When _not_ to use inline scenarios
 
 Inline scenarios are for single-route tests. Two patterns push toward an external test file:
 

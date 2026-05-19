@@ -23,6 +23,7 @@ settings = Settings()
 ```
 
 Three rules:
+
 1. Subclass `BaseSettings` and define an instance named `settings` in `src/app/config.py`.
 2. Use `SecretStr` / `SecretBytes` for anything sensitive — the diagnostics page and TS client surface skip them.
 3. Reads `.env` automatically; environment variables override the file.
@@ -82,16 +83,17 @@ expose_settings = ["env", "feature_flags"]   # non-secret config to surface to t
 ```
 
 What lives here:
+
 - `[client] expose_settings` — allowlist of settings fields to bake into the generated `client.ts` (for things like feature flags or the current env). **Secrets are never exposed**, even if you list them — `SecretStr` / `SecretBytes` are stripped as defense in depth.
 - `[app]` — metadata used by the scaffolder and the diagnostics page.
 
 ## What ends up in the TS client
 
-| Source                                | Shape on the client                                  |
-| ------------------------------------- | ---------------------------------------------------- |
-| Handler signatures                    | Typed function per route.                            |
-| `causeway.toml`'s `expose_settings`   | A `config` object with the listed non-secret fields. |
-| `SecretStr` fields                    | Never. Filtered before codegen.                      |
+| Source                              | Shape on the client                                  |
+| ----------------------------------- | ---------------------------------------------------- |
+| Handler signatures                  | Typed function per route.                            |
+| `causeway.toml`'s `expose_settings` | A `config` object with the listed non-secret fields. |
+| `SecretStr` fields                  | Never. Filtered before codegen.                      |
 
 ## Loading order
 
@@ -105,6 +107,7 @@ What lives here:
 ## Common patterns
 
 **Nested env vars:**
+
 ```python
 class DbSettings(BaseSettings):
     host: str
@@ -118,6 +121,7 @@ class Settings(BaseSettings):
 Set with `DB__HOST=localhost DB__PORT=5432`.
 
 **Validators:**
+
 ```python
 from pydantic import field_validator
 
@@ -134,11 +138,13 @@ class Settings(BaseSettings):
 
 **Per-feature settings (plugin fragments):**
 A plugin can contribute typed fields to your `Settings`:
+
 ```python
 class StripeAdapter:
     def settings_fragment(self) -> dict:
         return {"stripe_webhook_secret": SecretStr(...)}
 ```
+
 After registration, `settings.stripe_webhook_secret` is defined.
 
 ## Next

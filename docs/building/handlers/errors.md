@@ -20,6 +20,7 @@ from causeway.errors import (
 ```
 
 Each carries:
+
 - a `status` int (HTTP status code),
 - a stable `code` string (the wire identifier),
 - an optional `message` (string),
@@ -130,10 +131,10 @@ The original exception message is **never** surfaced — it might contain secret
 
 Two convenience exceptions get special treatment (so `@guard` functions can stay terse):
 
-| Exception           | Rendered as            |
-| ------------------- | ---------------------- |
-| `PermissionError`   | 403 `forbidden`        |
-| `LookupError`       | 404 `not_found`        |
+| Exception         | Rendered as     |
+| ----------------- | --------------- |
+| `PermissionError` | 403 `forbidden` |
+| `LookupError`     | 404 `not_found` |
 
 ## Request id in errors
 

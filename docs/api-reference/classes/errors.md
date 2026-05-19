@@ -62,11 +62,11 @@ content-type: application/problem+json
 
 The renderer also handles two non-HttpError exceptions for convenience:
 
-| Raised             | Rendered status        |
-| ------------------ | ---------------------- |
-| `PermissionError`  | 403 `forbidden`        |
-| `LookupError`      | 404 `not_found`        |
-| anything else      | 500 `internal` (message scrubbed) |
+| Raised            | Rendered status                   |
+| ----------------- | --------------------------------- |
+| `PermissionError` | 403 `forbidden`                   |
+| `LookupError`     | 404 `not_found`                   |
+| anything else     | 500 `internal` (message scrubbed) |
 
 ## `render_problem`
 

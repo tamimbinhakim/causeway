@@ -14,9 +14,9 @@ causeway build [--target <dir>]
 
 ## Options
 
-| Option            | Default    | Description                |
-| ----------------- | ---------- | -------------------------- |
-| `--target` / `-o` | `dist/`    | Output directory.          |
+| Option            | Default | Description       |
+| ----------------- | ------- | ----------------- |
+| `--target` / `-o` | `dist/` | Output directory. |
 
 ## Outputs
 

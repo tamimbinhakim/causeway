@@ -40,7 +40,7 @@ await webhooks.send(
 )
 ```
 
-`idempotency_key` deduplicates the *delivery* — calling `send` twice with the same key returns the same delivery id and only fires the webhook once. Use it when the same business event might be emitted from two code paths.
+`idempotency_key` deduplicates the _delivery_ — calling `send` twice with the same key returns the same delivery id and only fires the webhook once. Use it when the same business event might be emitted from two code paths.
 
 ## Signing format
 

@@ -23,6 +23,7 @@ async def receive(req: Request) -> dict[str, str]:
 ```
 
 Two failure modes, both surface as `401`:
+
 - **Missing or malformed signature** — header absent, version prefix wrong.
 - **Stale timestamp** — outside the configured skew window (default 300s).
 

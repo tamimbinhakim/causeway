@@ -23,10 +23,10 @@ configure_otel(
 
 ## Parameters
 
-| Parameter      | Default              | Notes                                                                        |
-| -------------- | -------------------- | ---------------------------------------------------------------------------- |
-| `service_name` | `"causeway-app"`     | OTel `service.name` resource attribute.                                      |
-| `endpoint`     | `None`               | OTLP/HTTP exporter URL. `None` skips the exporter (spans never leave proc).  |
+| Parameter      | Default          | Notes                                                                       |
+| -------------- | ---------------- | --------------------------------------------------------------------------- |
+| `service_name` | `"causeway-app"` | OTel `service.name` resource attribute.                                     |
+| `endpoint`     | `None`           | OTLP/HTTP exporter URL. `None` skips the exporter (spans never leave proc). |
 
 ## Return value
 

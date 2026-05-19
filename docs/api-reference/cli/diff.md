@@ -14,10 +14,10 @@ causeway diff <baseline> <candidate>
 
 ## Arguments
 
-| Argument      | Description                                  |
-| ------------- | -------------------------------------------- |
-| `<baseline>`  | Path to the older IR snapshot.               |
-| `<candidate>` | Path to the newer IR snapshot.               |
+| Argument      | Description                    |
+| ------------- | ------------------------------ |
+| `<baseline>`  | Path to the older IR snapshot. |
+| `<candidate>` | Path to the newer IR snapshot. |
 
 ## What it reports
 

@@ -28,11 +28,11 @@ async def get_stripe() -> StripeClient:
 
 ## What it exports
 
-| Name        | Purpose                                                                          |
-| ----------- | -------------------------------------------------------------------------------- |
-| `startup`   | Optional `async def` — fires when the app starts.                                |
-| `shutdown`  | Optional `async def` — fires when the app stops (reverse-of-startup order).      |
-| Any `@provide("name")`-decorated function | Becomes a request-scoped DI provider.            |
+| Name                                      | Purpose                                                                     |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| `startup`                                 | Optional `async def` — fires when the app starts.                           |
+| `shutdown`                                | Optional `async def` — fires when the app stops (reverse-of-startup order). |
+| Any `@provide("name")`-decorated function | Becomes a request-scoped DI provider.                                       |
 
 ## Rules
 
