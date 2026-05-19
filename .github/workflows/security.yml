@@ -45,4 +45,9 @@ jobs:
           done
           uv pip install --python .venv-audit/bin/python pip-audit
       - name: pip-audit (fails on any known vuln)
-        run: .venv-audit/bin/pip-audit --strict --skip-editable
+        # ``--strict`` would re-fail on each editable causeway-* install
+        # even with ``--skip-editable``: it treats "can't audit this
+        # distribution" as a hard error. Without ``--strict``, pip-audit
+        # still fails the run on any real vulnerability in a third-party
+        # dependency — which is the whole point of the gate.
+        run: .venv-audit/bin/pip-audit --skip-editable
