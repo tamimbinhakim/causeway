@@ -31,12 +31,18 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install core + every plugin into an audit venv
+        # Local monorepo packages aren't published to PyPI, so pip-audit
+        # can't resolve them and ``--strict`` rejects the whole run. Install
+        # them in editable mode so ``--skip-editable`` filters them out
+        # while still leaving every *transitive* dependency in the venv to
+        # be audited.
         run: |
           set -euo pipefail
           uv venv .venv-audit
-          uv pip install --python .venv-audit/bin/python \
-            "./packages/causeway[all]" \
-            ./packages/causeway-*
+          uv pip install --python .venv-audit/bin/python -e "./packages/causeway[all]"
+          for pkg in packages/causeway-*; do
+            uv pip install --python .venv-audit/bin/python -e "$pkg"
+          done
           uv pip install --python .venv-audit/bin/python pip-audit
       - name: pip-audit (fails on any known vuln)
-        run: .venv-audit/bin/pip-audit --strict
+        run: .venv-audit/bin/pip-audit --strict --skip-editable
