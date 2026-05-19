@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1](https://github.com/tamimbinhakim/causeway/compare/causeway-db-sqlmodel-v0.5.0...causeway-db-sqlmodel-v0.5.1) (2026-05-19)
+
+
+### Features
+
+* **causeway:** reshape events/webhooks around subscribers and a typed Event ([#21](https://github.com/tamimbinhakim/causeway/issues/21)) ([646564f](https://github.com/tamimbinhakim/causeway/commit/646564f66973aba67dd13fc4904ceb924b73c694))
+
 ## [0.5.0](https://github.com/tamimbinhakim/causeway/compare/causeway-db-sqlmodel-v0.4.0...causeway-db-sqlmodel-v0.5.0) (2026-05-18)
 
 
