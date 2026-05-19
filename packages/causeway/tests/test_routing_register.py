@@ -234,6 +234,50 @@ async def show(me: CurrentUser) -> dict:
 
 
 @pytest.mark.asyncio
+async def test_guard_does_not_leak_into_class_middleware(tmp_path: Path) -> None:
+    """A guard listed alone in ``_middleware.py`` must not crash at request time.
+
+    Regression: ``Middleware`` is a runtime-checkable Protocol matching any
+    async callable with ``__call__``, so ``@guard`` functions used to land in
+    both the guard partition AND the class-middleware partition — the ASGI
+    layer then invoked them with ``(req, call_next)`` and they blew up with
+    ``TypeError: takes 1 positional argument but 2 were given``.
+    """
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "_middleware.py",
+        """from causeway import guard
+
+@guard
+async def allow(req):
+    return None
+
+middleware = [allow]
+""",
+    )
+    _write(
+        routes,
+        "index.py",
+        """from causeway import get
+
+@get
+async def r() -> dict:
+    return {"ok": True}
+""",
+    )
+
+    from causeway import create_app
+
+    app = create_app(routes_root=str(routes), diagnostics=False, request_id=False)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+        resp = await client.get("/")
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+
+
+@pytest.mark.asyncio
 async def test_class_middleware_is_path_gated(tmp_path: Path) -> None:
     """A ``Middleware`` attached via ``@use`` runs only for its handler.
 

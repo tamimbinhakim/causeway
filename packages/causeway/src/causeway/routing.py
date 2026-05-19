@@ -287,8 +287,12 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
     Class-based ``Middleware`` instances ride on the wrapped function as
     ``__causeway_class_middleware__`` for the ASGI layer to pick up.
     """
+    # ``isinstance(fn, Middleware)`` is True for any async callable because the
+    # Protocol is runtime-checkable on ``__call__`` alone — partition explicitly
+    # so a ``@guard`` doesn't double up as class middleware and crash when the
+    # ASGI layer hands it ``(req, call_next)``.
     guards = [m for m in middleware if is_guard(m)]
-    mws = [m for m in middleware if isinstance(m, Middleware)]
+    mws = [m for m in middleware if not is_guard(m) and isinstance(m, Middleware)]
 
     if not guards and not mws:
         return handler
