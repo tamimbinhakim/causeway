@@ -168,7 +168,7 @@ wheels = [
 
 [[package]]
 name = "causeway"
-version = "0.3.3"
+version = "0.3.4"
 source = { editable = "../causeway" }
 dependencies = [
     { name = "anyio" },
@@ -220,7 +220,7 @@ dev = [
 
 [[package]]
 name = "causeway-flags-growthbook"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "causeway" },

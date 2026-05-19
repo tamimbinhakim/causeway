@@ -35,7 +35,7 @@ wheels = [
 
 [[package]]
 name = "causeway"
-version = "0.3.3"
+version = "0.3.4"
 source = { editable = "../causeway" }
 dependencies = [
     { name = "anyio" },
@@ -87,7 +87,7 @@ dev = [
 
 [[package]]
 name = "causeway-deploy-docker"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "../causeway-deploy-docker" }
 dependencies = [
     { name = "causeway" },
@@ -105,7 +105,7 @@ dev = [
 
 [[package]]
 name = "causeway-deploy-fly"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "causeway" },
