@@ -113,15 +113,31 @@ Reference adapters shipped in core: `MemoryKV`, `LocalStorage`, `MemoryLimiter`,
 
 ---
 
-## Events
+## Events + Webhooks
 
-### `events.py` — 188 lines
+### `events.py`
 
-`emit`, `discover`, `register`, `set_bus`, and `InMemoryEventBus` (the reference). Same shape as `tasks.py`: a `ContextVar` holds the active bus, the reference adapter satisfies the `EventBus` Protocol from `contracts.py`, and `create_app` installs it during lifespan startup when `app/events/` exists.
+The `Event` base class inherits from `msgspec.Struct(kw_only=True)`. Its `__init_subclass__` runs on every subclass, deriving `wire_name` from the class name (PascalCase → dot-separated lowercase via `_BOUNDARY` regex), initializing per-class `_listeners` and `_subscribers` lists, and registering the class in the process-global `_events: dict[wire_name, type[Event]]`. Collision (two classes with the same wire name) raises at registration.
 
-Discovery: `discover(events_root)` walks the tree via `_loader.import_path`, splits each `*.py` stem on `.`, joins folder segments + stem segments with `:`, and collects every module-level `async def` that doesn't start with `_` into the event's listener list. Two files producing the same name (`customer.create.py` + `customer/create.py`) merge their listeners.
+The `webhook` flag is a plain class attribute (`webhook = True` on the subclass) — not an annotated field, so msgspec doesn't pick it up as part of the payload schema. The default `False` lives on `Event` itself.
 
-`InMemoryEventBus.emit` runs listeners concurrently via `asyncio.gather` with the default `return_exceptions=False`. Unknown events log once at DEBUG and return. Durable buses (transactional outbox, Redis streams) plug in via the `EventBus` Protocol from sibling packages.
+`@<Cls>.listen` is a classmethod decorator that validates async-ness + arity at decoration time and appends to `cls._listeners`. `Event.emit()` is an instance method: `asyncio.gather` over `_listeners`, then (if `cls.webhook`) call the late-bound `_fanout_impl` (filled in by `webhooks.py` at import — one-way dependency, no cycle).
+
+Discovery: `discover(events_root, listeners_root=None)` walks both trees via `_loader.import_path`. Events directory enforces `<class_snake>.py` matching `<ClassName>` and rejects two `Event` subclasses in one file. Listeners directory just imports modules so their `@listen` decorators run; underscore-prefixed components and absolute-path-component noise are stripped via `relative_to(root).parts`.
+
+### `webhooks.py`
+
+Signing helpers (`sign_payload`, `verify_signature`, `new_secret`) are unchanged in format from 0.1 — Stripe-style HMAC-SHA256 over `f"{ts}.{body}"`.
+
+`Subscriber` is a `@dataclass(slots=True)`. Its `__post_init__` validates that every key in `where` is an actual field on each subscribed event class, then registers `self` on each event class's `_subscribers` list (idempotent on object identity, so re-importing the file during hot reload doesn't double-register).
+
+`_deliver` is a `@task(queue="webhooks", retries=5, backoff="exponential")` that signs body + POSTs via httpx + raises on non-2xx (so the task adapter's retry chain picks it up). Body is passed as JSON-encoded UTF-8 _string_, not bytes — `_encode_body` decodes once at enqueue and `_deliver` re-encodes — because the task adapter's payload encoder uses `json.dumps` which can't carry raw bytes. msgspec-produced JSON is always valid UTF-8, so round-tripping is byte-identical.
+
+`_fanout(event)` (registered as `events._fanout_impl` at module import via `events._set_fanout(_fanout)`) walks `cls._subscribers` (static) + `_store.subscribers_for(wire_name)` async iterator (dynamic), applies `_matches(event, where)`, and enqueues one `_deliver` task per match. Exceptions during enqueue are logged and don't stop the rest of the fan-out.
+
+`verify(req, secret=...) -> IncomingWebhook` reads `await req.body()` (or `req._body` for already-buffered bytes), runs `verify_signature`, parses JSON, and returns the typed `IncomingWebhook(name, body, json)`. Malformed JSON surfaces as `Unauthorized` (401) — clients can't distinguish signature failure from body-parse failure.
+
+`InMemoryWebhooks` is a lifecycle-only adapter — no subscription state lives in it. `InMemoryWebhookStore` is the reference dynamic-subscription store (process-local, not durable); production deployments install a sibling plugin (`causeway-webhooks-pg`).
 
 ---
 
