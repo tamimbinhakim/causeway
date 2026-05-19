@@ -39,6 +39,8 @@ async def show(id: UUID, db: Annotated[Session, get_session]) -> User:
 
 The file router rewrites `Annotated[Session, get_session]` into `dyadpy.Depends(get_session)` automatically.
 
+`from __future__ import annotations` (PEP 563) at the top of the route file is supported — the binder resolves string annotations via `inspect.signature(..., eval_str=True)`. Provider params can appear in any position; the rewriter splices them in as keyword-only, so a signature like `(db: Annotated[Session, get_session], id: UUID)` is fine even though `id` has no default.
+
 ## See also
 
 - [Scopes](../../building/routing/scopes.md)
