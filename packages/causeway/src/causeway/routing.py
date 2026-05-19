@@ -79,12 +79,28 @@ def discover(routes_root: str | Path) -> Discovered:
     result = Discovered()
     _walk(root, root, _ScopeFrame(), result)
     _check_method_conflicts(result.routes)
+    # Filesystem walk order registers ``[id].py`` before ``risk-overrides/``
+    # because ``[`` sorts before letters in ASCII — Starlette then matches the
+    # first-registered route, so a literal sibling gets shadowed by its
+    # parametric neighbour. Re-sort so literal segments outrank parametric
+    # ones at every depth; ties preserve walk order (stable sort).
+    result.routes.sort(key=lambda r: _specificity_key(r.path))
     # Outer-most subtree shuts down last.
     result.shutdown_hooks.reverse()
     for r in result.routes:
         r.handler = _bind_providers(r.handler, r.providers)
         r.handler = _compose_guards(r.handler, r.middleware)
     return result
+
+
+def _specificity_key(path: str) -> tuple[tuple[int, str], ...]:
+    segs: list[tuple[int, str]] = []
+    for seg in path.strip("/").split("/"):
+        if seg.startswith("{") and seg.endswith("}"):
+            segs.append((1, seg[1:-1]))
+        else:
+            segs.append((0, seg))
+    return tuple(segs)
 
 
 def register(app: App, found: Discovered) -> None:
@@ -237,20 +253,28 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
         if key is not None:
             provider_keys[key] = p
 
+    # ``eval_str=True`` resolves PEP 563 string annotations so routes that use
+    # ``from __future__ import annotations`` still have their ``Annotated[...]``
+    # extras visible here. Without it ``param.annotation`` would be the raw
+    # source text and ``get_origin`` would return ``None`` for every param.
     try:
-        sig = _inspect.signature(handler)
-    except (TypeError, ValueError):
-        return handler
+        sig = _inspect.signature(handler, eval_str=True)
+    except (TypeError, ValueError, NameError):
+        try:
+            sig = _inspect.signature(handler)
+        except (TypeError, ValueError):
+            return handler
 
     rewritten = False
-    new_params: list[_inspect.Parameter] = []
+    kept_params: list[_inspect.Parameter] = []
+    bound_params: list[_inspect.Parameter] = []
     for param in sig.parameters.values():
         annotation = param.annotation
         if annotation is _inspect.Parameter.empty:
-            new_params.append(param)
+            kept_params.append(param)
             continue
         if _typing.get_origin(annotation) is not _typing.Annotated:
-            new_params.append(param)
+            kept_params.append(param)
             continue
         base, *extras = _typing.get_args(annotation)
         new_extras: list[Any] = []
@@ -266,18 +290,35 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
                     continue
             new_extras.append(extra)
         if bound is None:
-            new_params.append(param)
+            kept_params.append(param)
             continue
         rewritten_annotation = base if not new_extras else _typing.Annotated[base, *new_extras]
-        new_params.append(
-            param.replace(annotation=rewritten_annotation, default=Depends(bound)),
+        # Append rewritten params at the end as KEYWORD_ONLY: ``Signature``
+        # rejects a defaulted positional-or-keyword param followed by a
+        # non-defaulted one, which happens any time a path/query param
+        # follows a provider in the handler signature. Resolution at call
+        # time is by name via ``Depends``, so order doesn't matter.
+        bound_params.append(
+            param.replace(
+                annotation=rewritten_annotation,
+                default=Depends(bound),
+                kind=_inspect.Parameter.KEYWORD_ONLY,
+            ),
         )
         rewritten = True
 
     if not rewritten:
         return handler
 
-    handler.__signature__ = sig.replace(parameters=new_params)  # type: ignore[attr-defined]
+    # KEYWORD_ONLY must sit before VAR_KEYWORD (``**kwargs``) per Python's
+    # parameter-ordering rules; splice bound params just ahead of it.
+    insert_at = len(kept_params)
+    for i, p in enumerate(kept_params):
+        if p.kind is _inspect.Parameter.VAR_KEYWORD:
+            insert_at = i
+            break
+    merged = [*kept_params[:insert_at], *bound_params, *kept_params[insert_at:]]
+    handler.__signature__ = sig.replace(parameters=merged)  # type: ignore[attr-defined]
     return handler
 
 
