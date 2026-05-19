@@ -319,7 +319,7 @@ def deploy(
 
     package = getattr(adapter, "package", None)
     if callable(package):
-        package(target_dir=output)  # type: ignore[call-arg]
+        package(target_dir=output)
     console.print(f"[green]packaged[/green] -> {output}")
 
 

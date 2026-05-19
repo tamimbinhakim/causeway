@@ -279,7 +279,7 @@ class InMemoryWebhooks:
         client = self._http
         if client is None:
             # Lazy so httpx is only required when the adapter is actually used.
-            import httpx  # type: ignore[import-not-found]
+            import httpx
 
             client = httpx.AsyncClient(timeout=10.0)
             self._http = client

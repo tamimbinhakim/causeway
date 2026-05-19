@@ -8,7 +8,7 @@ isn't reinvented per project.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from causeway.errors import Forbidden, Unauthorized
 from causeway.middleware import GuardFn, guard
@@ -66,7 +66,7 @@ def require_permission(perm: str) -> GuardFn:
         auth: AuthProvider | None = None
         for adapter in registered():
             if isinstance(adapter, _AuthProvider):
-                auth = cast("AuthProvider", adapter)
+                auth = adapter
                 break
         if auth is None:
             msg = "require_permission used but no AuthProvider is registered"

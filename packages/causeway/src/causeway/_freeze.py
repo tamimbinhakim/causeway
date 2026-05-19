@@ -213,10 +213,10 @@ def _collect_routes(
             continue
         handlers.append((name, method))
     handlers.sort()
-    for handler_attr, method in handlers:
+    for handler_attr, handler_method in handlers:
         plan.routes.append(
             RouteSpec(
-                method=method,
+                method=handler_method,
                 url=url,
                 source_rel=str(rel),
                 mirror_module=mirror_module,
@@ -237,7 +237,7 @@ def _collect_plugin_entry_points() -> list[tuple[str, str]]:
     try:
         eps = entry_points(group="causeway.plugins")
     except TypeError:  # pragma: no cover - py<3.10 fallback
-        eps = entry_points().get("causeway.plugins", [])  # type: ignore[attr-defined]
+        eps = entry_points().get("causeway.plugins", [])  # type: ignore[arg-type]
     return sorted((ep.name, ep.value) for ep in eps)
 
 

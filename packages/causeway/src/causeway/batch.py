@@ -73,7 +73,7 @@ def batch(handler: Callable[..., Any]) -> Callable[..., Any]:
 
         wrapper = sync_wrapper
 
-    wrapper.__causeway_batch__ = True  # type: ignore[attr-defined]
+    wrapper.__causeway_batch__ = True  # type: ignore[union-attr]
     return wrapper
 
 

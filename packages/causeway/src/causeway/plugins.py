@@ -72,7 +72,7 @@ def discover(group: str = "causeway.plugins") -> list[str]:
     try:
         eps = entry_points(group=group)
     except TypeError:  # Python < 3.10 fallback
-        eps = entry_points().get(group, [])  # type: ignore[attr-defined]
+        eps = entry_points().get(group, [])  # type: ignore[arg-type]
 
     for ep in eps:
         try:

@@ -56,12 +56,14 @@ class TaskRef:
     async def enqueue(self, *args: Any, **kwargs: Any) -> str:
         adapter = _active_adapter()
         payload = _encode(args, kwargs)
-        return await adapter.enqueue(self, payload)
+        result: str = await adapter.enqueue(self, payload)
+        return result
 
     async def schedule(self, when: datetime, *args: Any, **kwargs: Any) -> str:
         adapter = _active_adapter()
         payload = _encode(args, kwargs)
-        return await adapter.schedule(self, when, payload)
+        result: str = await adapter.schedule(self, when, payload)
+        return result
 
     def __repr__(self) -> str:  # pragma: no cover - cosmetic
         return f"TaskRef({self.module}.{self.name}, queue={self.queue!r})"
@@ -294,7 +296,7 @@ class InMemoryAdapter:
     def _track(self, record: _RunRecord, coro: Awaitable[None]) -> asyncio.Task[None]:
         """Create an asyncio task for ``coro``, record it on ``record`` for cancel,
         and keep a strong reference so the event loop doesn't garbage-collect it."""
-        runner = asyncio.create_task(coro)  # type: ignore[arg-type]
+        runner: asyncio.Task[None] = asyncio.create_task(coro)  # type: ignore[arg-type]
         record.runner = runner
         self._inflight.add(runner)
         runner.add_done_callback(self._inflight.discard)
@@ -484,11 +486,13 @@ def _backoff_delay(strategy: Backoff, attempt: int) -> float:
         return base
     if strategy == "linear":
         return base * (attempt + 1)
-    return base * (2**attempt)
+    delay: float = base * (2**attempt)
+    return delay
 
 
 def tasks_eager() -> contextlib.AbstractAsyncContextManager[None]:
-    return _active_adapter().eager()
+    ctx: contextlib.AbstractAsyncContextManager[None] = _active_adapter().eager()
+    return ctx
 
 
 __all__ = [
