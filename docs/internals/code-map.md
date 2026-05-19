@@ -16,7 +16,7 @@ The public API re-export wall. Everything an application author types `from caus
 - `Middleware`, `guard` — from `middleware.py`.
 - `provide` — from `scope.py`.
 - `task`, `cron`, `tasks_eager` — from `tasks.py`.
-- `emit`, `InMemoryEventBus`, `EventBus` — from `events.py` / `contracts.py`.
+- `Event` (base class), `Subscriber`, `verify`, `IncomingWebhook`, `WebhookDeliveryFailed` — from `events.py` / `webhooks.py`.
 - `Settings`, `Manifest` — from `config.py`.
 - `register`, `env` — from `plugins.py`.
 - `RequestIdMiddleware`, `configure_logging`, `configure_otel` — from `observability.py`.
@@ -26,7 +26,7 @@ When you add a new public symbol, **add it here too**. That's the contract.
 
 ### `app.py` — 171 lines
 
-`create_app(routes_root, *, events_root="app/events", settings=None, ...)` — the factory. Walks the routes tree, optionally walks the events tree, registers handlers, wires lifespan hooks (including event-bus startup when `events_root` exists), attaches health endpoints, returns a Starlette app wrapping the inner `dyadpy.App`. This is the thing `causeway dev` and your `pytest` fixtures both call. The `create_app_frozen` sibling takes a pre-built `Discovered` for the binary build path.
+`create_app(routes_root, *, events_root="app/events", listeners_root="app/listeners", subscribers_root="app/subscribers", settings=None, ...)` — the factory. Walks the routes tree plus (when present) the three event-related trees: `events_root` imports each `.py` so every `Event` subclass registers itself via `__init_subclass__`; `listeners_root` imports each `.py` so `@<Event>.listen` decorators run at module scope; `subscribers_root` imports each `.py` so module-level `Subscriber(...)` instances register against their event classes. Then registers handlers, wires lifespan hooks, attaches health endpoints, and returns a Starlette app wrapping the inner `dyadpy.App`. The `create_app_frozen` sibling takes a pre-built `Discovered` for the binary build path.
 
 ### `config.py` — 107 lines
 

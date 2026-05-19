@@ -1,159 +1,192 @@
 # Events
 
-Domain events sit a layer above background tasks. A route says "a customer was just created"; a listener decides what to do about it (send a welcome email, warm a cache, fire a webhook). Producers don't grow with consumers.
+Domain events sit a layer above background tasks. A route says "a customer was just created"; a **listener** decides what to do in-process (send a welcome email, warm a cache); a **subscriber** decides what to deliver out-of-process (notify Slack, fire a partner's webhook). Producers don't grow with consumers, and the two channels share one definition.
 
-Discovery is file-based, like routes. Drop a file in `src/app/events/`, and every module-level `async def` in it becomes a listener for the event named by the file path. No decorator, no registration call, no string-name argument.
+Causeway's event model has three rules:
 
-## Filename → event name
+1. **One file per event.** Class declaration in `app/events/<name>.py`.
+2. **Class name is canonical.** The class drives the wire name; the file just stores it.
+3. **The class is the bus.** Listeners and subscribers register against the class itself — no separate bus to plug in.
 
-| File                                  | Event name              |
-| ------------------------------------- | ----------------------- |
-| `app/events/customer.create.py`       | `customer:create`       |
-| `app/events/customer.delete.py`       | `customer:delete`       |
-| `app/events/invoice.paid.py`          | `invoice:paid`          |
-| `app/events/billing/refund.issued.py` | `billing:refund:issued` |
-| `app/events/customer/create.py`       | `customer:create`       |
-
-Rules:
-
-- File stem split on `.`, joined with `:`.
-- Folders are leading segments.
-- Underscore-prefixed files and directories are skipped (colocated helpers).
-- Two files producing the same event name **merge** their listeners — flat and nested forms can coexist.
-
-Pick the flat form by default. Nest a folder only when one event grows enough listeners that a single file feels crowded.
-
-## Writing a listener
+## Defining an event
 
 ```python
-# src/app/events/customer.create.py
-from app.models import Customer
-from app.tasks.emails import send_welcome
+# app/events/customer_created.py
+from causeway.events import Event
+from uuid import UUID
 
-
-async def email_welcome(customer: Customer) -> None:
-    await send_welcome.enqueue(customer.id)
-
-
-async def warm_cache(customer: Customer) -> None:
-    await cache.set(f"customer:{customer.id}", customer)
+class CustomerCreated(Event):
+    id: UUID
+    email: str
 ```
 
-Every module-level `async def` whose name doesn't start with `_` is a listener. The function name has no semantic role — it's there for readability and for stack traces. Sync defs, constants, and helpers are ignored.
+That's everything. The class registers itself at import:
+
+- `CustomerCreated.wire_name == "customer.created"` (PascalCase split on case boundaries → dot-separated lowercase)
+- `CustomerCreated._listeners` starts empty
+- `CustomerCreated._subscribers` starts empty
+- `CustomerCreated.webhook == False`
+
+Subclassing `Event` opts the class into `msgspec.Struct` semantics — fields are validated at construction, instances compare by value, JSON encoding is free.
+
+### Filename ↔ class name
+
+The convention is **snake_case of the PascalCase class name**:
+
+| File                         | Class                   | Wire name                 |
+| ---------------------------- | ----------------------- | ------------------------- |
+| `customer_created.py`        | `CustomerCreated`       | `customer.created`        |
+| `order_shipped.py`           | `OrderShipped`          | `order.shipped`           |
+| `billing_invoice_created.py` | `BillingInvoiceCreated` | `billing.invoice.created` |
+| `webhook_delivery_failed.py` | `WebhookDeliveryFailed` | `webhook.delivery.failed` |
+
+Discovery validates this at boot: a `customer_created.py` containing `OrderShipped` is a hard error pointing at both. Two classes in one file is also a hard error — one event per file, no exceptions.
+
+**No folders inside `events/`.** Use longer class names for sub-namespacing — `BillingInvoiceCreated` instead of `billing/invoice/created.py`. Dots in the wire name carry the namespace; folders would add nothing.
 
 ## Emitting
 
 ```python
-# src/app/routes/customers/index.py
-from causeway import emit, post
-from app.models import Customer
+# Construct then emit
+await CustomerCreated(id=user.id, email=user.email).emit()
 
-
-@post
-async def create(data: NewCustomer) -> Customer:
-    customer = await db.insert(...)
-    await emit("customer:create", customer)
-    return customer
+# Re-emit a typed instance you received from somewhere else
+await received_event.emit()
 ```
 
-`emit` runs every listener for the event concurrently (`asyncio.gather`). The first failure raises out of `emit`; remaining listeners' completion is not awaited. Emitting an event with no listeners is a no-op.
+Typos can't silently no-op — `CustmerCreated.emit` is an `ImportError` at the top of the file, not a runtime drop.
 
-## Listeners enqueue tasks for durable work
+`.emit()` returns an `EmitResult` listing the webhook delivery task ids that were enqueued (empty list when `webhook = False` or no subscribers matched).
 
-The in-memory bus is best-effort. If a listener does work that has to survive a crash (sending an email, charging a card, calling a downstream API), enqueue a task from the listener — the task adapter handles persistence and retries.
+## Listening (in-process)
+
+Listeners live in `app/listeners/`, named by **concern** (what they do), not by event:
 
 ```python
-# src/app/events/order.placed.py
-from app.tasks.fulfillment import charge_card, ship_order
+# app/listeners/welcome_email.py
+from app.events.customer_created import CustomerCreated
+from app.config import settings
 
-
-async def charge(order):
-    await charge_card.enqueue(order.id)
-
-
-async def ship(order):
-    await ship_order.enqueue(order.id)
+@CustomerCreated.listen
+async def send_welcome(p: CustomerCreated) -> None:
+    await mailer.send(p.email, "Welcome", "...")
 ```
 
-Listeners that only do in-memory work (cache warms, metric increments, log lines) can stay inline.
+```python
+# app/listeners/search_index.py
+from app.events.customer_created import CustomerCreated
+from app.events.customer_updated import CustomerUpdated
 
-## Boot
+@CustomerCreated.listen
+async def index_new(p: CustomerCreated) -> None:
+    await search.index(p)
 
-`create_app("app/routes", events_root="app/events")` discovers the events folder if it exists and installs an `InMemoryEventBus`. If `app/events/` is absent, no bus is installed — `await emit(...)` raises. That's intentional: the missing folder isn't a silent feature toggle.
+@CustomerUpdated.listen
+async def reindex(p: CustomerUpdated) -> None:
+    await search.update(p)
+```
+
+The same listener may react to multiple events; multiple listeners may react to the same event. Listeners run **concurrently** when an event is emitted — the first failure raises out of `.emit()`.
+
+`@<Event>.listen` validates the signature at decoration time:
+
+- Must be `async def`.
+- Must take exactly one positional parameter.
+- The parameter's annotation isn't enforced (Python forward-ref resolution at decoration time is unreliable) — your static checker is the right tool to catch type mismatches.
+
+Plain `async def` files (no `@listen` decorator) are **not** auto-registered. Explicit registration is the only path.
+
+## Webhook fan-out
+
+To make an event also deliver to outbound subscribers, set `webhook = True` on the class:
+
+```python
+class CustomerCreated(Event):
+    webhook = True
+    id: UUID
+    email: str
+```
+
+Now `.emit()` does two things atomically:
+
+1. Awaits every in-process listener (raises on first failure).
+2. Enqueues one delivery task per matching subscriber.
+
+Listeners are awaited; deliveries are not. The caller never blocks on outbound HTTP. See [Webhooks](../webhooks/index.md) for the full subscriber model.
+
+## File layout
+
+```
+app/
+  events/                                 # one class per file
+    customer_created.py                   # class CustomerCreated
+    customer_updated.py                   # class CustomerUpdated
+    order_shipped.py                      # class OrderShipped
+  listeners/                              # named by concern
+    welcome_email.py                      # @CustomerCreated.listen
+    search_index.py                       # @CustomerCreated.listen, @CustomerUpdated.listen
+    audit_log.py
+  subscribers/                            # outbound webhook targets (optional)
+    slack.py
+```
+
+Discovery walks all three at boot. Missing folders are skipped silently.
 
 ## Testing
 
-Listeners are plain async functions; import and call one directly:
+Two context managers in `causeway.testing` short-circuit each delivery channel:
 
 ```python
-async def test_warm_cache_sets_key():
-    from app.events.customer.create import warm_cache
-    await warm_cache(Customer(id="abc"))
-    assert await cache.get("customer:abc") is not None
+from causeway.testing import captured, captured_webhooks
+
+async def test_creating_customer_emits_event(client):
+    async with captured(CustomerCreated) as events:
+        await client.post("/customers", json={"email": "a@b"})
+    assert len(events) == 1
+    assert events[0].email == "a@b"
+
+async def test_creating_customer_notifies_slack(client):
+    async with captured_webhooks() as deliveries:
+        await client.post("/customers", json={"email": "a@b"})
+    assert len(deliveries) == 1
+    assert deliveries[0].url == "https://slack.example"
 ```
 
-End-to-end through `emit`:
+`captured()` suppresses in-process listeners and records every emit of the given classes. `captured_webhooks()` suppresses outbound delivery and records what _would_ have been enqueued (one record per matching subscriber, `where` filter applied).
+
+## Framework events
+
+Causeway ships its own `Event` subclasses for runtime conditions you may want to react to. Subscribe to them from `app/listeners/`:
 
 ```python
-from causeway.events import InMemoryEventBus, discover, register, set_bus
+# app/listeners/webhook_health.py
+from causeway.webhooks import WebhookDeliveryFailed
 
-async def test_create_route_fans_out(tmp_path):
-    bus = InMemoryEventBus()
-    await bus.startup(settings=None)
-    set_bus(bus)
-    register(discover("src/app/events"))
-    # ... call the route, assert side effects
+_DISABLE_THRESHOLD = 10
+
+@WebhookDeliveryFailed.listen
+async def maybe_disable(p: WebhookDeliveryFailed) -> None:
+    if p.attempts >= _DISABLE_THRESHOLD:
+        # Mark the endpoint as disabled in your store...
+        ...
 ```
 
-When a listener uses `task.enqueue`, combine with `tasks_eager()`:
+Framework events have `webhook = False` so the failure-event isn't itself webhook-bridged (otherwise a broken endpoint would cascade into more failure deliveries).
 
-```python
-from causeway import tasks_eager
+## Why this shape
 
-async def test_welcome_email_sent():
-    async with tasks_eager():
-        await emit("customer:create", customer)
-    # send_welcome already ran
-```
+- **One symbol per event.** Rename `CustomerCreated` → IDE renames everywhere. Move the file → wire name updates automatically.
+- **No magic strings.** `customer.created` lives in one place: the class name. You can't typo it; you can't get out of sync.
+- **Listeners by concern, not by trigger.** `welcome_email.py` reads top-to-bottom as the welcome-email side effect across every event it cares about. Co-locating listeners inside the event file falls apart past 1:1 mappings.
+- **Class IS the bus.** No separate `EventBus` to plug in, no `set_bus`, no install step. The plugin point moves down to durability (task adapter, webhook store).
 
-## Error policy
+## Migrating from the 0.1 event API
 
-Listeners run via `asyncio.gather(*coros)` with the default `return_exceptions=False`. The first listener to raise propagates out of `emit`; the other listeners' coroutines are not awaited and may show up in unhandled-task warnings. If you need per-listener isolation, catch inside the listener:
+The 0.1 API was string-keyed (`await emit("customer:created", payload)`). It's been removed; there is no compatibility shim.
 
-```python
-async def best_effort(payload):
-    try:
-        await flaky_call(payload)
-    except Exception:
-        log.exception("best_effort listener failed")
-```
-
-This is deliberately strict: a silently-swallowed listener failure is the kind of bug you don't notice until production. If you want fan-out-and-collect-errors semantics, build it on top of `emit` (or use a durable bus that ships in a plugin).
-
-## What's _not_ in the contract
-
-- **Durable delivery.** The in-memory bus doesn't persist. If you crash mid-emit, listeners that haven't started yet don't run. A transactional-outbox bus will arrive as a plugin (`causeway-events-*`); until then, push durability into the listeners that need it.
-- **Listener ordering.** Listeners run concurrently. If you need ordering, do the sequence inside one listener.
-- **Wildcards / subscriptions at runtime.** The event-name → listener map is built at boot from the filesystem and frozen. Dynamic subscribe/unsubscribe isn't supported — that's a different primitive (`PubSub` contract).
-- **Cross-process fan-out.** In-process only. For cross-service events use webhooks or a real broker.
-
-## Adapter swap
-
-The bus is plugin-shaped — a `EventBus` Protocol lives in `causeway.contracts`. The default `InMemoryEventBus` is what `create_app` installs; durable adapters ship in sibling packages and swap in via `register(...)` in `plugins.py`, exactly like the `TaskAdapter` swap.
-
-```python
-# src/app/plugins.py
-from causeway import register
-from causeway_events_redis import RedisEventBus
-
-register(RedisEventBus(url="redis://localhost"))
-```
-
-The listener files don't move.
-
-## Next
-
-- [Reference — `emit`](../../api-reference/functions/emit.md)
-- [Reference — `EventBus` contract](../../api-reference/classes/contracts.md)
-- [Background tasks](../tasks/index.md) — what listeners typically enqueue
-- [Webhooks (outgoing)](../webhooks/index.md) — when the consumer lives in another service
+| 0.1                                              | 0.2+                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `emit("x:y", payload)`                           | `await XY(...).emit()`                                                                           |
+| `app/events/x.y.py` with `async def listener(p)` | `app/events/x_y.py` with `class XY(Event)`, listener moves to `app/listeners/` with `@XY.listen` |
+| `InMemoryEventBus`, `set_bus`                    | gone — class IS the bus                                                                          |
+| `EventBus` Protocol                              | gone — no event-bus plugin point                                                                 |

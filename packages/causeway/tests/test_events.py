@@ -1,37 +1,37 @@
-"""Event-dispatch contract tests using the in-memory bus."""
+"""Tests for the typed Event base class.
+
+Covers: class-based event declaration, wire-name derivation, file-based
+discovery + filename validation, @listen registration + signature checks,
+and in-process emit fan-out.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import pytest
 
 from causeway._loader import reset_module_cache
 from causeway.events import (
-    InMemoryEventBus,
+    Event,
+    _pascal_to_dotted,
+    _pascal_to_snake,
+    _reset_registry,
+    all_events,
     discover,
-    emit,
-    register,
-    set_bus,
+    webhookable_events,
 )
 
 
 @pytest.fixture(autouse=True)
-def _reset_loader() -> Any:
-    """Drop the shared module cache so each test's tmp tree is loaded fresh."""
+def _reset_state() -> Any:
     reset_module_cache()
+    _reset_registry()
     yield
     reset_module_cache()
-
-
-@pytest.fixture
-async def bus() -> Any:
-    b = InMemoryEventBus()
-    await b.startup(settings=None)
-    set_bus(b)
-    yield b
-    await b.shutdown()
+    _reset_registry()
 
 
 def _write(root: Path, rel: str, body: str) -> None:
@@ -40,168 +40,264 @@ def _write(root: Path, rel: str, body: str) -> None:
     target.write_text(body)
 
 
-async def test_flat_naming_discovery(tmp_path: Path) -> None:
+# ---------------------------------------------------------------------------
+# Wire-name derivation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("class_name", "wire"),
+    [
+        ("CustomerCreated", "customer.created"),
+        ("OrderShipped", "order.shipped"),
+        ("BillingInvoiceCreated", "billing.invoice.created"),
+        ("HttpRequestFailed", "http.request.failed"),
+        # Capital runs collapse to one token, same as the PascalCase form.
+        ("HTTPRequestFailed", "http.request.failed"),
+        ("Started", "started"),
+    ],
+)
+def test_pascal_to_dotted(class_name: str, wire: str) -> None:
+    assert _pascal_to_dotted(class_name) == wire
+
+
+@pytest.mark.parametrize(
+    ("class_name", "snake"),
+    [
+        ("CustomerCreated", "customer_created"),
+        ("BillingInvoiceCreated", "billing_invoice_created"),
+        ("HttpRequestFailed", "http_request_failed"),
+    ],
+)
+def test_pascal_to_snake(class_name: str, snake: str) -> None:
+    assert _pascal_to_snake(class_name) == snake
+
+
+# ---------------------------------------------------------------------------
+# Class registration
+# ---------------------------------------------------------------------------
+
+
+def test_event_subclass_registers() -> None:
+    class CustomerCreated(Event):
+        id: str
+
+    assert CustomerCreated.wire_name == "customer.created"
+    assert CustomerCreated in all_events().values()
+    assert CustomerCreated._listeners == []
+    assert CustomerCreated._subscribers == []
+    assert CustomerCreated.webhook is False
+
+
+def test_webhook_flag_passes_through() -> None:
+    class OrderShipped(Event):
+        webhook = True
+        id: str
+
+    assert OrderShipped.webhook is True
+    assert OrderShipped in webhookable_events()
+
+
+def test_duplicate_wire_name_raises() -> None:
+    class Dup1(Event):
+        id: str
+
+    # Different class object but same name → collision.
+    with pytest.raises(RuntimeError, match="wire-name collision"):
+        # We can't redeclare `class Dup1` in scope, so simulate via type().
+        type("Dup1", (Event,), {"__annotations__": {"id": str}})
+
+
+# ---------------------------------------------------------------------------
+# Emit + listeners
+# ---------------------------------------------------------------------------
+
+
+async def test_emit_calls_listeners() -> None:
+    class CustomerCreated(Event):
+        id: str
+
+    seen: list[str] = []
+
+    @CustomerCreated.listen
+    async def remember(p: CustomerCreated) -> None:
+        seen.append(p.id)
+
+    await CustomerCreated(id="u1").emit()
+    assert seen == ["u1"]
+
+
+async def test_emit_with_no_listeners_is_noop() -> None:
+    class Quiet(Event):
+        id: str
+
+    result = await Quiet(id="x").emit()
+    assert result.delivery_ids == []
+
+
+async def test_listener_failure_propagates() -> None:
+    class WillBlow(Event):
+        x: int
+
+    @WillBlow.listen
+    async def boom(_: WillBlow) -> None:
+        raise RuntimeError("listener failed")
+
+    with pytest.raises(RuntimeError, match="listener failed"):
+        await WillBlow(x=1).emit()
+
+
+async def test_multiple_listeners_fan_out_concurrently() -> None:
+    class Multi(Event):
+        n: int
+
+    seen: list[str] = []
+
+    @Multi.listen
+    async def a(p: Multi) -> None:
+        seen.append(f"a:{p.n}")
+
+    @Multi.listen
+    async def b(p: Multi) -> None:
+        seen.append(f"b:{p.n}")
+
+    await Multi(n=5).emit()
+    assert sorted(seen) == ["a:5", "b:5"]
+
+
+def test_listen_rejects_sync_function() -> None:
+    class S(Event):
+        x: int
+
+    with pytest.raises(TypeError, match="async function"):
+
+        @S.listen  # type: ignore[arg-type]
+        def not_async(p: S) -> None:
+            del p
+
+    assert S._listeners == []
+
+
+def test_listen_rejects_wrong_arity() -> None:
+    class W(Event):
+        x: int
+
+    with pytest.raises(TypeError, match="exactly one parameter"):
+
+        @W.listen
+        async def two_args(p: W, extra: int) -> None:
+            del p, extra
+
+
+# ---------------------------------------------------------------------------
+# File-based discovery
+# ---------------------------------------------------------------------------
+
+
+async def test_discover_picks_up_events(tmp_path: Path) -> None:
+    events_dir = tmp_path / "events"
     _write(
-        tmp_path,
-        "customer.create.py",
-        "async def send_welcome(payload): pass\n",
+        events_dir,
+        "customer_created.py",
+        ("from causeway.events import Event\nclass CustomerCreated(Event):\n    id: str\n"),
     )
-    found = discover(tmp_path)
-    assert "customer:create" in found.events
-    assert [f.__name__ for f in found.events["customer:create"].listeners] == ["send_welcome"]
+    snapshot = discover(events_dir)
+    assert "customer.created" in snapshot.events
+    assert snapshot.events["customer.created"].__name__ == "CustomerCreated"
 
 
-async def test_nested_naming_discovery(tmp_path: Path) -> None:
-    _write(tmp_path, "customer/create.py", "async def f(p): pass\n")
-    found = discover(tmp_path)
-    assert "customer:create" in found.events
+async def test_discover_imports_listeners(tmp_path: Path) -> None:
+    """Listener modules are imported, running their @listen decorators.
 
-
-async def test_folder_and_dotted_combine(tmp_path: Path) -> None:
-    _write(tmp_path, "billing/refund.issued.py", "async def f(p): pass\n")
-    found = discover(tmp_path)
-    assert "billing:refund:issued" in found.events
-
-
-async def test_multiple_listeners_in_one_file(tmp_path: Path) -> None:
+    We assert this indirectly: declare the event and a listener for it in
+    the *same* file in listeners/ (registry-aware listener — looks the
+    event up from the global registry by wire name), then check that the
+    event class shows ``len(_listeners) > 0`` after discovery.
+    """
+    events_dir = tmp_path / "events"
+    listeners_dir = tmp_path / "listeners"
     _write(
-        tmp_path,
-        "customer.create.py",
-        "async def a(p): pass\nasync def b(p): pass\n",
+        events_dir,
+        "order_shipped.py",
+        ("from causeway.events import Event\nclass OrderShipped(Event):\n    id: str\n"),
     )
-    found = discover(tmp_path)
-    names = sorted(f.__name__ for f in found.events["customer:create"].listeners)
-    assert names == ["a", "b"]
-
-
-async def test_same_event_split_across_files_merges(tmp_path: Path) -> None:
-    _write(tmp_path, "customer.create.py", "async def a(p): pass\n")
-    _write(tmp_path, "customer/create.py", "async def b(p): pass\n")
-    found = discover(tmp_path)
-    names = sorted(f.__name__ for f in found.events["customer:create"].listeners)
-    assert names == ["a", "b"]
-    assert len(found.events["customer:create"].sources) == 2
-
-
-async def test_underscore_files_and_dirs_skipped(tmp_path: Path) -> None:
-    _write(tmp_path, "_helper.py", "async def f(p): pass\n")
-    _write(tmp_path, "_private/event.py", "async def f(p): pass\n")
-    _write(tmp_path, "real.event.py", "async def f(p): pass\n")
-    found = discover(tmp_path)
-    assert list(found.events) == ["real:event"]
-
-
-async def test_underscore_prefixed_funcs_skipped(tmp_path: Path) -> None:
     _write(
-        tmp_path,
-        "customer.create.py",
-        "async def public(p): pass\nasync def _private(p): pass\n",
-    )
-    found = discover(tmp_path)
-    names = [f.__name__ for f in found.events["customer:create"].listeners]
-    assert names == ["public"]
-
-
-async def test_non_async_module_attrs_ignored(tmp_path: Path) -> None:
-    _write(
-        tmp_path,
-        "customer.create.py",
-        "FOO = 1\ndef sync_fn(p): pass\nasync def listener(p): pass\n",
-    )
-    found = discover(tmp_path)
-    names = [f.__name__ for f in found.events["customer:create"].listeners]
-    assert names == ["listener"]
-
-
-async def test_emit_fans_out(tmp_path: Path, bus: InMemoryEventBus) -> None:
-    _write(
-        tmp_path,
-        "customer.create.py",
+        listeners_dir,
+        "notify.py",
         (
-            "calls: list = []\n"
-            "async def a(p): calls.append(('a', p))\n"
-            "async def b(p): calls.append(('b', p))\n"
+            "from causeway.events import all_events\n"
+            "OrderShipped = all_events()['order.shipped']\n"
+            "@OrderShipped.listen\n"
+            "async def receive(p):\n"
+            "    pass\n"
         ),
     )
-    found = discover(tmp_path)
-    register(found)
-    await emit("customer:create", {"id": 7})
 
-    # The dynamically loaded module isn't in sys.modules; read its
-    # globals via any listener's ``__globals__``.
-    listeners = found.events["customer:create"].listeners
-    calls = listeners[0].__globals__["calls"]
-    assert sorted(calls) == [("a", {"id": 7}), ("b", {"id": 7})]
+    snapshot = discover(events_dir, listeners_dir)
+    cls = snapshot.events["order.shipped"]
+    assert len(cls._listeners) == 1
+    assert len(snapshot.listener_modules) == 1
 
 
-async def test_emit_unknown_event_is_noop(bus: InMemoryEventBus) -> None:
-    await emit("nothing:here", {"x": 1})
-
-
-async def test_listener_failure_propagates(tmp_path: Path, bus: InMemoryEventBus) -> None:
+async def test_discover_rejects_filename_mismatch(tmp_path: Path) -> None:
+    events_dir = tmp_path / "events"
     _write(
-        tmp_path,
-        "customer.create.py",
-        ("async def ok(p): pass\nasync def boom(p): raise RuntimeError('listener failed')\n"),
+        events_dir,
+        "wrong_name.py",
+        ("from causeway.events import Event\nclass CustomerCreated(Event):\n    id: str\n"),
     )
-    register(discover(tmp_path))
-    with pytest.raises(RuntimeError, match="listener failed"):
-        await emit("customer:create", None)
+    with pytest.raises(RuntimeError, match="filename mismatch"):
+        discover(events_dir)
 
 
-async def test_emit_without_bus_raises(tmp_path: Path) -> None:
-    # No fixture; explicitly reset the var so test order can't help us.
-    from causeway.events import _bus_var
+async def test_discover_rejects_two_classes_in_one_file(tmp_path: Path) -> None:
+    events_dir = tmp_path / "events"
+    _write(
+        events_dir,
+        "combined.py",
+        (
+            "from causeway.events import Event\n"
+            "class Alpha(Event):\n"
+            "    x: int\n"
+            "class Beta(Event):\n"
+            "    y: int\n"
+        ),
+    )
+    with pytest.raises(RuntimeError, match="multiple Event subclasses"):
+        discover(events_dir)
 
-    _bus_var.set(None)  # type: ignore[arg-type]
-    with pytest.raises(AttributeError):
-        # Bus is None → emit will AttributeError on .emit; acceptable surfacing.
-        await emit("anything", None)
 
-
-async def test_missing_events_root_raises(tmp_path: Path) -> None:
+def test_discover_missing_root_raises(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         discover(tmp_path / "does-not-exist")
 
 
-async def test_empty_events_root_is_empty(tmp_path: Path) -> None:
-    found = discover(tmp_path)
-    assert found.events == {}
+def test_discover_empty_root_is_empty(tmp_path: Path) -> None:
+    snapshot = discover(tmp_path)
+    assert snapshot.events == {}
 
 
-async def test_listener_can_enqueue_a_task(tmp_path: Path, bus: InMemoryEventBus) -> None:
-    """End-to-end: a listener uses task.enqueue to do durable work."""
-    from causeway.tasks import InMemoryAdapter, _clear, set_adapter, tasks_eager
+def test_discover_skips_underscore_files(tmp_path: Path) -> None:
+    events_dir = tmp_path
+    _write(
+        events_dir,
+        "_helper.py",
+        "from causeway.events import Event\nclass H(Event):\n    x: int\n",
+    )
+    snapshot = discover(events_dir)
+    assert snapshot.events == {}
 
-    _clear()
-    adapter = InMemoryAdapter()
-    await adapter.startup(settings=None)
-    set_adapter(adapter)
-    try:
-        # Write a listener file that imports causeway.tasks and enqueues.
-        _write(
-            tmp_path,
-            "customer.create.py",
-            (
-                "from causeway.tasks import task\n"
-                "side: list = []\n"
-                "@task()\n"
-                "async def remember(x: str) -> None: side.append(x)\n"
-                "async def listener(p):\n"
-                "    await remember.enqueue(p)\n"
-            ),
-        )
-        register(discover(tmp_path))
 
-        async with tasks_eager():
-            await emit("customer:create", "hello")
+# ---------------------------------------------------------------------------
+# Struct semantics inherited from msgspec
+# ---------------------------------------------------------------------------
 
-        # Only ``listener`` is discovered — ``remember`` is a TaskRef, not
-        # an async function. Read the sentinel via the listener's globals.
-        listeners = next(iter(discover(tmp_path).events.values())).listeners
-        assert [f.__name__ for f in listeners] == ["listener"]
-        side = listeners[0].__globals__["side"]
-        assert side == ["hello"]
-    finally:
-        await adapter.shutdown()
-        _clear()
+
+def test_event_instances_compare_by_value() -> None:
+    class Order(Event):
+        id: UUID
+        amount: int
+
+    oid = UUID("00000000-0000-0000-0000-000000000001")
+    assert Order(id=oid, amount=10) == Order(id=oid, amount=10)
+    assert Order(id=oid, amount=10) != Order(id=oid, amount=11)

@@ -17,6 +17,8 @@ create_app(
     routes_root: str | Path = "app/routes",
     *,
     events_root: str | Path = "app/events",
+    listeners_root: str | Path = "app/listeners",
+    subscribers_root: str | Path = "app/subscribers",
     settings: Any = None,
     diagnostics: bool = True,
     request_id: bool = True,
@@ -26,14 +28,16 @@ create_app(
 
 ## Parameters
 
-| Parameter         | Default        | Notes                                                                           |
-| ----------------- | -------------- | ------------------------------------------------------------------------------- |
-| `routes_root`     | `"app/routes"` | Directory to walk for route files.                                              |
-| `events_root`     | `"app/events"` | Directory to walk for event listeners. Missing folder = no event bus installed. |
-| `settings`        | `None`         | Your `Settings` instance. Surfaced on the diagnostics page (secrets redacted).  |
-| `diagnostics`     | `True`         | Mount `/__causeway`. Disable in production.                                     |
-| `request_id`      | `True`         | Install `RequestIdMiddleware` at the app boundary.                              |
-| `error_renderer_` | `True`         | Install the problem+json renderer for all exceptions.                           |
+| Parameter          | Default             | Notes                                                                                                         |
+| ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `routes_root`      | `"app/routes"`      | Directory to walk for route files.                                                                            |
+| `events_root`      | `"app/events"`      | Directory to walk for `Event` subclass files. Missing folder = nothing discovered.                            |
+| `listeners_root`   | `"app/listeners"`   | Directory to walk for listener modules. Imports each `.py` so `@listen` decorators run. Missing folder is OK. |
+| `subscribers_root` | `"app/subscribers"` | Directory to walk for outbound `Subscriber` declarations. Missing folder is OK.                               |
+| `settings`         | `None`              | Your `Settings` instance. Surfaced on the diagnostics page (secrets redacted).                                |
+| `diagnostics`      | `True`              | Mount `/__causeway`. Disable in production.                                                                   |
+| `request_id`       | `True`              | Install `RequestIdMiddleware` at the app boundary.                                                            |
+| `error_renderer_`  | `True`              | Install the problem+json renderer for all exceptions.                                                         |
 
 ## What it does
 
@@ -44,8 +48,12 @@ create_app(
    - `RequestIdMiddleware` (when `request_id=True`),
    - every collected class `Middleware` instance from `_middleware.py` files,
    - the problem+json error renderer (when `error_renderer_=True`).
-5. If `events_root` exists, walks it with `events.discover(...)` and installs an `InMemoryEventBus` populated with the discovered listeners. Missing folder = no bus installed = `await emit(...)` raises.
-6. Wires lifespan: every `_scope.py`'s `startup()` fires on app start (and the event bus starts up here too), `shutdown()` in reverse.
+5. Walks the three event-related trees:
+   - `events_root`: imports each `.py`; every `Event` subclass registers itself by `wire_name` via `__init_subclass__`.
+   - `listeners_root`: imports each `.py` so `@<Event>.listen` decorators run at module scope.
+   - `subscribers_root`: imports each `.py` so module-level `Subscriber(...)` instances register against their event classes' `_subscribers` lists.
+     No bus is installed — the `Event` class IS the bus. Missing folders are skipped silently.
+6. Wires lifespan: every `_scope.py`'s `startup()` fires on app start, `shutdown()` in reverse.
 
 ## Return value
 
@@ -65,6 +73,8 @@ causeway dev
 
 - [Architecture — boot pipeline](../../architecture/boot-pipeline.md)
 - [`discover`](./discover.md)
-- [`emit`](./emit.md) — dispatch an event through the installed bus
+- [`Event.emit()`](./emit.md) — fan an event out to listeners + subscribers
 - [Events overview](../../building/events/index.md)
+- [Webhooks overview](../../building/webhooks/index.md)
+- [Subscribers overview](../../building/subscribers/index.md)
 - [`RequestIdMiddleware`](../classes/RequestIdMiddleware.md)

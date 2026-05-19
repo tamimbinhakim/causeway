@@ -11,9 +11,8 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
+from typing import Any, ClassVar, Protocol, runtime_checkable
 
 AsyncContextManager = AbstractAsyncContextManager
 
@@ -83,22 +82,6 @@ class TaskAdapter(Plugin, Protocol):
         the task is unknown or already terminal.
         """
         ...
-
-
-@runtime_checkable
-class EventBus(Plugin, Protocol):
-    """In-process event dispatcher contract.
-
-    Listeners are discovered from ``app/events/`` by
-    :func:`causeway.events.discover`. The bus fans a single :meth:`emit`
-    call out to every registered listener for the event name. Reference
-    implementation is :class:`causeway.events.InMemoryEventBus`; durable
-    buses (transactional outbox, Redis streams) ship as plugin packages.
-    """
-
-    contract_version: ClassVar[str] = "v1.0"
-
-    async def emit(self, name: str, payload: Any) -> None: ...
 
 
 @runtime_checkable
@@ -279,62 +262,53 @@ class DeployTarget(Plugin, Protocol):
     async def push(self, target: str) -> str: ...
 
 
-DeliveryState = Literal["pending", "in_flight", "delivered", "failed"]
+@runtime_checkable
+class Webhooks(Plugin, Protocol):
+    """Outbound webhook + incoming verification surface (v2).
 
+    This contract intentionally covers only the lifecycle and the
+    sign/verify helpers. Outbound *delivery* rides the
+    :class:`TaskAdapter` (delivery is a regular ``@task`` inside
+    :mod:`causeway.webhooks`); subscription state is split out into
+    :class:`WebhookStore` for the durable, runtime-managed case. Static
+    subscribers come from file discovery (``app/subscribers/``) and live on
+    the :class:`~causeway.events.Event` class itself.
+    """
 
-@dataclass(slots=True)
-class WebhookDelivery:
-    """Snapshot of a single webhook delivery's retry chain."""
-
-    delivery_id: str
-    state: DeliveryState
-    attempts: int
-    last_error: str | None = None
-    next_retry_at: datetime | None = None
+    contract_version: ClassVar[str] = "v2.0"
 
 
 @runtime_checkable
-class Webhooks(Plugin, Protocol):
-    """Outgoing webhook delivery + incoming signature verification.
+class WebhookStore(Plugin, Protocol):
+    """Durable storage for dynamic (runtime-created) webhook subscriptions.
 
-    Outgoing side: :meth:`send` enqueues a delivery; the adapter retries on
-    5xx/transport failures and exposes per-delivery state via
-    :meth:`delivery_status`. Incoming side: :meth:`verify_incoming` checks
-    HMAC + timestamp on a request and returns the verified body (or raises
-    :class:`~causeway.errors.Unauthorized`).
+    Implemented by sibling plugins (``causeway-webhooks-pg``,
+    ``causeway-webhooks-redis``, …). The in-memory adapter ships a reference
+    implementation in :class:`causeway.webhooks.InMemoryWebhookStore` for
+    tests and single-process apps; production deployments install a durable
+    backend.
+
+    Subscriptions are identified by ``endpoint_id`` (returned from
+    :meth:`subscribe`). Scoping (tenant, region, environment) is expressed
+    entirely through ``where`` — implementations are free to index hot keys.
     """
 
     contract_version: ClassVar[str] = "v1.0"
 
-    async def send(
+    async def subscribe(
         self,
-        endpoint_id: str,
-        event: str,
-        payload: dict[str, Any],
-        *,
-        idempotency_key: str | None = None,
-    ) -> str: ...
-
-    async def register_endpoint(
-        self,
-        endpoint_id: str,
         *,
         url: str,
         secret: str,
         events: list[str],
-    ) -> None: ...
+        where: dict[str, Any] | None = None,
+    ) -> str: ...
 
-    async def disable_endpoint(self, endpoint_id: str) -> None: ...
+    async def unsubscribe(self, endpoint_id: str) -> None: ...
 
-    async def delivery_status(self, delivery_id: str) -> WebhookDelivery: ...
+    async def disable(self, endpoint_id: str) -> None: ...
 
-    def verify_incoming(
-        self,
-        req: Any,
-        *,
-        secret: str,
-        max_skew_seconds: int = 300,
-    ) -> bytes: ...
+    def subscribers_for(self, wire_name: str) -> AsyncIterator[Any]: ...
 
 
 __all__ = [
@@ -342,9 +316,7 @@ __all__ = [
     "AuthProvider",
     "BlobScanner",
     "DBSession",
-    "DeliveryState",
     "DeployTarget",
-    "EventBus",
     "FeatureFlags",
     "LogSink",
     "Mailer",
@@ -358,6 +330,6 @@ __all__ = [
     "TaskAdapter",
     "TaskRef",
     "TaskStatus",
-    "WebhookDelivery",
+    "WebhookStore",
     "Webhooks",
 ]

@@ -78,17 +78,18 @@ Every public symbol Causeway exports, on its own page. Organized by kind: decora
 
 ## Module map
 
-| Module                   | Contents                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `causeway`               | Public re-exports (`get`, `post`, `task`, `register`, …).                                            |
-| `causeway.errors`        | `HttpError` and subclasses, problem+json renderer.                                                   |
-| `causeway.middleware`    | `Middleware` Protocol, `Request`, `Response`, `guard`.                                               |
-| `causeway.routing`       | `discover`, `register`, `Discovered`, `DiscoveredRoute` (low-level).                                 |
-| `causeway.tasks`         | `task`, `cron`, `TaskRef`, `TaskState`, `InMemoryAdapter`, `cancel_requested`, `raise_if_cancelled`. |
-| `causeway.events`        | `emit`, `discover`, `register`, `set_bus`, `InMemoryEventBus`, `Discovered`.                         |
-| `causeway.testing`       | `TestApp`, `expect`, `scenario`, `snapshot`, `stub`, `tasks_eager`.                                  |
-| `causeway.config`        | `Settings`, `Manifest`, `load_settings`, `load_manifest`.                                            |
-| `causeway.contracts`     | Plugin Protocols (`Storage`, `KV`, `Mailer`, `TaskAdapter`, `EventBus`, …).                          |
-| `causeway.plugins`       | `register`, `env`, `registered`, `discover` (entry-point loader).                                    |
-| `causeway.adapters`      | Reference implementations (`LocalStorage`, `MemoryKV`, …).                                           |
-| `causeway.observability` | `RequestIdMiddleware`, `configure_logging`, `configure_otel`.                                        |
+| Module                   | Contents                                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `causeway`               | Public re-exports (`get`, `post`, `task`, `register`, …).                                                   |
+| `causeway.errors`        | `HttpError` and subclasses, problem+json renderer.                                                          |
+| `causeway.middleware`    | `Middleware` Protocol, `Request`, `Response`, `guard`.                                                      |
+| `causeway.routing`       | `discover`, `register`, `Discovered`, `DiscoveredRoute` (low-level).                                        |
+| `causeway.tasks`         | `task`, `cron`, `TaskRef`, `TaskState`, `InMemoryAdapter`, `cancel_requested`, `raise_if_cancelled`.        |
+| `causeway.events`        | `Event` base class, `discover`, `all_events`, `webhookable_events`, `EmitResult`, `Discovered`.             |
+| `causeway.webhooks`      | `Subscriber`, `InMemoryWebhookStore`, `IncomingWebhook`, `verify`, `sign_payload`, `WebhookDeliveryFailed`. |
+| `causeway.testing`       | `TestApp`, `captured`, `captured_webhooks`, `expect`, `scenario`, `snapshot`, `stub`, `tasks_eager`.        |
+| `causeway.config`        | `Settings`, `Manifest`, `load_settings`, `load_manifest`.                                                   |
+| `causeway.contracts`     | Plugin Protocols (`Storage`, `KV`, `Mailer`, `TaskAdapter`, `Webhooks`, `WebhookStore`, …).                 |
+| `causeway.plugins`       | `register`, `env`, `registered`, `discover` (entry-point loader).                                           |
+| `causeway.adapters`      | Reference implementations (`LocalStorage`, `MemoryKV`, …).                                                  |
+| `causeway.observability` | `RequestIdMiddleware`, `configure_logging`, `configure_otel`.                                               |

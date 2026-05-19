@@ -120,24 +120,50 @@ if __name__ == "__causeway_test__":
 '''
 
 _EVENT_PY = '''\
-"""Listeners for ``example:created``.
+"""Example event.
 
-Filename → event name: ``example.created.py`` becomes ``example:created``.
-Every module-level ``async def`` is registered as a listener; call
-``await emit("example:created", payload)`` from a route or task and every
-listener in this file (and any other ``example.created.py`` in the tree) runs
-concurrently. Delete this file once you add your own.
+File ``example_created.py`` declares ``class ExampleCreated``, which is
+discovered at boot and registered with wire name ``example.created``.
+Set ``webhook = True`` to also fan out to ``app/subscribers/``.
+
+Emit from a route or task::
+
+    from app.events.example_created import ExampleCreated
+    await ExampleCreated(id="...").emit()
+
+In-process listeners go in ``app/listeners/`` and use ``@ExampleCreated.listen``.
+Delete this file once you have your own events.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from causeway.events import Event
 
 
-async def log_it(payload: Any) -> None:
-    import logging
+class ExampleCreated(Event):
+    id: str
+'''
 
-    logging.getLogger("app.events").info("example:created %r", payload)
+
+_LISTENER_PY = '''\
+"""Example listener for ``ExampleCreated``.
+
+Listener files are imported at boot; the ``@ExampleCreated.listen``
+decorator registers ``log_it`` as an in-process reaction. The same listener
+file may decorate against multiple events; the same event may be reacted to
+from multiple listener files.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from app.events.example_created import ExampleCreated
+
+
+@ExampleCreated.listen
+async def log_it(p: ExampleCreated) -> None:
+    logging.getLogger("app.listeners").info("example.created %r", p)
 '''
 
 _APP_PY = '''\
@@ -281,7 +307,8 @@ def scaffold(root: Path, name: str) -> None:
         "app/lifespan.py": _LIFESPAN_PY,
         "app/routes/_middleware.py": _MIDDLEWARE_PY,
         "app/routes/index.py": _INDEX_PY,
-        "app/events/example.created.py": _EVENT_PY,
+        "app/events/example_created.py": _EVENT_PY,
+        "app/listeners/log_example.py": _LISTENER_PY,
         "tests/test_smoke.py": _TEST_SMOKE_PY,
     }
     for rel, body in files.items():

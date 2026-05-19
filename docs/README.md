@@ -45,12 +45,13 @@ Per-concept guides for everything you do day-to-day.
 - **[Configuration](./building/config/index.md)** — `Settings`, `causeway.toml`, secrets.
 - **[Plugins](./building/plugins/index.md)** — install adapters, write your own.
 - **[Background tasks](./building/tasks/index.md)** — `@task`, `@cron`, adapter swap.
-- **[Events](./building/events/index.md)** — file-based listeners and `emit` for in-process fan-out.
-- **[Testing](./building/testing/index.md)** — `TestApp`, inline scenarios, snapshots.
+- **[Events](./building/events/index.md)** — typed `Event` classes, `@listen`, `.emit()`.
+- **[Webhooks (outgoing)](./building/webhooks/index.md)** — signing, delivery via `@task`, retry behavior.
+- **[Subscribers](./building/subscribers/index.md)** — static `Subscriber` + dynamic `WebhookStore`, `where` filters.
+- **[Verifying incoming webhooks](./building/webhooks/incoming.md)** — HMAC + timestamp checks for inbound calls.
+- **[Testing](./building/testing/index.md)** — `TestApp`, inline scenarios, snapshots, `captured()`/`captured_webhooks()`.
 - **[Observability](./building/observability/index.md)** — request IDs, structured logs, OTel.
 - **[Typed client](./building/typed-client/index.md)** — what's in `client.ts` and how to consume it.
-- **[Webhooks (outgoing)](./building/webhooks/index.md)** — register endpoints, send events, retry behavior.
-- **[Verifying incoming webhooks](./building/webhooks/incoming.md)** — HMAC + timestamp checks for inbound calls.
 
 ## API Reference
 
