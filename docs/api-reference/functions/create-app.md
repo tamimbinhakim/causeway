@@ -41,19 +41,21 @@ create_app(
 
 ## What it does
 
-1. Calls `discover(routes_root)` to walk the tree.
-2. Builds a `dyadpy.App` and registers every discovered handler.
-3. Attaches `/healthz` and `/readyz` unconditionally; `/__causeway` when `diagnostics=True`.
-4. Wraps the dyadpy app in a Starlette `Starlette` with:
+1. Loads plugin entry points, then imports sibling `plugins.py` if present.
+2. Imports sibling `lifespan.py` if present.
+3. Calls `discover(routes_root)` to walk the tree.
+4. Builds a `dyadpy.App` and registers every discovered handler.
+5. Attaches `/healthz` and `/readyz` unconditionally; `/__causeway` when `diagnostics=True`.
+6. Wraps the dyadpy app in a Starlette `Starlette` with:
    - `RequestIdMiddleware` (when `request_id=True`),
    - every collected class `Middleware` instance from `_middleware.py` files,
    - the problem+json error renderer (when `error_renderer_=True`).
-5. Walks the three event-related trees:
+7. Walks the three event-related trees:
    - `events_root`: imports each `.py`; every `Event` subclass registers itself by `wire_name` via `__init_subclass__`.
    - `listeners_root`: imports each `.py` so `@<Event>.listen` decorators run at module scope.
    - `subscribers_root`: imports each `.py` so module-level `Subscriber(...)` instances register against their event classes' `_subscribers` lists.
      No bus is installed — the `Event` class IS the bus. Missing folders are skipped silently.
-6. Wires lifespan: every `_scope.py`'s `startup()` fires on app start, `shutdown()` in reverse.
+8. Wires lifespan: app `lifespan.py` startup, plugin startup, then every `_scope.py` `startup()`; shutdown runs the route hooks in reverse, then plugins, then app `lifespan.py`.
 
 ## Return value
 

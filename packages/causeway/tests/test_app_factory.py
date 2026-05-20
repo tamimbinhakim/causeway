@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
+from starlette.testclient import TestClient
 
 from causeway import create_app
+from causeway.plugins import clear
 
 
 def _write(root: Path, rel: str, body: str) -> None:
@@ -32,7 +34,11 @@ async def test_create_app_wires_handler(tmp_path: Path) -> None:
 
 async def test_create_app_includes_health_and_diagnostics(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
-    _write(routes, "index.py", "from causeway import get\n@get\nasync def r() -> dict: return {}\n")
+    _write(
+        routes,
+        "index.py",
+        "from causeway import get\n@get\nasync def r() -> dict: return {}\n",
+    )
     app = create_app(routes)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
@@ -56,7 +62,11 @@ class StampHeader(Middleware):
 middleware = [StampHeader()]
 """,
     )
-    _write(routes, "index.py", "from causeway import get\n@get\nasync def r() -> dict: return {}\n")
+    _write(
+        routes,
+        "index.py",
+        "from causeway import get\n@get\nasync def r() -> dict: return {}\n",
+    )
     app = create_app(routes)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
@@ -85,3 +95,90 @@ async def r() -> dict:
     # dyadpy serializes @raises into its Result envelope; the renderer kicks
     # in for unhandled exceptions. Either path returns a structured body.
     assert resp.status_code in {200, 404}
+
+
+def test_create_app_loads_app_plugins_and_runs_lifecycle(tmp_path: Path) -> None:
+    app_root = tmp_path / "app"
+    routes = app_root / "routes"
+    _write(
+        routes,
+        "index.py",
+        "from causeway import get\n@get\nasync def r() -> dict: return {}\n",
+    )
+    _write(
+        app_root,
+        "plugins.py",
+        f"""from pathlib import Path
+from typing import ClassVar
+from causeway import register
+
+LOG = Path({str(tmp_path / "plugin.log")!r})
+
+class Recorder:
+    contract_version: ClassVar[str] = "v1.0"
+
+    async def startup(self, settings):
+        LOG.write_text(LOG.read_text() + "startup\\n" if LOG.exists() else "startup\\n")
+
+    async def shutdown(self):
+        LOG.write_text(LOG.read_text() + "shutdown\\n")
+
+register(Recorder())
+""",
+    )
+
+    clear()
+    app = create_app(routes)
+    with TestClient(app) as client:
+        assert client.get("/").status_code == 200
+    assert (tmp_path / "plugin.log").read_text().splitlines() == ["startup", "shutdown"]
+    clear()
+
+
+def test_create_app_runs_app_lifespan_around_route_hooks(tmp_path: Path) -> None:
+    app_root = tmp_path / "app"
+    routes = app_root / "routes"
+    log = tmp_path / "lifespan.log"
+    _write(
+        routes,
+        "index.py",
+        "from causeway import get\n@get\nasync def r() -> dict: return {}\n",
+    )
+    _write(
+        app_root,
+        "lifespan.py",
+        f"""from pathlib import Path
+
+LOG = Path({str(log)!r})
+
+async def startup():
+    LOG.write_text(LOG.read_text() + "app-startup\\n" if LOG.exists() else "app-startup\\n")
+
+async def shutdown():
+    LOG.write_text(LOG.read_text() + "app-shutdown\\n")
+""",
+    )
+    _write(
+        routes,
+        "_scope.py",
+        f"""from pathlib import Path
+
+LOG = Path({str(log)!r})
+
+async def startup():
+    LOG.write_text(LOG.read_text() + "route-startup\\n")
+
+async def shutdown():
+    LOG.write_text(LOG.read_text() + "route-shutdown\\n")
+""",
+    )
+
+    app = create_app(routes)
+    with TestClient(app) as client:
+        assert client.get("/").status_code == 200
+    assert log.read_text().splitlines() == [
+        "app-startup",
+        "route-startup",
+        "route-shutdown",
+        "app-shutdown",
+    ]

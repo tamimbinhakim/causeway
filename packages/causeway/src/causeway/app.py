@@ -24,6 +24,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Mount, compile_path
 
 import causeway.events as _events
+import causeway.plugins as _plugins
 import causeway.webhooks as _webhooks  # noqa: F401 — wires fan-out into Event.emit at import
 from causeway._loader import import_path
 from causeway.diagnostics import attach as attach_diagnostics
@@ -69,11 +70,14 @@ def create_app(
     Missing folders are skipped silently. The class itself is the bus; no
     separate ``EventBus`` plugin is installed.
     """
+    _discover_plugins(routes_root)
     found = discover(routes_root)
     events = _discover_events(events_root, listeners_root, subscribers_root)
+    app_lifespan = _discover_app_lifespan(routes_root)
     return _assemble(
         found,
         events=events,
+        app_lifespan=app_lifespan,
         settings=settings,
         diagnostics=diagnostics,
         request_id=request_id,
@@ -102,6 +106,7 @@ def create_app_frozen(
     return _assemble(
         found,
         events=events,
+        app_lifespan=None,
         settings=settings,
         diagnostics=diagnostics,
         request_id=request_id,
@@ -113,6 +118,7 @@ def _assemble(
     found: Discovered,
     *,
     events: _events.Discovered | None,
+    app_lifespan: Any,
     settings: Any,
     diagnostics: bool,
     request_id: bool,
@@ -137,6 +143,11 @@ def _assemble(
 
     @contextlib.asynccontextmanager
     async def lifespan(_: Any) -> AsyncIterator[None]:
+        if app_lifespan is not None:
+            startup = getattr(app_lifespan, "startup", None)
+            if callable(startup):
+                await startup()
+        await _plugins.startup_all(settings)
         for hook in found.startup_hooks:
             await hook()
         try:
@@ -144,6 +155,11 @@ def _assemble(
         finally:
             for hook in found.shutdown_hooks:
                 await hook()
+            await _plugins.shutdown_all()
+            if app_lifespan is not None:
+                shutdown = getattr(app_lifespan, "shutdown", None)
+                if callable(shutdown):
+                    await shutdown()
 
     return Starlette(
         routes=[Mount("/", app=inner)],
@@ -151,6 +167,24 @@ def _assemble(
         exception_handlers=exception_handlers,
         lifespan=lifespan,
     )
+
+
+def _discover_plugins(routes_root: str | Path) -> None:
+    """Load entry-point plugins, then the app-local ``plugins.py`` if present."""
+    _plugins.discover()
+    app_root = Path(routes_root).parent
+    plugins_file = app_root / "plugins.py"
+    if plugins_file.is_file():
+        import_path(plugins_file, label_prefix="_causeway_plugins")
+
+
+def _discover_app_lifespan(routes_root: str | Path) -> Any:
+    """Load app-level ``lifespan.py`` next to the routes tree if present."""
+    app_root = Path(routes_root).parent
+    lifespan_file = app_root / "lifespan.py"
+    if not lifespan_file.is_file():
+        return None
+    return import_path(lifespan_file, label_prefix="_causeway_lifespan")
 
 
 def _discover_events(

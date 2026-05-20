@@ -18,7 +18,7 @@ isolated test suite that drives the whole thing through `httpx`.
 | Token-gated admin endpoints    | `app/routes/admin/...` (via `current_admin` provider) |
 | `@task` + `@cron`              | `app/tasks.py`                                        |
 | Plugin registration            | `app/plugins.py`                                      |
-| Lifespan hooks                 | `app/lifespan.py` + `app/routes/_scope.py`            |
+| Lifespan hooks                 | `app/lifespan.py`                                     |
 | Tests                          | `tests/test_blog.py`                                  |
 
 ## Layout
@@ -191,20 +191,17 @@ await notify_new_comment.enqueue(id, data.author)
 
 ### 6. Lifespan + plugin startup
 
-The root `routes/_scope.py` is the only place that runs once per
-process. It calls `app.lifespan.startup` (which creates DB tables)
-and `causeway.plugins.startup_all(settings)` (which starts the task
-adapter). Shutdown runs in reverse.
+`create_app()` loads sibling `app/lifespan.py` and `app/plugins.py`.
+During ASGI startup it runs app lifespan startup, then plugin startup,
+then any route-scope startup hooks. Shutdown runs in reverse.
 
 ```python
-# app/routes/_scope.py
+# app/lifespan.py
 async def startup() -> None:
-    await _lifespan_startup()
-    await startup_all(settings)
+    await create_all()
 
 async def shutdown() -> None:
-    await shutdown_all()
-    await _lifespan_shutdown()
+    await dispose()
 ```
 
 ## What the response envelope looks like

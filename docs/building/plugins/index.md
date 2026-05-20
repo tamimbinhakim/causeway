@@ -52,7 +52,7 @@ if env() == "prod":
     register(S3Storage(bucket="uploads"))
 ```
 
-`plugins.py` runs once at startup, after `config.py` is loaded. Registration order is preserved; later registrations override earlier ones for the same contract slot.
+`plugins.py` runs once when `create_app()` builds the app, after `config.py` is loaded. Registration order is preserved; later registrations override earlier ones for the same contract slot. The app factory starts plugins during ASGI lifespan startup and shuts them down in reverse order during ASGI shutdown.
 
 ## Built-in contracts
 
@@ -82,7 +82,7 @@ Contract types live in `causeway.contracts`. All are `typing.Protocol`s — duck
 
 Every plugin observes the same lifecycle:
 
-1. **Discovered.** Entry-point scan picks it up, or `register()` is called explicitly.
+1. **Discovered.** `create_app()` scans entry points, then imports sibling `plugins.py` if present.
 2. **Validated.** Its declared `contract_version` is checked; warnings on mismatch.
 3. **Started.** `plugin.startup(settings)` runs. DB pools open, brokers connect.
 4. **Ready.** `plugin.ready()` returns True. `/readyz` aggregates across all plugins.

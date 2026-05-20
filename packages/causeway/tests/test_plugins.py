@@ -9,6 +9,7 @@ import pytest
 from causeway.plugins import (
     all_ready,
     clear,
+    discover,
     register,
     registered,
     shutdown_all,
@@ -53,6 +54,27 @@ async def test_register_dedupes_by_identity() -> None:
     assert registered() == [r]
 
 
+async def test_discover_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = 0
+
+    class EntryPoint:
+        name = "recorder"
+
+        def load(self) -> Any:
+            def plugin(settings: Any) -> None:
+                nonlocal calls
+                del settings
+                calls += 1
+
+            return plugin
+
+    monkeypatch.setattr("causeway.plugins.entry_points", lambda group: [EntryPoint()])
+
+    assert discover() == ["recorder"]
+    assert discover() == []
+    assert calls == 1
+
+
 async def test_startup_runs_in_registration_order() -> None:
     a = _Recorder("a")
     b = _Recorder("b")
@@ -61,6 +83,18 @@ async def test_startup_runs_in_registration_order() -> None:
     await startup_all(settings=None)
     assert a.calls == ["startup"]
     assert b.calls == ["startup"]
+
+
+async def test_startup_and_shutdown_are_idempotent() -> None:
+    a = _Recorder("a")
+    register(a)
+
+    await startup_all(settings=None)
+    await startup_all(settings=None)
+    await shutdown_all()
+    await shutdown_all()
+
+    assert a.calls == ["startup", "shutdown"]
 
 
 async def test_shutdown_is_reverse_of_registration() -> None:

@@ -24,6 +24,7 @@ _log = logging.getLogger("causeway.plugins")
 _registry: OrderedDict[int, Plugin] = OrderedDict()
 _next_id = 0
 _started = False
+_discovered_groups: set[str] = set()
 # Contract versions accepted without warning. Old versions stay on the list
 # until ecosystem adapters have caught up.
 _ACCEPTED_CONTRACT_VERSIONS = frozenset({"v1.0", "v1.1"})
@@ -54,6 +55,7 @@ def clear() -> None:
     """Drop all registrations. For tests only — production code never calls this."""
     global _started
     _registry.clear()
+    _discovered_groups.clear()
     _started = False
 
 
@@ -68,6 +70,9 @@ def discover(group: str = "causeway.plugins") -> list[str]:
     # re-introduce the supply-chain surface we deliberately removed.
     if os.environ.get("CAUSEWAY_BUILD_MODE") == "binary":
         return []
+    if group in _discovered_groups:
+        return []
+    _discovered_groups.add(group)
     discovered: list[str] = []
     try:
         eps = entry_points(group=group)
@@ -159,6 +164,8 @@ def merge_settings_fragments(settings: Any) -> Any:
 async def startup_all(settings: Any) -> None:
     """Fire every registered plugin's ``startup(settings)`` in registration order."""
     global _started
+    if _started:
+        return
     check_required_contracts()
     merge_settings_fragments(settings)
     for adapter in list(_registry.values()):
@@ -169,6 +176,8 @@ async def startup_all(settings: Any) -> None:
 async def shutdown_all() -> None:
     """Fire shutdowns in reverse-of-registration order. Errors are logged, not raised."""
     global _started
+    if not _started:
+        return
     for adapter in reversed(list(_registry.values())):
         await _safe_call(adapter, "shutdown")
     _started = False
