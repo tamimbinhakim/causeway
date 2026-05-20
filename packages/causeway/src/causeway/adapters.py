@@ -1,10 +1,3 @@
-"""Reference adapters.
-
-In-memory / no-op implementations that satisfy the contracts in
-:mod:`causeway.contracts`. Tests and the dev loop run on these; production
-swaps them out by registering a real adapter in ``src/app/plugins.py``.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -16,20 +9,23 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any, ClassVar
 
 
-class LocalStorage:
-    """In-memory blob store; implements :class:`causeway.contracts.Storage`."""
-
+class _Ready:
     contract_version: ClassVar[str] = "v1.0"
+
+    async def startup(self, settings: Any) -> None: ...
+
+    async def ready(self) -> bool:
+        return True
+
+
+class LocalStorage(_Ready):
+    """In-memory blob storage."""
 
     def __init__(self) -> None:
         self._blobs: dict[str, bytes] = {}
 
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None:
         self._blobs.clear()
-
-    async def ready(self) -> bool:
-        return True
 
     async def put(self, key: str, body: bytes, *, content_type: str | None = None) -> None:
         del content_type
@@ -54,22 +50,16 @@ class LocalStorage:
                 yield k
 
 
-class MemoryKV:
-    """In-memory KV with TTL; implements :class:`causeway.contracts.KV`."""
-
-    contract_version: ClassVar[str] = "v1.0"
+class MemoryKV(_Ready):
+    """In-memory key-value store with TTL."""
 
     def __init__(self) -> None:
         self._data: dict[str, bytes] = {}
         self._exp: dict[str, float] = {}
 
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None:
         self._data.clear()
         self._exp.clear()
-
-    async def ready(self) -> bool:
-        return True
 
     def _expired(self, key: str) -> bool:
         exp = self._exp.get(key)
@@ -106,24 +96,14 @@ class MemoryKV:
             self._exp[key] = time.monotonic() + ttl
 
 
-class CookieStore:
-    """In-memory session store keyed by session id.
-
-    Production session stores back this with Redis / Postgres; the in-memory
-    version is enough for unit tests and demos.
-    """
-
-    contract_version: ClassVar[str] = "v1.0"
+class CookieStore(_Ready):
+    """In-memory session store keyed by session id."""
 
     def __init__(self) -> None:
         self._sessions: dict[str, dict[str, Any]] = {}
 
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None:
         self._sessions.clear()
-
-    async def ready(self) -> bool:
-        return True
 
     async def read(self, session_id: str) -> dict[str, Any] | None:
         return self._sessions.get(session_id)
@@ -144,22 +124,16 @@ class CookieStore:
         return new_id
 
 
-class MemoryLimiter:
-    """Token-bucket limiter; implements :class:`causeway.contracts.RateLimiter`."""
-
-    contract_version: ClassVar[str] = "v1.0"
+class MemoryLimiter(_Ready):
+    """Token-bucket limiter."""
 
     def __init__(self, *, capacity: int = 100, refill_per_sec: float = 100 / 60) -> None:
         self.capacity = capacity
         self.refill_per_sec = refill_per_sec
-        self._buckets: dict[str, tuple[float, float]] = {}  # key → (tokens, last_refill)
+        self._buckets: dict[str, tuple[float, float]] = {}
 
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None:
         self._buckets.clear()
-
-    async def ready(self) -> bool:
-        return True
 
     def _refill(self, key: str) -> float:
         now = time.monotonic()
@@ -182,10 +156,8 @@ class MemoryLimiter:
         self._buckets.pop(key, None)
 
 
-class StaticFlags:
-    """Static flag map loaded from ``Settings.feature_flags`` (a ``dict[str, bool]``)."""
-
-    contract_version: ClassVar[str] = "v1.0"
+class StaticFlags(_Ready):
+    """Static flag map loaded from ``Settings.feature_flags``."""
 
     def __init__(self, flags: dict[str, bool] | None = None) -> None:
         self._flags = dict(flags or {})
@@ -196,8 +168,6 @@ class StaticFlags:
             self._flags.update({str(k): bool(v) for k, v in flags.items()})
 
     async def shutdown(self) -> None: ...
-    async def ready(self) -> bool:
-        return True
 
     async def is_on(self, flag: str, user: str | None = None) -> bool:
         del user
@@ -210,15 +180,10 @@ class StaticFlags:
     async def refresh(self) -> None: ...
 
 
-class NullSink:
-    """Discards metrics; implements :class:`causeway.contracts.MetricsSink`."""
+class NullSink(_Ready):
+    """Discards metrics."""
 
-    contract_version: ClassVar[str] = "v1.0"
-
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None: ...
-    async def ready(self) -> bool:
-        return True
 
     def counter(self, name: str, value: float = 1.0, **tags: str) -> None:
         del name, value, tags
@@ -235,37 +200,26 @@ class NullSink:
         yield
 
 
-class StdoutLogSink:
-    """Forwards structured records to ``logging`` at INFO level."""
-
-    contract_version: ClassVar[str] = "v1.0"
+class StdoutLogSink(_Ready):
+    """Forwards structured records to logging."""
 
     def __init__(self) -> None:
         self._log = logging.getLogger("causeway.app")
 
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None: ...
-    async def ready(self) -> bool:
-        return True
 
     def emit(self, record: dict[str, Any]) -> None:
         self._log.info("%s", record)
 
 
-class MemoryBus:
-    """In-process pub/sub. Subscribers receive a copy of every published payload."""
-
-    contract_version: ClassVar[str] = "v1.0"
+class MemoryBus(_Ready):
+    """In-process pub/sub."""
 
     def __init__(self) -> None:
         self._subs: dict[str, list[Callable[[bytes], Awaitable[None]]]] = defaultdict(list)
 
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None:
         self._subs.clear()
-
-    async def ready(self) -> bool:
-        return True
 
     async def publish(self, topic: str, payload: bytes) -> None:
         handlers = list(self._subs.get(topic, ()))
@@ -276,15 +230,10 @@ class MemoryBus:
         self._subs[topic].append(handler)
 
 
-class NullScanner:
-    """No-op blob scanner — every payload is "clean"."""
+class NullScanner(_Ready):
+    """No-op blob scanner."""
 
-    contract_version: ClassVar[str] = "v1.0"
-
-    async def startup(self, settings: Any) -> None: ...
     async def shutdown(self) -> None: ...
-    async def ready(self) -> bool:
-        return True
 
     async def scan(self, stream: AsyncIterator[bytes]) -> bool:
         async for _ in stream:

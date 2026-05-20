@@ -1,14 +1,3 @@
-"""File-based router.
-
-Walks the routes tree, translates filenames into URL patterns, collects
-``_middleware.py`` and ``_scope.py`` declarations per subtree, and registers
-handlers onto a ``dyadpy.App``.
-
-:func:`discover` is pure — it returns a :class:`Discovered` snapshot suitable
-for ``causeway diff`` and unit tests. :func:`register` is the only function that
-mutates the App.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Iterable
@@ -32,8 +21,6 @@ Provider = Callable[..., Any]
 
 @dataclass(slots=True)
 class _ScopeFrame:
-    """Per-directory accumulator while walking the tree."""
-
     providers: dict[str, Provider] = field(default_factory=dict)
     middleware: list[Any] = field(default_factory=list)
     startup: Callable[[], Awaitable[None]] | None = None
@@ -66,11 +53,6 @@ class Discovered:
 
 
 def discover(routes_root: str | Path) -> Discovered:
-    """Walk ``routes_root`` and return everything found.
-
-    Pure: no global state mutated, no dyadpy App touched. The output is
-    trivial to snapshot for ``causeway diff`` and to unit-test directly.
-    """
     root = Path(routes_root)
     if not root.is_dir():
         msg = f"routes root not found: {root}"
@@ -79,13 +61,7 @@ def discover(routes_root: str | Path) -> Discovered:
     result = Discovered()
     _walk(root, root, _ScopeFrame(), result)
     _check_method_conflicts(result.routes)
-    # Filesystem walk order registers ``[id].py`` before ``risk-overrides/``
-    # because ``[`` sorts before letters in ASCII — Starlette then matches the
-    # first-registered route, so a literal sibling gets shadowed by its
-    # parametric neighbour. Re-sort so literal segments outrank parametric
-    # ones at every depth; ties preserve walk order (stable sort).
     result.routes.sort(key=lambda r: _specificity_key(r.path))
-    # Outer-most subtree shuts down last.
     result.shutdown_hooks.reverse()
     for r in result.routes:
         r.handler = _bind_providers(r.handler, r.providers)
@@ -104,7 +80,6 @@ def _specificity_key(path: str) -> tuple[tuple[int, str], ...]:
 
 
 def register(app: App, found: Discovered) -> None:
-    """Wire the discovered routes onto a ``dyadpy.App``."""
     for r in found.routes:
         decorator = _decorator_for(app, r.method)
         decorator(r.path)(r.handler)
@@ -152,8 +127,7 @@ def _load_scope_frame(directory: Path) -> _ScopeFrame:
 
     if scope_file.is_file():
         mod = _import_path(scope_file)
-        for name in dir(mod):
-            obj = getattr(mod, name)
+        for obj in (getattr(mod, name) for name in dir(mod)):
             provided = getattr(obj, "__causeway_provide__", None)
             if provided is None:
                 continue
@@ -213,7 +187,6 @@ def _import_path(file: Path) -> Any:
 
 
 def reset_module_cache() -> None:
-    """Drop the import cache. Hot-reload calls this between scans."""
     _reset_module_cache()
 
 
@@ -222,20 +195,6 @@ def _decorator_for(app: App, method: HttpMethod) -> Callable[[str], Callable[[Ha
 
 
 def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler:
-    """Rewrite ``Annotated[T, resolver]`` parameters to use ``Depends(resolver)``.
-
-    Two kinds of resolvers are recognized in the ``Annotated`` extras:
-
-    - A ``@provide``-decorated function from a parent ``_scope.py`` —
-      matched by source location + qualname against the scope's provider
-      dict, so re-imports of the same scope file (Python creates fresh
-      function objects each time) still resolve to the same logical provider.
-    - A ``@dependency``-decorated function — bound directly without needing
-      to be registered in any ``_scope.py``.
-
-    The dyadpy runtime expects ``Depends(fn)``, so we rewrite the signature
-    before handing the function off.
-    """
     import inspect as _inspect
     import typing as _typing
 
@@ -253,10 +212,6 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
         if key is not None:
             provider_keys[key] = provider
 
-    # ``eval_str=True`` resolves PEP 563 string annotations so routes that use
-    # ``from __future__ import annotations`` still have their ``Annotated[...]``
-    # extras visible here. Without it ``param.annotation`` would be the raw
-    # source text and ``get_origin`` would return ``None`` for every param.
     try:
         sig = _inspect.signature(handler, eval_str=True)
     except (TypeError, ValueError, NameError):
@@ -293,11 +248,6 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
             kept_params.append(param)
             continue
         rewritten_annotation = base if not new_extras else _typing.Annotated[base, *new_extras]
-        # Append rewritten params at the end as KEYWORD_ONLY: ``Signature``
-        # rejects a defaulted positional-or-keyword param followed by a
-        # non-defaulted one, which happens any time a path/query param
-        # follows a provider in the handler signature. Resolution at call
-        # time is by name via ``Depends``, so order doesn't matter.
         bound_params.append(
             param.replace(
                 annotation=rewritten_annotation,
@@ -310,8 +260,6 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
     if not rewritten:
         return handler
 
-    # KEYWORD_ONLY must sit before VAR_KEYWORD (``**kwargs``) per Python's
-    # parameter-ordering rules; splice bound params just ahead of it.
     insert_at = len(kept_params)
     for index, kept_param in enumerate(kept_params):
         if kept_param.kind is _inspect.Parameter.VAR_KEYWORD:
@@ -323,15 +271,6 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
 
 
 def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
-    """Wrap ``handler`` so any ``@guard`` items run before the body.
-
-    Class-based ``Middleware`` instances ride on the wrapped function as
-    ``__causeway_class_middleware__`` for the ASGI layer to pick up.
-    """
-    # ``isinstance(fn, Middleware)`` is True for any async callable because the
-    # Protocol is runtime-checkable on ``__call__`` alone — partition explicitly
-    # so a ``@guard`` doesn't double up as class middleware and crash when the
-    # ASGI layer hands it ``(req, call_next)``.
     guards = [m for m in middleware if is_guard(m)]
     mws = [m for m in middleware if not is_guard(m) and isinstance(m, Middleware)]
 
@@ -348,9 +287,6 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
             await g(req)
         return await handler(*args, **kwargs)
 
-    # Preserve dyadpy's view of the signature and the handler's annotation
-    # namespace — without this, string forward-refs (``Any``, user Structs)
-    # fail to resolve when dyadpy inspects the wrapper.
     import inspect as _inspect
 
     with_guards.__signature__ = _inspect.signature(handler)  # type: ignore[attr-defined]
@@ -366,11 +302,6 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
 
 
 def _find_request(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
-    """Locate the Starlette Request in a handler's arguments.
-
-    Falls back to dyadpy's per-request contextvar when the handler doesn't
-    take the Request directly.
-    """
     for v in (*args, *kwargs.values()):
         if hasattr(v, "headers") and hasattr(v, "url"):
             return v

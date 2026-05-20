@@ -26,7 +26,7 @@ from causeway.batch import BatchFailure, BatchResult, batch
 from causeway.config import Manifest, Settings
 from causeway.contracts import Webhooks, WebhookStore
 from causeway.events import Event
-from causeway.middleware import IdempotencyMiddleware, Middleware, guard, use
+from causeway.middleware import IdempotencyMiddleware, Middleware, MiddlewareItem, guard, use
 from causeway.observability import RequestIdMiddleware, configure_logging, configure_otel
 from causeway.pagination import Cursor, Paginated
 from causeway.plugins import env, register
@@ -59,6 +59,7 @@ __all__ = [
     "IncomingWebhook",
     "Manifest",
     "Middleware",
+    "MiddlewareItem",
     "Paginated",
     "RequestIdMiddleware",
     "Settings",

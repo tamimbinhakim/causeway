@@ -1,22 +1,17 @@
-"""Bare ``@get`` / ``@post`` / etc. decorators.
-
-Handlers in route files use the bare decorator; the file router (``causeway.routing``)
-derives the URL path from the file location and registers the handler on the
-underlying ``dyadpy.App``. The decorator's only job is to stamp the function
-with ``__causeway_method__`` so discovery can find it.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Any, Literal, ParamSpec, TypeVar
 
 HttpMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
-Handler = Callable[..., Any]
+P = ParamSpec("P")
+R = TypeVar("R")
+Handler = Callable[P, R]
+AnyHandler = Callable[..., Any]
 
 
-def _mark(method: HttpMethod) -> Callable[[Handler], Handler]:
-    def decorator(handler: Handler) -> Handler:
+def _mark(method: HttpMethod) -> Callable[[Handler[P, R]], Handler[P, R]]:
+    def decorator(handler: Handler[P, R]) -> Handler[P, R]:
         existing = getattr(handler, "__causeway_method__", None)
         if existing is not None and existing != method:
             msg = (
@@ -30,13 +25,12 @@ def _mark(method: HttpMethod) -> Callable[[Handler], Handler]:
     return decorator
 
 
-get = _mark("GET")
-post = _mark("POST")
-put = _mark("PUT")
-patch = _mark("PATCH")
-delete = _mark("DELETE")
+get: Callable[[Handler[P, R]], Handler[P, R]] = _mark("GET")
+post: Callable[[Handler[P, R]], Handler[P, R]] = _mark("POST")
+put: Callable[[Handler[P, R]], Handler[P, R]] = _mark("PUT")
+patch: Callable[[Handler[P, R]], Handler[P, R]] = _mark("PATCH")
+delete: Callable[[Handler[P, R]], Handler[P, R]] = _mark("DELETE")
 
 
 def method_of(obj: Any) -> HttpMethod | None:
-    """Return the HTTP method a handler is decorated with, or ``None``."""
     return getattr(obj, "__causeway_method__", None)

@@ -1,11 +1,3 @@
-"""Application factory.
-
-Two entry points: :func:`create_app` (dynamic, walks the routes tree at
-import time) and :func:`create_app_frozen` (AOT, takes a pre-built
-:class:`Discovered`). They share assembly via :func:`_assemble`; the
-binary build path goes through the frozen variant.
-"""
-
 from __future__ import annotations
 
 import contextlib
@@ -46,30 +38,6 @@ def create_app(
     request_id: bool = True,
     error_renderer_: bool = True,
 ) -> Any:
-    """Build a runnable ASGI app from a routes directory.
-
-    Composition (outermost → innermost):
-    request-id → class middleware collected across scopes → dyadpy.App.
-    Class middleware is path-gated to the routes that declared it (subtree
-    via ``_middleware.py`` or single-route via ``@use``); a request to a
-    different route walks past the middleware untouched.
-    Errors raised from inside any handler land in the problem+json renderer.
-    Health endpoints (``/healthz``, ``/readyz``) attach unconditionally; the
-    diagnostics endpoint (``/__causeway``) is opt-out via ``diagnostics=False``.
-
-    File-based discovery walks three trees if they exist:
-
-    - ``events_root`` — :class:`~causeway.events.Event` subclasses register
-      themselves via ``__init_subclass__`` when imported.
-    - ``listeners_root`` — every ``.py`` is imported so its
-      ``@<Event>.listen`` decorators run.
-    - ``subscribers_root`` — every ``.py`` is imported so
-      :class:`~causeway.webhooks.Subscriber` instances register against
-      their event classes' ``_subscribers`` lists.
-
-    Missing folders are skipped silently. The class itself is the bus; no
-    separate ``EventBus`` plugin is installed.
-    """
     _discover_plugins(routes_root)
     found = discover(routes_root)
     events = _discover_events(events_root, listeners_root, subscribers_root)
@@ -94,13 +62,6 @@ def create_app_frozen(
     request_id: bool = True,
     error_renderer_: bool = True,
 ) -> Any:
-    """Build a runnable ASGI app from a :class:`Discovered` produced at build time.
-
-    The dev surface (``/__causeway``) is always stripped in binary mode
-    regardless of the caller's preference. ``events`` is accepted for
-    API compatibility with the frozen-runtime path but unused — event
-    classes register themselves at import time.
-    """
     if _build_mode_is_binary() and diagnostics:
         diagnostics = False
     return _assemble(
@@ -170,7 +131,6 @@ def _assemble(
 
 
 def _discover_plugins(routes_root: str | Path) -> None:
-    """Load entry-point plugins, then the app-local ``plugins.py`` if present."""
     _plugins.discover()
     app_root = Path(routes_root).parent
     plugins_file = app_root / "plugins.py"
@@ -179,7 +139,6 @@ def _discover_plugins(routes_root: str | Path) -> None:
 
 
 def _discover_app_lifespan(routes_root: str | Path) -> Any:
-    """Load app-level ``lifespan.py`` next to the routes tree if present."""
     app_root = Path(routes_root).parent
     lifespan_file = app_root / "lifespan.py"
     if not lifespan_file.is_file():
@@ -192,23 +151,14 @@ def _discover_events(
     listeners_root: str | Path,
     subscribers_root: str | Path,
 ) -> _events.Discovered | None:
-    """Walk the three discovery trees. Returns the snapshot or ``None`` if
-    the events folder is absent."""
     if not Path(events_root).is_dir():
         return None
     snapshot = _events.discover(
         events_root,
         listeners_root=listeners_root if Path(listeners_root).is_dir() else None,
     )
-    # Subscribers register themselves on import; no need to keep references.
-    sub_root = Path(subscribers_root)
-    if sub_root.is_dir():
-        root = sub_root.resolve()
-        for entry in sorted(sub_root.rglob("*.py")):
-            rel = entry.resolve().relative_to(root)
-            if any(p.startswith("_") or p.startswith(".") for p in rel.parts):
-                continue
-            import_path(entry, label_prefix="_causeway_subscribers")
+    for entry in _visible_py_tree(Path(subscribers_root)):
+        import_path(entry, label_prefix="_causeway_subscribers")
     return snapshot
 
 
@@ -217,22 +167,8 @@ def _build_mode_is_binary() -> bool:
 
 
 def _collect_class_middleware(found: Any) -> list[StarletteMiddleware]:
-    """Build path-gated Starlette middleware entries for class ``Middleware``.
-
-    Each unique ``Middleware`` instance attaches to the ASGI chain exactly
-    once, but its dispatch only fires for routes that declared it. This makes
-    a ``_middleware.py`` apply only to its subtree, and ``@use(Middleware())``
-    apply only to that handler — without spinning up one Starlette middleware
-    per route.
-
-    Insertion order follows first-occurrence in the discovered route list,
-    which mirrors outer-scope-before-inner-scope because parent middleware
-    is prepended in ``_ScopeFrame.merged_with``.
-    """
     seen: dict[int, tuple[CausewayMiddleware, dict[str, list[re.Pattern[str]]]]] = {}
     order: list[int] = []
-    # One regex per declared path string, reused across middleware that gate
-    # on the same route — avoids redundant ``compile_path`` work at boot.
     path_cache: dict[str, re.Pattern[str]] = {}
 
     for route in found.routes:
@@ -266,26 +202,27 @@ def _gated_dispatch(
     mw: CausewayMiddleware,
     by_method: dict[str, list[re.Pattern[str]]],
 ) -> Any:
-    """Wrap ``mw`` so it only runs when the request matches one of its routes.
-
-    ASGI guarantees ``request.method`` is uppercase, so the lookup is a
-    plain dict hit; only paths that map to this middleware are scanned.
-    """
-
     async def dispatch(request: Any, call_next: Any) -> Any:
         regexes = by_method.get(request.method)
         if regexes is not None:
             path = request.url.path
-            # ``fullmatch`` rather than ``match``: the compiled-path regex
-            # ends in ``$`` which would otherwise accept a trailing ``\n``
-            # (a decoded ``%0A``) and run middleware on a path the router
-            # would later reject.
             for regex in regexes:
                 if regex.fullmatch(path) is not None:
                     return await mw(request, call_next)
         return await call_next(request)
 
     return dispatch
+
+
+def _visible_py_tree(root: Path) -> list[Path]:
+    if not root.is_dir():
+        return []
+    resolved = root.resolve()
+    return [
+        entry
+        for entry in sorted(root.rglob("*.py"))
+        if not any(p.startswith(("_", ".")) for p in entry.resolve().relative_to(resolved).parts)
+    ]
 
 
 __all__ = ["create_app", "create_app_frozen"]
