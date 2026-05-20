@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,32 @@ async def show(id: str) -> User:
         resp = await client.get("/users/u123")
     assert resp.status_code == 200
     assert resp.json() == {"id": "u123", "name": "ada"}
+
+
+def test_route_module_is_registered_while_executing(tmp_path: Path) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "index.py",
+        """from __future__ import annotations
+
+from dataclasses import dataclass
+
+from causeway import get
+
+@dataclass(frozen=True)
+class User:
+    name: str
+
+@get
+async def r() -> User:
+    return User(name="ada")
+""",
+    )
+
+    found = discover(routes)
+    module_name = found.routes[0].handler.__module__
+    assert module_name in sys.modules
 
 
 @pytest.mark.asyncio

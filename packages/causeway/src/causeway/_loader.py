@@ -10,6 +10,7 @@ re-importing would silently break injection.
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -29,13 +30,24 @@ def import_path(file: Path, *, label_prefix: str = "_causeway") -> Any:
         msg = f"could not build import spec for {file}"
         raise ImportError(msg)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    previous = sys.modules.get(module_name)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        if previous is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous
+        raise
     _module_cache[resolved] = module
     return module
 
 
 def reset_module_cache() -> None:
     """Drop the import cache. Hot-reload calls this between scans."""
+    for module in _module_cache.values():
+        sys.modules.pop(module.__name__, None)
     _module_cache.clear()
 
 
