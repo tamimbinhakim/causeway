@@ -248,10 +248,10 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
         return (code.co_filename, getattr(code, "co_qualname", code.co_name))
 
     provider_keys: dict[tuple[str, str], Callable[..., Any]] = {}
-    for p in providers.values():
-        key = _key(p)
+    for provider in providers.values():
+        key = _key(provider)
         if key is not None:
-            provider_keys[key] = p
+            provider_keys[key] = provider
 
     # ``eval_str=True`` resolves PEP 563 string annotations so routes that use
     # ``from __future__ import annotations`` still have their ``Annotated[...]``
@@ -313,9 +313,9 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
     # KEYWORD_ONLY must sit before VAR_KEYWORD (``**kwargs``) per Python's
     # parameter-ordering rules; splice bound params just ahead of it.
     insert_at = len(kept_params)
-    for i, p in enumerate(kept_params):
-        if p.kind is _inspect.Parameter.VAR_KEYWORD:
-            insert_at = i
+    for index, kept_param in enumerate(kept_params):
+        if kept_param.kind is _inspect.Parameter.VAR_KEYWORD:
+            insert_at = index
             break
     merged = [*kept_params[:insert_at], *bound_params, *kept_params[insert_at:]]
     handler.__signature__ = sig.replace(parameters=merged)  # type: ignore[attr-defined]
