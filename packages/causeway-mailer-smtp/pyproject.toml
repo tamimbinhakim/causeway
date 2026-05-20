@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-mailer-smtp"
-version = "0.7.0"
+version = "0.8.0"
 description = "SMTP Mailer adapter for Causeway."
 readme = "README.md"
 license = { text = "MIT" }
