@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.5...causeway-v0.3.6) (2026-05-20)
+
+
+### Features
+
+* own app plugin lifecycle ([fe48eff](https://github.com/tamimbinhakim/causeway/commit/fe48eff65807d6b54019c8b1d9e0f10a3f638044))
+
 ## [0.3.5](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.4...causeway-v0.3.5) (2026-05-19)
 
 

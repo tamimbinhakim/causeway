@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-tasks-dramatiq"
-version = "0.7.0"
+version = "0.8.0"
 description = "Dramatiq adapter for Causeway's background-task contract."
 readme = "README.md"
 license = { text = "MIT" }
