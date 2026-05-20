@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.7...causeway-v0.3.8) (2026-05-20)
+
+
+### Bug Fixes
+
+* **causeway:** register loaded route modules ([ca18a5d](https://github.com/tamimbinhakim/causeway/commit/ca18a5d65984e546b7e623412c320eababb837f0))
+
 ## [0.3.7](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.6...causeway-v0.3.7) (2026-05-20)
 
 
