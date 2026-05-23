@@ -16,7 +16,7 @@ minimal-crud/
 │   └── routes/
 │       └── users/
 │           ├── index.py  # GET /users · POST /users
-│           └── [id].py   # GET/PATCH/DELETE /users/{id}
+│           └── $id.py   # GET/PATCH/DELETE /users/{id}
 └── tests/
     └── test_users.py
 ```
@@ -63,7 +63,7 @@ uv run pytest
 ## What's interesting
 
 - **One file per HTTP shape.** `index.py` owns `GET`/`POST` on the
-  collection; `[id].py` owns the item.
+  collection; `$id.py` owns the item.
 - **Typed errors flow to the client.** `@raises(NotFound)` /
   `@raises(BadRequest)` tell `dyadpy`'s codegen that the generated TS
   client should expose those branches in its `Result<T, E>` union. The

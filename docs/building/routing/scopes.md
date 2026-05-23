@@ -22,7 +22,7 @@ async def get_session():
 Any handler under `routes/users/` can now take a `db` parameter:
 
 ```python
-# src/app/routes/users/[id].py
+# src/app/routes/users/$id.py
 from typing import Annotated
 from causeway import get
 

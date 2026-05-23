@@ -83,7 +83,7 @@ src/app/routes/
 ├── index.py                     # /
 ├── users/
 │   ├── index.py                 # /users
-│   └── [id].py                  # /users/{id}
+│   └── $id.py                  # /users/{id}
 └── billing.webhooks.py          # /billing/webhooks    (dot-flat leaf)
 ```
 

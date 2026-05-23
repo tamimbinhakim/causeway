@@ -5,7 +5,7 @@ Resolves to the URL of its parent folder.
 ```
 src/app/routes/index.py            →    /
 src/app/routes/users/index.py      →    /users
-src/app/routes/users/[id]/index.py →    /users/{id}
+src/app/routes/users/$id/index.py →    /users/{id}
 ```
 
 The dot-flat equivalent: a trailing `.index` piece is dropped. `users.$id.index.py` → `/users/{id}`.

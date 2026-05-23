@@ -7,6 +7,12 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/tamimbinhakim/causeway/compare/causeway-db-sqlmodel-v0.5.1...causeway-db-sqlmodel-v0.6.0) (2026-05-23)
+
+### Features
+
+- add `TypedJson` and `json_field()` for SQLModel JSON/JSONB columns that round-trip msgspec or pydantic-shaped values.
+
 ## [0.5.1](https://github.com/tamimbinhakim/causeway/compare/causeway-db-sqlmodel-v0.5.0...causeway-db-sqlmodel-v0.5.1) (2026-05-19)
 
 

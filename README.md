@@ -31,7 +31,7 @@ That layer is **Causeway.**
 
 A backend-only, Python-native framework that contributes exactly five things to your application surface:
 
-1. **File-based routing** — `[id].py` / `$id` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition. See [`docs/building/routing/`](./docs/building/routing/defining-routes.md).
+1. **File-based routing** — `$id.py`, `$id/`, and dotted `$id` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition. See [`docs/building/routing/`](./docs/building/routing/defining-routes.md).
 2. **Typed config & DI** — a `pydantic-settings` wrapper with request-scoped providers. No DI container boilerplate.
 3. **Middleware & scope composition** — one file at the root of a subtree wraps every route below it.
 4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery / Arq / TaskIQ with one line.
@@ -65,11 +65,11 @@ my-app/
         └── users/
             ├── _scope.py    # provides db session
             ├── index.py     # /users
-            └── [id].py      # /users/{id}
+            └── $id.py       # /users/{id}
 ```
 
 ```python
-# src/app/routes/users/[id].py
+# src/app/routes/users/$id.py
 from typing import Annotated
 from uuid import UUID
 from msgspec import Struct

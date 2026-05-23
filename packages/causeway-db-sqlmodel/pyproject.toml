@@ -4,12 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-db-sqlmodel"
-version = "0.5.1"
+version = "0.6.0"
 description = "SQLModel / SQLAlchemy DBSession adapter for Causeway."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-dependencies = ["causeway>=0.1.0", "sqlmodel>=0.0.22", "sqlalchemy[asyncio]>=2.0"]
+dependencies = [
+  "causeway>=0.4.0",
+  "msgspec>=0.19",
+  "sqlmodel>=0.0.22",
+  "sqlalchemy[asyncio]>=2.0",
+]
 
 [project.entry-points."causeway.plugins"]
 sqlmodel = "causeway_db_sqlmodel:plugin"

@@ -27,7 +27,7 @@ def test_discovers_basic_routes(tmp_path: Path) -> None:
     )
     _write(
         routes,
-        "users/[id].py",
+        "users/$id.py",
         "from causeway import get, patch\n"
         "@get\nasync def show(id: str) -> dict: return {'id': id}\n"
         "@patch\nasync def update(id: str) -> dict: return {'id': id}\n",

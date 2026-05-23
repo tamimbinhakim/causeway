@@ -3,11 +3,13 @@ from __future__ import annotations
 import types
 
 import pytest
+from msgspec import Struct
 from pydantic import SecretStr
 from sqlalchemy import text
+from sqlmodel import Field, SQLModel
 
 import causeway.plugins as plugin_registry
-from causeway_db_sqlmodel import SqlModelSession, plugin
+from causeway_db_sqlmodel import SqlModelSession, json_field, plugin
 
 _DSN = "sqlite+aiosqlite:///:memory:"
 
@@ -92,6 +94,35 @@ async def test_health_false_when_dsn_unreachable() -> None:
     await db.startup(None)
     try:
         assert await db.health() is False
+    finally:
+        await db.shutdown()
+
+
+async def test_typed_json_field_round_trips_struct() -> None:
+    class Payload(Struct):
+        enabled: bool
+        labels: list[str]
+
+    class JsonDoc(SQLModel, table=True):
+        __tablename__ = "typed_json_docs"
+
+        id: int | None = Field(default=None, primary_key=True)
+        payload: Payload = json_field(Payload)
+
+    db = SqlModelSession(dsn=_DSN)
+    await db.startup(None)
+    try:
+        assert db._engine is not None
+        async with db._engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+
+        async with db.transaction() as s:
+            s.add(JsonDoc(payload=Payload(enabled=True, labels=["kyc", "edd"])))
+
+        async with db.session() as s:
+            doc = await s.get(JsonDoc, 1)
+            assert doc is not None
+            assert doc.payload == Payload(enabled=True, labels=["kyc", "edd"])
     finally:
         await db.shutdown()
 

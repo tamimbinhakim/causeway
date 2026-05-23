@@ -1,8 +1,8 @@
 {
-  "packages/causeway": "0.3.8",
+  "packages/causeway": "0.4.0",
   "packages/causeway-auth-jwt": "0.3.1",
   "packages/causeway-cache-redis": "0.4.1",
-  "packages/causeway-db-sqlmodel": "0.5.1",
+  "packages/causeway-db-sqlmodel": "0.6.0",
   "packages/causeway-deploy-docker": "0.6.0",
   "packages/causeway-deploy-fly": "0.7.0",
   "packages/causeway-deploy-modal": "0.8.0",

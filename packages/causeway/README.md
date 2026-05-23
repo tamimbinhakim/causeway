@@ -3,12 +3,12 @@
 > A lean backend framework for type-safe Python APIs.
 
 ```bash
-uv add 'causeway==0.1.0a0'   # alpha — drop the pin once v0.1.0 ships
+uv add causeway
 ```
 
 This is the core Python package of [Causeway](https://github.com/tamimbinhakim/causeway). It ships:
 
-- A **file-based router** that walks `src/app/routes/**/*.py`, picks up `[id].py`, `(group)/`, `_middleware.py`, and `_scope.py`, and registers handlers into the app's route table.
+- A **file-based router** that walks `src/app/routes/**/*.py`, picks up `$id.py`, `(group)/`, `_middleware.py`, and `_scope.py`, and registers handlers into the app's route table.
 - A **typed config layer** that wraps `pydantic-settings` and exposes non-secret fields to the generated TypeScript client.
 - A **scoped DI container** driven by `_scope.py` providers.
 - A **`@task` contract** for background jobs with a Dramatiq reference adapter.
@@ -32,11 +32,11 @@ my-app/
         └── users/
             ├── _scope.py
             ├── index.py
-            └── [id].py
+            └── $id.py
 ```
 
 ```python
-# src/app/routes/users/[id].py
+# src/app/routes/users/$id.py
 from typing import Annotated
 from uuid import UUID
 from msgspec import Struct
@@ -65,7 +65,7 @@ causeway dev
 
 | Primitive                                        | Purpose                                                                  |
 | ------------------------------------------------ | ------------------------------------------------------------------------ |
-| File router (`[id].py`, `(group)/`)              | Discovery + URL pattern generation.                                      |
+| File router (`$id.py`, `(group)/`)               | Discovery + URL pattern generation.                                      |
 | `_middleware.py` / `_scope.py`                   | Per-subtree middleware + scoped DI providers.                            |
 | `Settings` (wraps `pydantic-settings`)           | Typed config with allowlisted exposure to the generated client.          |
 | `@get` / `@post` / `@put` / `@patch` / `@delete` | HTTP method decorators.                                                  |

@@ -177,7 +177,7 @@ register(task_adapter)
 ```
 
 ```python
-# src/app/routes/jobs/[id].py
+# src/app/routes/jobs/$id.py
 from app.plugins import task_adapter
 from causeway import delete, get
 from causeway.errors import NotFound

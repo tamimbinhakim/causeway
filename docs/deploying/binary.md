@@ -36,7 +36,7 @@ useful for inspecting the generated tree or caching it between CI runs.
 What runs under the hood:
 
 1. **Freeze.** Walks `app/routes/`, mirrors it into `.causeway/build/` with
-   name-mangling (so `[id].py` becomes a valid Python module), and emits
+   name-mangling (so `$id.py` becomes a valid Python module), and emits
    three static modules: `_frozen_routes.py`, `_frozen_plugins.py`,
    `_frozen_entry.py`. Entry-point plugins are resolved against your
    installed packages and baked in.

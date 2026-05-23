@@ -1,7 +1,7 @@
 # blog — the deep example
 
 A full blog API in ~500 LOC that exercises every primitive Causeway ships in
-v0.1: file routing with `[id].py` and nested subtrees, scoped DI via
+v0.1: file routing with `$id.py` and nested subtrees, scoped DI via
 `_scope.py`, per-subtree middleware, typed errors, background tasks,
 cron, lifespan hooks, plugin registration, typed settings, and an
 isolated test suite that drives the whole thing through `httpx`.
@@ -44,7 +44,7 @@ blog/
 │       ├── posts/
 │       │   ├── _scope.py     # db_session provider
 │       │   ├── index.py      # GET /posts
-│       │   └── [id]/
+│       │   └── $id/
 │       │       ├── index.py  # GET /posts/{id}
 │       │       └── comments.py  # POST /posts/{id}/comments
 │       └── admin/
@@ -52,7 +52,7 @@ blog/
 │           ├── stats.py      # GET /admin/stats
 │           └── posts/
 │               ├── index.py  # GET /admin/posts · POST /admin/posts
-│               └── [id].py   # PATCH /admin/posts/{id} · DELETE /admin/posts/{id}
+│               └── $id.py   # PATCH /admin/posts/{id} · DELETE /admin/posts/{id}
 └── tests/
     └── test_blog.py
 ```

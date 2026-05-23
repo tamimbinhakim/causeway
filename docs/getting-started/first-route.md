@@ -5,7 +5,7 @@ Five minutes from `causeway new` to a typed handler responding to `curl` — and
 ## 1. Write a handler
 
 ```python
-# src/app/routes/users/[id].py
+# src/app/routes/users/$id.py
 from uuid import UUID
 from msgspec import Struct
 from causeway import get, raises
@@ -25,9 +25,9 @@ async def show(id: UUID) -> User:
     return User(id=id, name="ada")
 ```
 
-That's the whole handler. There's no `app.add_route(...)`, no `urls.py`. The file router finds `src/app/routes/users/[id].py`, sees the `@get`-decorated function, and registers `GET /users/{id}`.
+That's the whole handler. There's no `app.add_route(...)`, no `urls.py`. The file router finds `src/app/routes/users/$id.py`, sees the `@get`-decorated function, and registers `GET /users/{id}`.
 
-> **Naming rule.** The handler parameter name must match the bracketed segment: `[id].py` requires `id` in the signature. See [Dynamic segments](../building/routing/dynamic-segments.md).
+> **Naming rule.** The handler parameter name must match the `$` segment: `$id.py` requires `id` in the signature. See [Dynamic segments](../building/routing/dynamic-segments.md).
 
 ## 2. Run it
 
@@ -56,11 +56,11 @@ Open <http://127.0.0.1:8000/__causeway>. You'll see every discovered route, the 
 `causeway dev` re-emits `client.ts` on every change. From a sibling frontend:
 
 ```ts
-import { client } from "./generated/client";
+import { api } from "./generated/client";
 
-const result = await client.users.show({ id: "01000000-..." });
+const result = await api.users.byId({ id: "01000000-..." });
 if (result.ok) {
-  console.log(result.value.name); // typed as string
+  console.log(result.data.name); // typed as string
 } else if (result.error.kind === "NotFound") {
   // forced to handle the NotFound branch
 }
@@ -71,7 +71,7 @@ The `Result<User, NotFound>` shape comes from `@raises(NotFound)`. No OpenAPI mi
 ## 5. Add a sibling handler
 
 ```python
-# src/app/routes/users/[id].py  (same file)
+# src/app/routes/users/$id.py  (same file)
 from causeway import patch
 
 
@@ -88,10 +88,10 @@ Multiple HTTP methods can share a route file; method conflicts are caught at boo
 
 ## What just happened
 
-1. The router walked `src/app/routes/`, translated `users/[id].py` into `/users/{id}` via the [path rules](../api-reference/file-conventions/index.md).
+1. The router walked `src/app/routes/`, translated `users/$id.py` into `/users/{id}` via the [path rules](../api-reference/file-conventions/index.md).
 2. It stamped the `@get` and `@patch` decorators with their HTTP methods, then registered both with `dyadpy.App`.
 3. dyadpy walked your handler signatures into the IR — `id: UUID` becomes a typed path parameter, `data: UserPatch` becomes a typed JSON body, `-> User` becomes the response type, `@raises(NotFound)` becomes a discriminated union on the wire.
-4. The codegen emitted `client.ts` with one function per route, typed end-to-end.
+4. The codegen emitted `client.ts` with a nested `api.users.byId` function, typed end-to-end.
 
 ## Where to go next
 

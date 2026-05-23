@@ -173,7 +173,7 @@ $ pytest --collect-only --causeway-routes app/routes
   <ScenarioItem lists empty>
   <ScenarioItem creates and reads back>
   <ScenarioItem rejects blank fields>
-<RouteFileCollector app/routes/users/[id].py>
+<RouteFileCollector app/routes/users/$id.py>
   <ScenarioItem show returns 404 envelope when missing>
   <ScenarioItem edit renames an existing user>
   <ScenarioItem delete removes the user>

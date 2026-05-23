@@ -40,9 +40,9 @@ When you add a new public symbol, **add it here too**. That's the contract.
 
 URL-pattern translation. Pure functions, no I/O.
 
-`url_for(rel_path)` takes a route file's relative path (`users/[id]/posts.py`) and returns the URL pattern (`/users/{id}/posts`). Handles both **folder style** (`[id]`, `(group)`, `index.py`) and **dot-flat style** (`users.$id.index.py`, `(admin).stats.py`) — and mixed (`api/v1.$version.posts.py`).
+`url_for(rel_path)` takes a route file's relative path (`users/$id/posts.py`) and returns the URL pattern (`/users/{id}/posts`). Handles both **folder style** (`$id`, `(group)`, `index.py`) and **dot-flat style** (`users.$id.index.py`, `(admin).stats.py`) — and mixed (`api/v1.$version.posts.py`).
 
-The leaf tokenizer is a regex (`_LEAF_TOKEN`) that splits on `.` but keeps `[...]` and `(...)` segments intact, so `[...rest]` doesn't get torn apart by the dot splitter.
+The leaf tokenizer is a regex (`_LEAF_TOKEN`) that splits on `.` but keeps `(...)` group segments intact while splitting dotted leaves.
 
 ### `routing.py` — 340 lines
 
@@ -56,8 +56,8 @@ Three phases:
 
 Three subtleties worth knowing if you're touching this file:
 
-- Modules are loaded via the shared `causeway._loader.import_path` helper (see below) so dotted / bracketed filenames don't confuse Python's import system, and so `routing.py` and `events.py` share one module cache.
-- Provider matching is by `(source_location, name)` — `[id]` files can be reloaded without losing provider identity.
+- Modules are loaded via the shared `causeway._loader.import_path` helper (see below) so dotted / `$` filenames don't confuse Python's import system, and so `routing.py` and `events.py` share one module cache.
+- Provider matching is by `(source_location, name)` — `$id` files can be reloaded without losing provider identity.
 - The handler wrapper preserves dyadpy's view of the original signature (`__wrapped__`, `__annotations__`, `__globals__`) so string forward-refs resolve correctly when dyadpy inspects the wrapper.
 
 ### `_loader.py` — 42 lines

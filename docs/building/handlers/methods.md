@@ -30,7 +30,7 @@ A handler can be `async def` or plain `def`. Async is preferred — most real ha
 All handlers in the same file share the same URL path. The decorator binds the method; the file location binds the path.
 
 ```python
-# src/app/routes/users/[id].py
+# src/app/routes/users/$id.py
 @get
 async def show(id: UUID) -> User: ...
 

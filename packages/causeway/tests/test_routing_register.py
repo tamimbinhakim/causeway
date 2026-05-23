@@ -25,7 +25,7 @@ async def test_full_path_get_request_lands(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(
         routes,
-        "users/[id].py",
+        "users/$id.py",
         """from causeway import get
 from msgspec import Struct
 
@@ -437,7 +437,7 @@ async def test_provider_param_followed_by_path_param(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(
         routes,
-        "items/[id].py",
+        "items/$id.py",
         """from causeway import dependency, get
 from starlette.requests import Request
 
@@ -466,15 +466,13 @@ async def show(me: CurrentUser, id: str) -> dict:
 def test_literal_sibling_outranks_parametric(tmp_path: Path) -> None:
     """``/things/risk-overrides`` must register before ``/things/{id}``.
 
-    Regression: ``_walk`` iterates entries in lex order, so ``[id].py``
-    (which sorts before letters because ``[`` < ``r``) was registered
-    first — Starlette then matched the parametric route first and a
-    request to the literal sibling shadowed by ``[id]``.
+    Regression: parametric siblings were registered before literal siblings,
+    so Starlette matched the parametric route first and shadowed the literal.
     """
     routes = tmp_path / "routes"
     _write(
         routes,
-        "things/[id].py",
+        "things/$id.py",
         "from causeway import get\n@get\nasync def show(id: str) -> dict: return {'id': id}\n",
     )
     _write(

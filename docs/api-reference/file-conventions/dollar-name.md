@@ -1,26 +1,26 @@
 # `$name`
 
-Dot-flat dynamic segment. The `$`-prefixed piece becomes a path parameter; the handler signature drives parsing.
+Dynamic segment. The `$`-prefixed piece becomes a path parameter; the handler signature drives parsing.
 
 ```
-src/app/routes/users.$id.py            →    /users/{id}
-src/app/routes/posts.$slug.py          →    /posts/{slug}
-src/app/routes/api/v1.$version.posts.py →   /api/v1/{version}/posts
-src/app/routes/users.$id.index.py      →    /users/{id}
+src/app/routes/users/$id.py             →    /users/{id}
+src/app/routes/users/$id/posts.py       →    /users/{id}/posts
+src/app/routes/users.$id.py             →    /users/{id}
+src/app/routes/api/v1.$version.posts.py →    /api/v1/{version}/posts
 ```
 
 ## Rules
 
 - The handler parameter name must match the `$`-prefixed piece (without the `$`). `users.$userId.py` requires `userId` in the signature.
 - The annotation drives parsing.
-- A trailing `.index` is dropped (means "match parent exactly").
+- A trailing `.index` or `/index.py` is dropped (means "match parent exactly").
 
-## When to use vs `[name]`
+## Folder vs dotted
 
-- **Folders (`[name]`)** read better for deep, group-heavy trees and when you want to nest more routes under the parameter.
-- **Dot-flat (`$name`)** reads better for shallow, parameter-light leaves where you don't need a folder. `users.$id.posts.py` is one line; `users/[id]/posts.py` is three directory hops.
+- **Folders (`users/$id/posts.py`)** read better for deep, group-heavy trees and when you want to nest more routes under the parameter.
+- **Dotted leaves (`users.$id.posts.py`)** read better for shallow, parameter-light leaves where you don't need a folder.
 
-You can mix them: `api/v1.$version.posts.py` uses both styles in the same path.
+You can mix them: `api/v1.$version.posts.py` uses a folder prefix plus dotted dynamic leaf pieces.
 
 ## Catch-all (reserved)
 
@@ -29,4 +29,3 @@ You can mix them: `api/v1.$version.posts.py` uses both styles in the same path.
 ## See also
 
 - [Dynamic segments](../../building/routing/dynamic-segments.md)
-- [`[name].py`](./bracket-name.md) — folder equivalent.

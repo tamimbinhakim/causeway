@@ -41,11 +41,10 @@ middleware + scopes + handler from the precomputed graph.
 The router walks `src/app/routes/**/*.py`, ignoring underscore-prefixed
 files (those are private). For each file:
 
-1. Translate the filename + path into a URL pattern. `[id].py` becomes
+1. Translate the filename + path into a URL pattern. `$id.py` becomes
    `{id}`, `(group)/` is stripped, `index.py` is the folder URL.
 2. Load the module via `importlib.util.spec_from_file_location()` — this
-   is how brackets-in-filenames work without breaking Python's import
-   system.
+   is how `$` filenames work without breaking Python's import system.
 3. Find handler exports decorated with `@get` / `@post` / etc., and
    register them into the route table.
 
@@ -129,14 +128,13 @@ class TaskAdapter(Protocol):
 
 A few decisions worth calling out explicitly.
 
-**Why brackets in filenames?**
-The cost is import semantics — `[id].py` can't be imported with
-`from app.routes.users.[id] import ...`, so Causeway loads it via
+**Why `$` in filenames?**
+The cost is import semantics — `$id.py` can't be imported with
+`from app.routes.users.$id import ...`, so Causeway loads it via
 `importlib.util.spec_from_file_location()`. Cross-imports between route
 files are rare in practice; when needed, Causeway provides an explicit alias
-mechanism. The benefit is the convention: bracket / paren / underscore
-syntax is familiar from Next.js / Nuxt / SvelteKit and translates
-cleanly to backend semantics.
+mechanism. The benefit is one dynamic-route convention that works in both
+folder style (`users/$id.py`) and dotted leaves (`users.$id.posts.py`).
 
 **Why no built-in ORM / auth / mailer / admin?**
 Every shipped opinion is a future pain point for the 60% of users who

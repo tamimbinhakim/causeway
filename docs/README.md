@@ -21,7 +21,7 @@ Per-concept guides for everything you do day-to-day.
 ### Routing
 
 - **[Defining routes](./building/routing/defining-routes.md)** — file-based routing, folder style and dot-flat style.
-- **[Dynamic segments](./building/routing/dynamic-segments.md)** — `[id]`, `$id`, type binding.
+- **[Dynamic segments](./building/routing/dynamic-segments.md)** — `$id` type binding.
 - **[Route groups](./building/routing/route-groups.md)** — `(admin)/` for organization without changing URLs.
 - **[Middleware](./building/routing/middleware.md)** — per-subtree wrappers via `_middleware.py`.
 - **[Scopes](./building/routing/scopes.md)** — request-scoped DI and lifespan hooks via `_scope.py`.
@@ -61,7 +61,7 @@ Per-symbol pages.
 - **[Functions](./api-reference/functions/create-app.md)** — `create_app`, `register`, `env`, `configure_logging`, `configure_otel`, `emit`, `tasks_eager`, `discover`.
 - **[Classes](./api-reference/classes/Middleware.md)** — `Middleware`, `Settings`, `Manifest`, `TestApp`, `RequestIdMiddleware`, `TaskRef`, `TaskState`, contracts, errors.
 - **[CLI](./api-reference/cli/index.md)** — `causeway new`, `dev`, `build` (with `--binary`), `freeze`, `plugins`, `plugin new`, `diff`, `deploy`, `version`.
-- **[File conventions](./api-reference/file-conventions/index.md)** — `index.py`, `[name].py`, `$name`, `(group)/`, `_middleware.py`, `_scope.py`, `causeway.toml`.
+- **[File conventions](./api-reference/file-conventions/index.md)** — `index.py`, `$name`, `(group)/`, `_middleware.py`, `_scope.py`, `causeway.toml`.
 
 Full index: **[API Reference](./api-reference/index.md)**.
 

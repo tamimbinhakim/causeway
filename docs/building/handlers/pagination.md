@@ -56,7 +56,7 @@ Cursor.encode({"id": last_row.id, "ts": last_row.created_at.isoformat()})
 ```ts
 let cursor: string | undefined;
 do {
-  const page = await api.listUsers({ cursor, limit: 50 });
+  const page = await api.users.list({ cursor, limit: 50 });
   for (const u of page.items) render(u);
   cursor = page.nextCursor ?? undefined;
 } while (cursor);

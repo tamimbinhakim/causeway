@@ -1,7 +1,7 @@
 """Smoke test using the *external* pattern, for contrast.
 
 The bulk of this app's tests live inline in `app/routes/users/index.py`
-and `app/routes/users/[id].py` under `if __name__ == "__causeway_test__":`.
+and `app/routes/users/$id.py` under `if __name__ == "__causeway_test__":`.
 Keep one external test here to show the escape hatch — useful when a
 test needs to span multiple route files or model real client flows.
 """

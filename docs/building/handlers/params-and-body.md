@@ -4,10 +4,10 @@ The handler signature is the API contract. Path params, query strings, request b
 
 ## Path parameters
 
-Path params come from the file path. The handler parameter name must match the bracketed segment:
+Path params come from the file path. The handler parameter name must match the `$` segment:
 
 ```
-src/app/routes/users/[id].py    →    /users/{id}
+src/app/routes/users/$id.py    →    /users/{id}
 ```
 
 ```python

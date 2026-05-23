@@ -56,8 +56,7 @@ Every public symbol Causeway exports, on its own page. Organized by kind: decora
 | Convention                                              | What it means                                |
 | ------------------------------------------------------- | -------------------------------------------- |
 | [`index.py`](./file-conventions/index-py.md)            | The folder's URL itself.                     |
-| [`[name].py`](./file-conventions/bracket-name.md)       | Dynamic segment (folder style).              |
-| [`$name`](./file-conventions/dollar-name.md)            | Dynamic segment (dot-flat style).            |
+| [`$name`](./file-conventions/dollar-name.md)            | Dynamic segment.                             |
 | [`(group)/`](./file-conventions/group.md)               | Route group — folder stripped from URL.      |
 | [`_middleware.py`](./file-conventions/middleware-py.md) | Per-subtree middleware list.                 |
 | [`_scope.py`](./file-conventions/scope-py.md)           | Per-subtree DI providers and lifespan hooks. |

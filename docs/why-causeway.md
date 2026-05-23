@@ -111,14 +111,14 @@ These aren't "we haven't gotten to them yet." They're "we have decided not to do
 
 If the world shifts, the plan shifts. Here are the specific shifts I've thought through, so it's easier to discuss them when they come up:
 
-| If…                                                      | Then…                                                                                |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| The IR can't represent task registrations cleanly        | Add an `extensions` namespace upstream first; don't fork the IR.                     |
-| Users hate `[id].py` literal brackets in their file tree | Already mitigated — dot-flat style (`$id`) ships in parallel; folder style stays.    |
-| Dramatiq adoption is too low among target users          | Switch the reference to TaskIQ (newer, asyncio-native); keep the contract identical. |
-| `pydantic-settings` v3 changes API significantly         | Vendor a thin wrapper that exposes a stable `Settings` interface.                    |
-| User demand emerges for server-rendered HTML             | Don't add it. Recommend HTMX + a separate template lib. Hold the line.               |
-| User demand emerges for multi-tenancy                    | Add it in v0.3 as a `tenant` scope on `_scope.py` — not in v0.1.                     |
+| If…                                               | Then…                                                                                |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| The IR can't represent task registrations cleanly | Add an `extensions` namespace upstream first; don't fork the IR.                     |
+| Route params use one file-tree convention         | `$id` works in leaves and folders.                                                   |
+| Dramatiq adoption is too low among target users   | Switch the reference to TaskIQ (newer, asyncio-native); keep the contract identical. |
+| `pydantic-settings` v3 changes API significantly  | Vendor a thin wrapper that exposes a stable `Settings` interface.                    |
+| User demand emerges for server-rendered HTML      | Don't add it. Recommend HTMX + a separate template lib. Hold the line.               |
+| User demand emerges for multi-tenancy             | Add it in v0.3 as a `tenant` scope on `_scope.py` — not in v0.1.                     |
 
 ## Where to go from here
 

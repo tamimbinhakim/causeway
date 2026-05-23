@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway"
-version = "0.3.8"
+version = "0.4.0"
 description = "A lean backend framework for type-safe Python APIs — file-based routing, typed config/DI, scoped providers, plugin registry, and background tasks."
 readme = "README.md"
 license = { text = "MIT" }
@@ -35,7 +35,7 @@ classifiers = [
 ]
 
 dependencies = [
-  "dyadpy>=0.1.1",
+  "dyadpy>=0.1.9",
   "pydantic-settings>=2.14.1",
   "pydantic>=2.13.4",
   "msgspec>=0.19",

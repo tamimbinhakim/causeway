@@ -7,6 +7,17 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.8...causeway-v0.4.0) (2026-05-23)
+
+### ⚠ BREAKING CHANGES
+
+- bracket route params are removed; use the `$name` convention for dynamic route files and folders.
+
+### Features
+
+- standardize file routing on `$name` dynamic segments for folders and dotted leaves.
+- reject bracket route params at boot with a clear migration error.
+
 ## [0.3.8](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.7...causeway-v0.3.8) (2026-05-20)
 
 

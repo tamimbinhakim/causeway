@@ -24,8 +24,8 @@ _NON_ID_RE = re.compile(r"[^A-Za-z0-9_]")
 def mangle(name: str) -> str:
     """Map an arbitrary filesystem name to a valid Python identifier.
 
-    >>> mangle("[id]")
-    '_x5bid_x5d'
+    >>> mangle("$id")
+    '_x24id'
     >>> mangle("(admin)")
     '_x28admin_x29'
     >>> mangle("users.$id")

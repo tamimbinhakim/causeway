@@ -28,7 +28,7 @@ IR entry:
        │ (dyadpy codegen)
        ▼
 client.ts:
-  users.show: (args: { id: string }) => Promise<Result<User, NotFound>>
+  api.users.byId: (args: { id: string }) => Promise<Result<User, NotFound>>
 ```
 
 ## What lives in the IR

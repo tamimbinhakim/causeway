@@ -9,14 +9,119 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import AsyncGenerator
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias
 
+import msgspec
+from sqlalchemy import JSON
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.types import TypeDecorator
+
+if TYPE_CHECKING:
+    JsonPrimitive: TypeAlias = str | int | float | bool | None
+    JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
+    JsonObject: TypeAlias = dict[str, JsonValue]
+    JsonArray: TypeAlias = list[JsonValue]
+else:
+    JsonPrimitive = str | int | float | bool | None
+    JsonValue = Any
+    JsonObject = dict[str, Any]
+    JsonArray = list[Any]
+
+
+class TypedJson(TypeDecorator[Any]):
+    """SQLAlchemy JSON/JSONB column that round-trips a declared Python type.
+
+    Use this when a JSON column has a real shape instead of annotating it as
+    ``dict[str, Any]`` everywhere:
+
+        payload: MyPayload = Field(sa_type=TypedJson(MyPayload))
+
+    The database still stores JSON. On writes, msgspec-friendly structs,
+    dataclasses, UUIDs, dates, and other JSON-compatible Python values are
+    converted to builtins. On reads, ``python_type`` is applied with
+    ``msgspec.convert`` so route code gets the typed shape back.
+    """
+
+    impl = JSON
+    cache_ok = True
+
+    def __init__(
+        self,
+        python_type: Any = Any,
+        *,
+        use_jsonb: bool = True,
+        none_as_null: bool = False,
+    ) -> None:
+        super().__init__()
+        self.value_type = python_type
+        self.use_jsonb = use_jsonb
+        self.none_as_null = none_as_null
+
+    def load_dialect_impl(self, dialect: Any) -> Any:
+        if self.use_jsonb and dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import JSONB
+
+            return dialect.type_descriptor(JSONB(none_as_null=self.none_as_null))
+        return dialect.type_descriptor(JSON(none_as_null=self.none_as_null))
+
+    def process_bind_param(self, value: Any, dialect: Any) -> Any:
+        del dialect
+        if value is None:
+            return None
+        return _to_jsonable(value)
+
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
+        del dialect
+        if value is None or self.value_type in (Any, object):
+            return value
+        if hasattr(self.value_type, "model_validate"):
+            return self.value_type.model_validate(value)
+        return msgspec.convert(value, self.value_type)
+
+
+_UNSET = object()
+
+
+def json_field(
+    python_type: Any = Any,
+    *,
+    default: Any = _UNSET,
+    default_factory: Any = _UNSET,
+    use_jsonb: bool = True,
+    none_as_null: bool = False,
+    **field_kwargs: Any,
+) -> Any:
+    """Return a SQLModel ``Field`` backed by :class:`TypedJson`.
+
+    This keeps model declarations compact while preserving a typed Python
+    shape for JSON columns.
+
+        payload: MyPayload = json_field(MyPayload)
+    """
+
+    from sqlmodel import Field
+
+    if default is not _UNSET:
+        field_kwargs["default"] = default
+    if default_factory is not _UNSET:
+        field_kwargs["default_factory"] = default_factory
+    field_kwargs["sa_type"] = TypedJson(
+        python_type,
+        use_jsonb=use_jsonb,
+        none_as_null=none_as_null,
+    )
+    return Field(**field_kwargs)
+
+
+def _to_jsonable(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    return msgspec.to_builtins(value)
 
 
 class SqlModelSession:
@@ -86,4 +191,13 @@ def plugin(settings: Any) -> None:
     register(SqlModelSession(dsn=str(dsn)))
 
 
-__all__ = ["SqlModelSession", "plugin"]
+__all__ = [
+    "JsonArray",
+    "JsonObject",
+    "JsonPrimitive",
+    "JsonValue",
+    "SqlModelSession",
+    "TypedJson",
+    "json_field",
+    "plugin",
+]

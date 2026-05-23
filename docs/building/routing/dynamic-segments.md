@@ -2,10 +2,11 @@
 
 Dynamic segments capture part of the URL and pass it to the handler as a typed argument.
 
-## Folder style: `[name]`
+## Dynamic segment: `$name`
 
 ```
-src/app/routes/users/[id].py    →    /users/{id}
+src/app/routes/users/$id.py     →    /users/{id}
+src/app/routes/users.$id.py     →    /users/{id}
 ```
 
 ```python
@@ -16,28 +17,13 @@ from causeway import get
 async def show(id: UUID) -> User: ...
 ```
 
-The bracketed name must match the handler parameter exactly: `[id]` requires `id`, `[userId]` requires `userId`.
-
-## Dot-flat style: `$name`
-
-```
-src/app/routes/users.$id.py    →    /users/{id}
-```
-
-Same binding rule:
-
-```python
-from causeway import get
-
-@get
-async def show(id: str) -> User: ...
-```
+The name after `$` must match the handler parameter exactly: `$id` requires `id`, `$userId` requires `userId`.
 
 ## Multiple segments
 
 ```
-src/app/routes/users/[userId]/posts/[postId].py    →    /users/{userId}/posts/{postId}
-src/app/routes/users.$userId.posts.$postId.py      →    /users/{userId}/posts/{postId}
+src/app/routes/users/$userId/posts/$postId.py    →    /users/{userId}/posts/{postId}
+src/app/routes/users.$userId.posts.$postId.py    →    /users/{userId}/posts/{postId}
 ```
 
 ```python
@@ -60,46 +46,46 @@ The segment is just a string on the wire. The handler annotation drives parsing 
 
 ## Dynamic folders
 
-A bracketed folder name binds the same way:
+A `$` folder name binds the same way:
 
 ```
-src/app/routes/users/[id]/posts.py    →    /users/{id}/posts
-src/app/routes/users/[id]/index.py    →    /users/{id}
+src/app/routes/users/$id/posts.py    →    /users/{id}/posts
+src/app/routes/users/$id/index.py    →    /users/{id}
 ```
 
 Handlers under that folder all see the parameter:
 
 ```python
-# users/[id]/posts.py
+# users/$id/posts.py
 @get
 async def list_posts(id: UUID) -> list[Post]: ...
 ```
 
 ## Literal siblings beat dynamic ones
 
-When a folder contains both `[id].py` and a literal sibling (e.g. `risk-overrides/index.py`), the literal route always wins for matching requests:
+When a folder contains both `$id.py` and a literal sibling (e.g. `risk-overrides/index.py`), the literal route always wins for matching requests:
 
 ```
-routes/customers/[id].py                   →  /customers/{id}
+routes/customers/$id.py                    →  /customers/{id}
 routes/customers/risk-overrides/index.py   →  /customers/risk-overrides
 ```
 
-`GET /customers/risk-overrides` hits the literal handler; `GET /customers/abc-123` falls through to `[id]`. Discovery sorts routes by specificity (literal segments outrank parametric ones at every depth) before registration, so filesystem walk order doesn't shadow literal siblings.
+`GET /customers/risk-overrides` hits the literal handler; `GET /customers/abc-123` falls through to `$id`. Discovery sorts routes by specificity (literal segments outrank parametric ones at every depth) before registration, so filesystem walk order doesn't shadow literal siblings.
 
 ## Catch-all (reserved)
 
-`[...rest].py` and `$$rest.py` are reserved for v0.2+. Today they raise `NotImplementedError` at boot. Track [the roadmap](../../../ROADMAP.md) for status.
+`$$rest.py` and `$$rest/` are reserved for v0.2+. Today they raise `NotImplementedError` at boot. Track [the roadmap](../../../ROADMAP.md) for status.
 
 ## Common pitfalls
 
 **Param name doesn't match the segment.**
-`[id].py` with `async def show(user_id: UUID)` raises at boot with a clear error. The name has to match exactly, including case.
+`$id.py` with `async def show(user_id: UUID)` raises at boot with a clear error. The name has to match exactly, including case.
 
 **Two routes resolve to the same URL.**
 `users/index.py` and `users.py` both resolve to `/users`. The discovery walk raises a method-conflict error at boot listing both source files.
 
-**`$id` in a folder name.**
-Folder names don't recognize `$` — that's a dot-flat-only convention. Use `[id]` for folders. `users/$id.py` is read as a literal folder name `users` with a leaf file `$id.py` — which is itself dot-flat (so it works, but probably isn't what you meant).
+**Using bracket params.**
+Bracket params are intentionally unsupported. Use `$id.py`, `$id/`, or dotted leaves like `users.$id.posts.py`.
 
 ## Next
 

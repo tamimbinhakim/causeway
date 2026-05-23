@@ -15,12 +15,16 @@ from causeway._paths import url_for
         ("index.py", "/"),
         ("health.py", "/health"),
         ("users/index.py", "/users"),
-        ("users/[id].py", "/users/{id}"),
-        ("users/[id]/posts.py", "/users/{id}/posts"),
+        ("users/$id.py", "/users/{id}"),
+        ("users/$id/posts.py", "/users/{id}/posts"),
+        (
+            "cases/$slug.ai/pending-actions/bulk.py",
+            "/cases/{slug}/ai/pending-actions/bulk",
+        ),
         ("(admin)/stats.py", "/stats"),
         ("(admin)/users.py", "/users"),
         ("billing/webhooks.py", "/billing/webhooks"),
-        ("a/(group-x)/b/[id].py", "/a/b/{id}"),
+        ("a/(group-x)/b/$id.py", "/a/b/{id}"),
     ],
 )
 def test_url_for_folder_style(rel: str, expected: str) -> None:
@@ -49,7 +53,7 @@ def test_url_for_dot_flat_style(rel: str, expected: str) -> None:
     [
         ("api/v1.$version.posts.py", "/api/v1/{version}/posts"),
         ("(admin)/users.$id.py", "/users/{id}"),
-        ("users/[id]/posts.$postId.py", "/users/{id}/posts/{postId}"),
+        ("users/$id/posts.$postId.py", "/users/{id}/posts/{postId}"),
         ("$id.py", "/{id}"),
         ("$id.index.py", "/{id}"),
     ],
@@ -60,12 +64,18 @@ def test_url_for_mixed_style(rel: str, expected: str) -> None:
 
 def test_folder_catchall_reserved() -> None:
     with pytest.raises(NotImplementedError, match="catch-all"):
-        url_for(PurePosixPath("docs/[...rest].py"))
+        url_for(PurePosixPath("docs/$$rest.py"))
 
 
 def test_leaf_catchall_reserved() -> None:
     with pytest.raises(NotImplementedError, match="catch-all"):
         url_for(PurePosixPath("docs.$$rest.py"))
+
+
+@pytest.mark.parametrize("rel", ["users/[id].py", "users/[id]/posts.py"])
+def test_bracket_params_rejected(rel: str) -> None:
+    with pytest.raises(ValueError, match="bracket route params"):
+        url_for(PurePosixPath(rel))
 
 
 def test_non_py_rejected() -> None:

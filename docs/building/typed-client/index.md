@@ -23,7 +23,7 @@ The IR carries:
 For a handler like:
 
 ```python
-# src/app/routes/users/[id].py
+# src/app/routes/users/$id.py
 @get
 @raises(NotFound)
 async def show(id: UUID) -> User: ...
@@ -32,11 +32,13 @@ async def show(id: UUID) -> User: ...
 The client gets:
 
 ```ts
-export const client = {
+export interface ApiRoutes {
   users: {
-    show: (args: { id: string }) => Promise<Result<User, NotFound>>,
-  },
-};
+    byId(args: { id: string }): Promise<Result<User, NotFound>>;
+  };
+}
+
+export const api: ApiRoutes;
 ```
 
 `User` is a TypeScript interface mirroring the Python `User` struct; `NotFound` mirrors the Python error class.
@@ -44,12 +46,12 @@ export const client = {
 ## Consuming results
 
 ```ts
-import { client } from "./generated/client";
+import { api } from "./generated/client";
 
-const result = await client.users.show({ id: "..." });
+const result = await api.users.byId({ id: "..." });
 
 if (result.ok) {
-  console.log(result.value.name); // typed as `string`
+  console.log(result.data.name); // typed as `string`
 } else if (result.error.kind === "NotFound") {
   console.log("missing"); // narrowed to NotFound branch
 }
@@ -67,7 +69,7 @@ async def watch(thread_id: str) -> stream[Event]: ...
 
 ```ts
 // TypeScript
-const stream = await client.watch({ thread_id: "..." });
+const stream = await api.watch.list({ threadId: "..." });
 for await (const event of stream) {
   ...
 }

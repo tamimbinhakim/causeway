@@ -3,12 +3,10 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath
 
-_FOLDER_DYNAMIC = re.compile(r"^\[([^.\]][^\]]*)\]$")
-_FOLDER_CATCHALL = re.compile(r"^\[\.\.\.(.+)\]$")
 _GROUP = re.compile(r"^\([^)]+\)$")
-_LEAF_DYNAMIC = re.compile(r"^\$([A-Za-z_][A-Za-z0-9_]*)$")
-_LEAF_CATCHALL = re.compile(r"^\$\$(.+)$")
-_LEAF_TOKEN = re.compile(r"\[[^\]]*\]|\([^)]*\)|[^.]+")
+_DYNAMIC = re.compile(r"^\$([A-Za-z_][A-Za-z0-9_]*)$")
+_CATCHALL = re.compile(r"^\$\$(.+)$")
+_LEAF_TOKEN = re.compile(r"\([^)]*\)|[^.]+")
 
 
 def url_for(rel_path: PurePosixPath) -> str:
@@ -22,7 +20,7 @@ def url_for(rel_path: PurePosixPath) -> str:
     for part in parts:
         if _GROUP.match(part):
             continue
-        segments.append(_folder_segment(part))
+        segments.extend(_folder_segments(part))
 
     leaf_pieces = _LEAF_TOKEN.findall(leaf)
     if leaf_pieces and leaf_pieces[-1] == "index":
@@ -37,32 +35,21 @@ def url_for(rel_path: PurePosixPath) -> str:
     return "/" + "/".join(segments)
 
 
-def _folder_segment(part: str) -> str:
-    if _FOLDER_CATCHALL.match(part):
-        msg = "catch-all segments ([...rest]) are reserved for v0.2+"
-        raise NotImplementedError(msg)
-    m = _FOLDER_DYNAMIC.match(part)
-    if m:
-        return "{" + m.group(1) + "}"
-    if part.startswith("_"):
-        msg = f"private file leaked into URL translation: {part!r}"
-        raise ValueError(msg)
-    return part
+def _folder_segments(part: str) -> list[str]:
+    pieces = _LEAF_TOKEN.findall(part)
+    return [_leaf_segment(piece) for piece in pieces if not _GROUP.match(piece)]
 
 
 def _leaf_segment(piece: str) -> str:
-    if _LEAF_CATCHALL.match(piece):
+    if _CATCHALL.match(piece):
         msg = "catch-all segments ($$rest) are reserved for v0.2+"
         raise NotImplementedError(msg)
-    m = _LEAF_DYNAMIC.match(piece)
+    m = _DYNAMIC.match(piece)
     if m:
         return "{" + m.group(1) + "}"
-    if _FOLDER_CATCHALL.match(piece):
-        msg = "catch-all segments ([...rest]) are reserved for v0.2+"
-        raise NotImplementedError(msg)
-    bracket = _FOLDER_DYNAMIC.match(piece)
-    if bracket:
-        return "{" + bracket.group(1) + "}"
+    if piece.startswith("["):
+        msg = f"bracket route params are not supported; use ${piece[1:-1]} instead"
+        raise ValueError(msg)
     if piece.startswith("_"):
         msg = f"private file leaked into URL translation: {piece!r}"
         raise ValueError(msg)

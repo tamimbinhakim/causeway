@@ -58,7 +58,7 @@ def _route_key(method: str, path: str, handler) -> tuple[str, str, str]:
     ("raw", "expected"),
     [
         ("index", "index"),
-        ("[id]", "_x5bid_x5d"),
+        ("$id", "_x24id"),
         ("(admin)", "_x28admin_x29"),
         ("users.$id", "users_x2e_x24id"),
         ("$slug", "_x24slug"),
@@ -72,7 +72,7 @@ def test_mangle_is_valid_identifier(raw: str, expected: str) -> None:
 
 
 def test_mangle_filename_preserves_py_extension() -> None:
-    assert mangle_filename("[id].py") == "_x5bid_x5d.py"
+    assert mangle_filename("$id.py") == "_x24id.py"
     assert mangle_filename("users.$id.py") == "users_x2e_x24id.py"
     assert mangle_filename("plain.py") == "plain.py"
 
@@ -98,19 +98,19 @@ def test_mirror_skips_underscore_dirs_and_pycache(tmp_path: Path) -> None:
     assert not (mirror / ".hidden").exists()
 
 
-def test_mirror_renames_bracket_dynamic_files(tmp_path: Path) -> None:
+def test_mirror_renames_dollar_dynamic_files(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(
         routes,
-        "users/[id].py",
+        "users/$id.py",
         "from causeway import get\n@get\nasync def show(id: str): return {'id': id}\n",
     )
     out = tmp_path / "build"
     freeze(routes, out, user_plugins_module=None, settings_target=None)
 
     mirror = out / MIRROR_PACKAGE / "_routes"
-    assert (mirror / "users" / mangle_filename("[id].py")).is_file()
-    assert not (mirror / "users" / "[id].py").exists()
+    assert (mirror / "users" / mangle_filename("$id.py")).is_file()
+    assert not (mirror / "users" / "$id.py").exists()
 
 
 def test_frozen_matches_dynamic_for_basic_tree(tmp_path: Path) -> None:
@@ -129,7 +129,7 @@ def test_frozen_matches_dynamic_for_basic_tree(tmp_path: Path) -> None:
     )
     _write(
         routes,
-        "users/[id].py",
+        "users/$id.py",
         "from causeway import get, patch, delete\n"
         "@get\nasync def show(id: str): return {'id': id}\n"
         "@patch\nasync def edit(id: str): return {'id': id}\n"
@@ -230,7 +230,7 @@ def test_freeze_is_byte_deterministic(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(
         routes,
-        "users/[id].py",
+        "users/$id.py",
         "from causeway import get\n@get\nasync def show(id: str): return {'id': id}\n",
     )
     _write(
@@ -274,7 +274,7 @@ async def test_frozen_app_serves_requests(tmp_path: Path) -> None:
     )
     _write(
         routes,
-        "echo/[name].py",
+        "echo/$name.py",
         "from causeway import get\n"
         "@get\nasync def show(name: str) -> dict: return {'hello': name}\n",
     )
