@@ -27,7 +27,7 @@ IR entry:
        │
        │ (dyadpy codegen)
        ▼
-client.ts:
+client/:
   api.users.byId: (args: { id: string }) => Promise<Result<User, NotFound>>
 ```
 

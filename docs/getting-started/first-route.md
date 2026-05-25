@@ -41,11 +41,13 @@ curl http://127.0.0.1:8000/users/01000000-0000-0000-0000-000000000000
 
 curl -i http://127.0.0.1:8000/users/00000000-0000-0000-0000-000000000000
 # HTTP/1.1 404 Not Found
-# content-type: application/problem+json
-# {"type":"about:blank#not_found","title":"not_found","status":404,"detail":"user 00000000-..."}
+# content-type: application/json
+# {"ok":false,"error":{"kind":"NotFound","status":404,"code":"not_found","message":"user 00000000-...","detail":{},"request_id":"..."}}
 ```
 
-Errors are rendered as [`application/problem+json`](https://www.rfc-editor.org/rfc/rfc9457) automatically. See [Errors](../building/handlers/errors.md).
+Declared `@raises(...)` errors return typed `Result` envelopes. Undeclared
+internal failures fall back to [`application/problem+json`](https://www.rfc-editor.org/rfc/rfc9457)
+with scrubbed messages. See [Errors](../building/handlers/errors.md).
 
 ## 3. See the route table
 
@@ -53,7 +55,11 @@ Open <http://127.0.0.1:8000/__causeway>. You'll see every discovered route, the 
 
 ## 4. Use the generated TypeScript client
 
-`causeway dev` re-emits `client.ts` on every change. From a sibling frontend:
+Generate the client from the same route IR, then import it from your frontend:
+
+```bash
+uv run causeway build
+```
 
 ```ts
 import { api } from "./generated/client";
@@ -91,7 +97,7 @@ Multiple HTTP methods can share a route file; method conflicts are caught at boo
 1. The router walked `src/app/routes/`, translated `users/$id.py` into `/users/{id}` via the [path rules](../api-reference/file-conventions/index.md).
 2. It stamped the `@get` and `@patch` decorators with their HTTP methods, then registered both with `dyadpy.App`.
 3. dyadpy walked your handler signatures into the IR — `id: UUID` becomes a typed path parameter, `data: UserPatch` becomes a typed JSON body, `-> User` becomes the response type, `@raises(NotFound)` becomes a discriminated union on the wire.
-4. The codegen emitted `client.ts` with a nested `api.users.byId` function, typed end-to-end.
+4. The same IR can emit a generated client with a nested `api.users.byId` function, typed end-to-end.
 
 ## Where to go next
 

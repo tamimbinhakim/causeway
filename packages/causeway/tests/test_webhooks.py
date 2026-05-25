@@ -69,6 +69,13 @@ def test_missing_signature_rejected() -> None:
         verify_signature("sek", b"{}", None, "1700000000")
 
 
+def test_malformed_timestamp_suppresses_parse_context() -> None:
+    with pytest.raises(Unauthorized) as exc_info:
+        verify_signature("sek", b"{}", "v1,bad", "not-an-int")
+    assert exc_info.value.__cause__ is None
+    assert exc_info.value.__suppress_context__ is True
+
+
 def test_wrong_secret_rejected() -> None:
     body = b"{}"
     sig, ts = sign_payload("sek-a", body, timestamp=1700000000)

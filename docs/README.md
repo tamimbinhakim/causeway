@@ -51,7 +51,7 @@ Per-concept guides for everything you do day-to-day.
 - **[Verifying incoming webhooks](./building/webhooks/incoming.md)** — HMAC + timestamp checks for inbound calls.
 - **[Testing](./building/testing/index.md)** — `TestApp`, inline scenarios, snapshots, `captured()`/`captured_webhooks()`.
 - **[Observability](./building/observability/index.md)** — request IDs, structured logs, OTel.
-- **[Typed client](./building/typed-client/index.md)** — what's in `client.ts` and how to consume it.
+- **[Typed client](./building/typed-client/index.md)** — what's in the generated client and how to consume it.
 
 ## API Reference
 

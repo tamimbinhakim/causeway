@@ -23,7 +23,8 @@ Re-exported from `dyadpy`. The decorator stamps the handler with the declared er
 
 - Each error type must subclass `HttpError` (so it has a `status` and `code`).
 - The actual exception still has to be raised in the handler body — `@raises` is **declarative**; it doesn't catch anything.
-- A handler that raises an undeclared `HttpError` still renders correctly, but the TS client won't have a branch for it.
+- A declared `HttpError` returns `{ ok: false, error: ... }` with the error's HTTP status.
+- A handler that raises an undeclared `HttpError` can still be rendered by the global error renderer, but the TS client won't have a typed `Result` branch for it.
 
 ## Wire shape
 
@@ -33,7 +34,7 @@ A `@raises(NotFound)` declaration produces this on the client:
 Result<User, NotFound>;
 ```
 
-`NotFound` is a TypeScript interface mirroring the Python class — `{ kind: "NotFound", status: 404, code: "not_found", detail: string }`.
+`NotFound` is a TypeScript interface mirroring the Python class — `{ kind: "NotFound", status: number, code: string, message: string, detail: Record<string, unknown>, requestId?: string | null }`.
 
 ## See also
 

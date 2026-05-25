@@ -19,6 +19,8 @@ from typing import Any
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from causeway._traceback import log_exception
+
 _log = logging.getLogger("causeway.errors")
 
 
@@ -27,11 +29,14 @@ class HttpError(Exception):
 
     status: int = 500
     code: str = "internal"
+    message: str
+    detail: dict[str, Any]
 
     def __init__(self, message: str | None = None, *, detail: dict[str, Any] | None = None) -> None:
         super().__init__(message or self.code)
         self.message = message or self.code
         self.detail = detail or {}
+        self.__suppress_context__ = True
 
 
 class BadRequest(HttpError):
@@ -107,7 +112,6 @@ def render_problem(exc: BaseException, *, request_id: str | None = None) -> Resp
             "detail": "internal server error",
         }
         status = 500
-        _log.exception("unhandled exception", exc_info=exc)
     if request_id is not None:
         body["request_id"] = request_id
     return JSONResponse(body, status_code=status, media_type="application/problem+json")
@@ -118,6 +122,13 @@ async def error_renderer(request: Request, exc: Exception) -> Response:
     ``request.state.request_id`` if the request-id middleware set one.
     """
     request_id = getattr(request.state, "request_id", None)
+    if not isinstance(exc, (HttpError, PermissionError, LookupError)):
+        log_exception(
+            _log,
+            exc,
+            request=request,
+            request_id=request_id if isinstance(request_id, str) else None,
+        )
     return render_problem(exc, request_id=request_id)
 
 

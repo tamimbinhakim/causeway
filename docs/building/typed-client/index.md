@@ -1,16 +1,16 @@
 # The typed client
 
-Causeway emits a TypeScript client for your frontend on every change. The Python signature is the contract; the client falls out the other end. No OpenAPI generator, no manual sync, no drift.
+Causeway emits a TypeScript client for your frontend from the same route IR that powers runtime validation. The Python signature is the contract; the client falls out the other end. No OpenAPI generator, no manual sync, no drift.
 
 This page covers what's in the client and how to consume it. The codegen itself lives in [`dyadpy`](https://github.com/tamimbinhakim/dyadpy) — Causeway's contribution is the project layout, the discovery walk, and the manifest.
 
 ## How it's generated
 
-`causeway dev` re-emits `client.ts` on every saved file. The pipeline:
+The codegen pipeline is:
 
 1. The file router walks `src/app/routes/` and produces a `Discovered` snapshot.
 2. `dyadpy` walks each handler's signature into the IR (intermediate representation).
-3. The codegen turns the IR into a single `client.ts`.
+3. The codegen turns the IR into an optimized `client/` directory.
 
 The IR carries:
 
@@ -94,24 +94,19 @@ console.log(config.feature_flags); // { new_dashboard: true }
 
 Secret fields (`SecretStr`, `SecretBytes`) are filtered before codegen — listing them in `expose_settings` is a no-op.
 
-## Where to put `client.ts`
+## Where `client/` lands
 
-Pick a path for your frontend monorepo:
-
-```toml
-# causeway.toml
-[client]
-out = "../frontend/src/generated/client.ts"
-```
-
-Default: `./client.ts` in the project root. The dev loop overwrites the file on every change; commit it or `.gitignore` it (most teams `.gitignore` it and let CI rebuild on deploy).
+`causeway build` writes `dist/client/` next to the IR snapshot and wheel. From
+there you can publish it as part of your frontend build, copy it into a sibling
+frontend package in CI, or commit it if your deploy flow expects generated files
+in source control.
 
 ## Breaking change detection
 
 Causeway snapshots the IR at build time:
 
 ```bash
-causeway build                 # writes dist/ir.json + dist/client.ts
+causeway build                 # writes dist/ir.json + dist/client/
 git checkout main
 causeway build -o dist-main
 causeway diff dist-main/ir.json dist/ir.json
@@ -138,11 +133,15 @@ Wire this into CI to catch contract drift before review:
 causeway build
 # dist/
 #   ir.json
-#   client.ts
+#   client/
+#     index.ts
+#     types.d.ts
+#     meta.ts
+#     routes/
 #   my_app-0.0.1-py3-none-any.whl
 ```
 
-Ship `client.ts` to your frontend deploy, `*.whl` to your backend runtime.
+Ship `client/` to your frontend deploy, `*.whl` to your backend runtime.
 
 ## Caveats
 

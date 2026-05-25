@@ -16,7 +16,7 @@ Every deploy plugin implements the [`DeployTarget`](../api-reference/classes/con
 For any target:
 
 ```bash
-causeway build                            # emit dist/ir.json + client.ts + wheel
+causeway build                            # emit dist/ir.json + client/ + wheel
 causeway deploy <target>                  # plugin reads dist/ and pushes
 ```
 
@@ -27,7 +27,7 @@ The plugin produces the target-specific artifact (Dockerfile + image, Fly machin
 ```
 dist/
 ├── ir.json
-├── client.ts                            # ship to your frontend deploy
+├── client/                              # ship to your frontend deploy
 └── my_app-0.0.1-py3-none-any.whl        # ship to your backend runtime
 ```
 
@@ -63,7 +63,7 @@ You're done. Causeway emits an ASGI app — it's not Docker-aware, Fly-aware, or
 - [ ] Use `configure_logging(json=True)` for structured logs.
 - [ ] Wire OTel: `configure_otel(service_name=..., endpoint=...)`.
 - [ ] Ensure `/healthz` and `/readyz` are reachable by your LB.
-- [ ] Don't commit `client.ts` if your frontend deploy rebuilds it.
+- [ ] Don't commit `client/` if your frontend deploy rebuilds it.
 - [ ] Don't commit `.env`; the production env wires settings via env vars.
 
 ## Per-target guides

@@ -63,6 +63,18 @@ def test_private_files_skipped(tmp_path: Path) -> None:
     assert len(found.routes) == 1
 
 
+def test_bracket_params_rejected_at_discovery(tmp_path: Path) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "users/[id].py",
+        "from causeway import get\n@get\nasync def show(id: str) -> dict: return {'id': id}\n",
+    )
+
+    with pytest.raises(ValueError, match=r"use \$id instead"):
+        discover(routes)
+
+
 def test_method_conflict_caught_at_boot(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(

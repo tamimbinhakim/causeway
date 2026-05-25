@@ -92,9 +92,38 @@ async def r() -> dict:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
         resp = await client.get("/")
-    # dyadpy serializes @raises into its Result envelope; the renderer kicks
-    # in for unhandled exceptions. Either path returns a structured body.
-    assert resp.status_code in {200, 404}
+    # dyadpy serializes @raises into its typed Result envelope.
+    assert resp.status_code == 404
+    assert resp.json()["error"]["kind"] == "NotFound"
+
+
+async def test_create_app_renders_undeclared_http_error_as_problem_json(tmp_path: Path) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "index.py",
+        """from causeway import get
+from causeway.errors import Unauthorized
+
+@get
+async def r() -> dict:
+    raise Unauthorized('sign in')
+""",
+    )
+    app = create_app(routes)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+        resp = await client.get("/")
+    assert resp.status_code == 401
+    assert resp.headers["content-type"].startswith("application/problem+json")
+    body = resp.json()
+    assert {k: body[k] for k in ("type", "title", "status", "detail")} == {
+        "type": "about:blank#unauthorized",
+        "title": "unauthorized",
+        "status": 401,
+        "detail": "sign in",
+    }
+    assert isinstance(body["request_id"], str)
 
 
 def test_create_app_loads_app_plugins_and_runs_lifecycle(tmp_path: Path) -> None:

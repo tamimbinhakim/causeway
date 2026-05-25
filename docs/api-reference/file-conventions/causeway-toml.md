@@ -10,7 +10,6 @@ description = "Hello from Causeway"
 
 [client]
 expose_settings = ["env", "feature_flags"]
-out = "client.ts"
 ```
 
 ## Sections
@@ -29,10 +28,9 @@ Free-form metadata. Surfaced on the diagnostics page (`/__causeway`) and used by
 
 Controls what the TS client gets.
 
-| Key               | Type      | Default       | Notes                                                                             |
-| ----------------- | --------- | ------------- | --------------------------------------------------------------------------------- |
-| `expose_settings` | list[str] | `[]`          | Allowlist of non-secret settings fields to bake into `client.ts`.                 |
-| `out`             | string    | `"client.ts"` | Output path for the generated client. Can be a relative path into a sibling repo. |
+| Key               | Type      | Default | Notes                                                                      |
+| ----------------- | --------- | ------- | -------------------------------------------------------------------------- |
+| `expose_settings` | list[str] | `[]`    | Allowlist of non-secret settings fields to bake into the generated client. |
 
 ## Secrets are never exposed
 

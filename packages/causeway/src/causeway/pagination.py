@@ -52,8 +52,8 @@ class Cursor:
         try:
             raw = base64.urlsafe_b64decode(padded.encode("ascii"))
             decoded = msgspec.json.decode(raw)
-        except (binascii.Error, ValueError, msgspec.DecodeError, UnicodeDecodeError) as exc:
-            raise BadRequest("invalid cursor token") from exc
+        except (binascii.Error, ValueError, msgspec.DecodeError, UnicodeDecodeError):
+            raise BadRequest("invalid cursor token") from None
         if not isinstance(decoded, dict):
             raise BadRequest("invalid cursor token")
         return decoded

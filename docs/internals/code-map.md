@@ -149,7 +149,7 @@ Signing helpers (`sign_payload`, `verify_signature`, `new_secret`) are unchanged
 
 ### `errors.py` — 135 lines
 
-`HttpError` hierarchy (`NotFound`, `BadRequest`, `Unauthorized`, `Forbidden`, …) and the global handler that renders them as RFC 7807 `application/problem+json`. The handler **never** leaks internal exception messages — the body for an uncaught exception is the generic `internal server error`. Subclass `HttpError` to opt into a custom message.
+`HttpError` hierarchy (`NotFound`, `BadRequest`, `Unauthorized`, `Forbidden`, …) and the global handler for undeclared exceptions. Declared `@raises(...)` errors flow through Dyadpy's typed `Result` envelope; undeclared exceptions render as RFC 7807 `application/problem+json`. The handler **never** leaks internal exception messages — the body for an uncaught exception is the generic `internal server error`. Subclass `HttpError` to opt into a custom message.
 
 ### `health.py` — 54 lines
 
@@ -183,7 +183,7 @@ Registered via the `pytest11` entry point. Adds `--causeway-routes`, `--update-s
 
 ### `cli.py` — 227 lines
 
-The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (uvicorn + watcher), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `dyadpy diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
+The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (owned uvicorn server + smart route hot-swap), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `dyadpy diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
 
 ### `_scaffold.py` — 290 lines
 

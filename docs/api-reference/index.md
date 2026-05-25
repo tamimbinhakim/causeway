@@ -64,16 +64,16 @@ Every public symbol Causeway exports, on its own page. Organized by kind: decora
 
 ## CLI
 
-| Command                                             | Purpose                                               |
-| --------------------------------------------------- | ----------------------------------------------------- |
-| [`causeway new <name>`](./cli/new.md)               | Scaffold a new app.                                   |
-| [`causeway dev`](./cli/dev.md)                      | Run the dev server + watcher + codegen + diagnostics. |
-| [`causeway build`](./cli/build.md)                  | Emit the IR, the TS client, and a deployable wheel.   |
-| [`causeway plugins`](./cli/plugins.md)              | List registered plugin adapters.                      |
-| [`causeway plugin new <name>`](./cli/plugin-new.md) | Scaffold a new plugin package.                        |
-| [`causeway diff <a> <b>`](./cli/diff.md)            | Compare two IR snapshots and flag breaking changes.   |
-| [`causeway deploy <target>`](./cli/deploy.md)       | Invoke the relevant deploy plugin.                    |
-| [`causeway version`](./cli/version.md)              | Print the installed version.                          |
+| Command                                             | Purpose                                                  |
+| --------------------------------------------------- | -------------------------------------------------------- |
+| [`causeway new <name>`](./cli/new.md)               | Scaffold a new app.                                      |
+| [`causeway dev`](./cli/dev.md)                      | Run the dev server + smart route hot-swap + diagnostics. |
+| [`causeway build`](./cli/build.md)                  | Emit the IR, the TS client, and a deployable wheel.      |
+| [`causeway plugins`](./cli/plugins.md)              | List registered plugin adapters.                         |
+| [`causeway plugin new <name>`](./cli/plugin-new.md) | Scaffold a new plugin package.                           |
+| [`causeway diff <a> <b>`](./cli/diff.md)            | Compare two IR snapshots and flag breaking changes.      |
+| [`causeway deploy <target>`](./cli/deploy.md)       | Invoke the relevant deploy plugin.                       |
+| [`causeway version`](./cli/version.md)              | Print the installed version.                             |
 
 ## Module map
 

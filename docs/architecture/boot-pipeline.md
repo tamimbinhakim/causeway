@@ -49,7 +49,8 @@ What happens between `causeway dev` and your first request.
        ↓
 10. uvicorn serves traffic
        ↓
-11. dyadpy codegen watches for changes and re-emits client.ts
+11. causeway dev watches route files and hot-swaps a new app snapshot after
+    successful rediscovery
 ```
 
 ## What discover does in detail

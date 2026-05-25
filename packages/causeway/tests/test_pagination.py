@@ -20,8 +20,10 @@ def test_empty_token_decodes_to_empty_dict() -> None:
 
 
 def test_invalid_token_raises_bad_request() -> None:
-    with pytest.raises(BadRequest):
+    with pytest.raises(BadRequest) as exc_info:
         Cursor.decode("not-valid-base64-!!!")
+    assert exc_info.value.__cause__ is None
+    assert exc_info.value.__suppress_context__ is True
 
 
 def test_non_dict_payload_rejected() -> None:

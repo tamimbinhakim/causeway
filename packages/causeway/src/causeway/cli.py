@@ -3,8 +3,8 @@
 Each command is a thin shell over dyadpy plus the convention layer:
 
 - ``causeway new <name>``        — scaffold a project from the template tree.
-- ``causeway dev``               — uvicorn + watcher + TS codegen.
-- ``causeway build``             — IR + ``client.ts`` + wheel. ``--binary`` AOT-compiles via Nuitka.
+- ``causeway dev``               — owned uvicorn dev server + smart route hot-swap.
+- ``causeway build``             — IR + generated client directory + wheel. ``--binary`` AOT-compiles via Nuitka.
 - ``causeway freeze``            — emit the AOT build tree without compiling.
 - ``causeway plugins``           — list registered adapters.
 - ``causeway diff``              — delegate to ``dyadpy diff``.
@@ -84,17 +84,18 @@ def dev(
     host: Annotated[str, typer.Option()] = "127.0.0.1",
     port: Annotated[int, typer.Option()] = 8000,
 ) -> None:
-    """Run the dev server: uvicorn + file watcher + TS codegen.
-
-    Delegates to ``uvicorn --reload`` and lets dyadpy's watcher re-emit
-    ``client.ts`` on every change. The convention layer (file router,
-    scopes, plugins) is picked up automatically because the app factory
-    re-runs on each reload.
-    """
-    import uvicorn
+    """Run the owned dev server with smart route hot swapping."""
+    from causeway.dev import run_causeway_dev
 
     os.environ.setdefault("CAUSEWAY_ENV", "dev")
-    uvicorn.run(module, host=host, port=port, reload=True, factory="app" in module)
+    project = Path.cwd()
+    run_causeway_dev(
+        module=module,
+        host=host,
+        port=port,
+        project=project,
+        routes_root=_discover_routes(project),
+    )
 
 
 @app.command()
@@ -138,8 +139,8 @@ def build(
     """Produce the deployable artifact.
 
     Default build emits three outputs into ``<target>/``: the IR snapshot
-    (``ir.json``), the generated TypeScript client (``client.ts``), and a
-    Python wheel.
+    (``ir.json``), the generated TypeScript client directory (``client/``), and
+    a Python wheel.
 
     ``--binary`` switches to a self-contained, AOT-compiled binary
     (single-file, standalone). Requires ``pip install causeway[binary]``.
@@ -159,7 +160,7 @@ def build(
             "dyadpy.cli",
             "codegen",
             "--out",
-            str(target / "client.ts"),
+            str(target / "client"),
             module,
         ],
         check=False,

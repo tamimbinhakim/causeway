@@ -226,11 +226,11 @@ async def show(me: CurrentUser) -> dict:
 
 
 @pytest.mark.asyncio
-async def test_dependency_raise_propagates(tmp_path: Path) -> None:
+async def test_dependency_raise_reaches_error_renderer(tmp_path: Path) -> None:
     """A ``@dependency`` resolver that raises short-circuits the handler.
 
-    The body must not run; the exception reaches the error renderer just
-    like a guard would.
+    The body must not run; the exception reaches Causeway's error renderer
+    even though Dyadpy now owns compact uncaught-exception rendering.
     """
     routes = tmp_path / "routes"
     _write(
@@ -250,15 +250,22 @@ async def show(me: CurrentUser) -> dict:
 """,
     )
 
-    from causeway.errors import Unauthorized
+    from causeway.errors import error_renderer
 
-    app = App()
+    app = App(exception_handler=error_renderer)
     register(app, discover(routes))
 
     transport = httpx.ASGITransport(app=app)  # type: ignore[arg-type]
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
-        with pytest.raises(Unauthorized, match="sign in"):
-            await client.get("/me")
+        resp = await client.get("/me")
+    assert resp.status_code == 401
+    assert resp.headers["content-type"].startswith("application/problem+json")
+    assert resp.json() == {
+        "type": "about:blank#unauthorized",
+        "title": "unauthorized",
+        "status": 401,
+        "detail": "sign in",
+    }
 
 
 def test_guard_does_not_leak_into_class_middleware(tmp_path: Path) -> None:

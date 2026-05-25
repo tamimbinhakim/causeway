@@ -85,7 +85,7 @@ def _assemble(
     request_id: bool,
     error_renderer_: bool,
 ) -> Any:
-    inner = App()
+    inner = App(exception_handler=error_renderer if error_renderer_ else None)
     register(inner, found)
     attach_health(inner)
     if diagnostics:

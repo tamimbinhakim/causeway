@@ -59,7 +59,7 @@ Run it:
 causeway dev
 ```
 
-`causeway dev` discovers the routes, boots uvicorn, regenerates a typed `client.ts` for your frontend on every save, and exposes `/__causeway` with the route tree, registered tasks, current config, and plugin list.
+`causeway dev` discovers the routes, boots uvicorn once, hot-swaps route edits without restarting the process, and exposes `/__causeway` with the route tree, registered tasks, current config, and plugin list.
 
 ## Primitives in this package
 

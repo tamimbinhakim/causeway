@@ -84,7 +84,7 @@ expose_settings = ["env", "feature_flags"]   # non-secret config to surface to t
 
 What lives here:
 
-- `[client] expose_settings` — allowlist of settings fields to bake into the generated `client.ts` (for things like feature flags or the current env). **Secrets are never exposed**, even if you list them — `SecretStr` / `SecretBytes` are stripped as defense in depth.
+- `[client] expose_settings` — allowlist of settings fields to bake into the generated client (for things like feature flags or the current env). **Secrets are never exposed**, even if you list them — `SecretStr` / `SecretBytes` are stripped as defense in depth.
 - `[app]` — metadata used by the scaffolder and the diagnostics page.
 
 ## What ends up in the TS client

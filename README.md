@@ -37,7 +37,7 @@ A backend-only, Python-native framework that contributes exactly five things to 
 4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery / Arq / TaskIQ with one line.
 5. **Plugin registry** — entry-point discovery so `causeway-auth-jwt`, `causeway-storage-s3`, `causeway-db-sqlmodel`, etc. install cleanly.
 
-Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by [`dyadpy`](https://github.com/tamimbinhakim/dyadpy). From an application author's perspective it's all just Causeway — you write Python handlers; Causeway registers them, validates them, and emits a TypeScript client alongside the running app.
+Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by [`dyadpy`](https://github.com/tamimbinhakim/dyadpy). From an application author's perspective it's all just Causeway — you write Python handlers; Causeway registers them, validates them, and can emit a TypeScript client from the same route IR.
 
 Everything outside those five things (ORM, auth, mailer, storage, cache, search, …) is a **plugin contract with reference adapters** — not in core.
 
@@ -96,10 +96,10 @@ causeway dev
 
 What that does:
 
-1. Discovers `src/app/routes/` → registers handlers → emits a typed `client.ts` for your frontend.
-2. Boots uvicorn on `http://127.0.0.1:8000`.
+1. Discovers `src/app/routes/` → registers handlers.
+2. Boots uvicorn once on `http://127.0.0.1:8000`.
 3. Serves `/__causeway` — route tree, registered tasks, current config (secrets redacted), plugin list.
-4. Hot-reloads `_middleware.py` and `_scope.py` on change.
+4. Hot-swaps route edits in-process; bad reloads keep the previous app serving.
 
 Prefer the TanStack-Router-style flat layout? Same routes, dot-flat:
 

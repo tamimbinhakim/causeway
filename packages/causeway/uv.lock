@@ -95,7 +95,7 @@ wheels = [
 
 [[package]]
 name = "causeway"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -149,7 +149,7 @@ requires-dist = [
     { name = "anyio", specifier = ">=4.13.0" },
     { name = "causeway", extras = ["dramatiq", "otel", "binary"], marker = "extra == 'all'" },
     { name = "dramatiq", extras = ["redis"], marker = "extra == 'dramatiq'", specifier = ">=2.1.0" },
-    { name = "dyadpy", specifier = ">=0.1.9" },
+    { name = "dyadpy", specifier = ">=0.1.11" },
     { name = "msgspec", specifier = ">=0.19" },
     { name = "nuitka", marker = "extra == 'binary'", specifier = ">=2.5" },
     { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.41.1" },
@@ -159,7 +159,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.1" },
     { name = "rich", specifier = ">=15.0.0" },
-    { name = "starlette", specifier = ">=1.0.0" },
+    { name = "starlette", specifier = ">=1.0.1" },
     { name = "structlog", specifier = ">=25.5.0" },
     { name = "typer", specifier = ">=0.25.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.47.0" },
@@ -417,7 +417,7 @@ redis = [
 
 [[package]]
 name = "dyadpy"
-version = "0.1.9"
+version = "0.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -429,9 +429,9 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/39/57faf638186b5bc8d3a692f4a15cc8e45a96d910e47c1eb2efde0afd63cd/dyadpy-0.1.9.tar.gz", hash = "sha256:ce1315f239f67b2b32c6563c78228697d800848ee2c0a653a2a0e8f8dc5cc5a0", size = 72214, upload-time = "2026-05-23T09:39:13.385Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/5b/a15d4d6b5da077dae26791d91bd82a3e8dd0cb59cfd115d3415769b3557d/dyadpy-0.1.11.tar.gz", hash = "sha256:e1485933c4b411e49328b0328195f2cc80df76345acd72da7668dfa808e7109e", size = 79562, upload-time = "2026-05-25T06:24:30.355Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/49/b5fd5554a12b444858783ffe4b4d063155f2186507a4efd4bae9ef4b16a7/dyadpy-0.1.9-py3-none-any.whl", hash = "sha256:5ae3cc9c386755f0027407b8b2e74d3d966d9e57cce0f5f112be78bff90e8b56", size = 57048, upload-time = "2026-05-23T09:39:11.611Z" },
+    { url = "https://files.pythonhosted.org/packages/45/58/3a59b5bc3e6e6025828a49adbe13e3194f4b2cdb7ebe908f1a4d6657b209/dyadpy-0.1.11-py3-none-any.whl", hash = "sha256:9a75d51b2b5e5dfcf60609f3db903bec7d525747da38c510b5f8108578bba608", size = 63240, upload-time = "2026-05-25T06:24:28.592Z" },
 ]
 
 [[package]]
@@ -1253,15 +1253,15 @@ wheels = [
 
 [[package]]
 name = "starlette"
-version = "1.0.0"
+version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/81/69/17425771797c36cded50b7fe44e850315d039f28b15901ab44839e70b593/starlette-1.0.0.tar.gz", hash = "sha256:6a4beaf1f81bb472fd19ea9b918b50dc3a77a6f2e190a12954b25e6ed5eea149", size = 2655289, upload-time = "2026-03-22T18:29:46.779Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/a3/84e821cc54b4ab50ae6dbc6ac3800a651b65ec35f045cc73785380654057/starlette-1.0.1.tar.gz", hash = "sha256:512399c5f1de7fac99c88572212ded9ddeddef2fb32afa82d724000e88b38f4f", size = 2659596, upload-time = "2026-05-21T21:58:58.433Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/c9/584bc9651441b4ba60cc4d557d8a547b5aff901af35bda3a4ee30c819b82/starlette-1.0.0-py3-none-any.whl", hash = "sha256:d3ec55e0bb321692d275455ddfd3df75fff145d009685eb40dc91fc66b03d38b", size = 72651, upload-time = "2026-03-22T18:29:45.111Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/e1/b2df4bc09a1e51ff664c1e17018a4274b42e5e9352e4a478ea540512dc88/starlette-1.0.1-py3-none-any.whl", hash = "sha256:7c0e69b2ee1c848bd54669d908500117a3ee13de603a21427e5c6fc1adf98dcd", size = 72802, upload-time = "2026-05-21T21:58:56.551Z" },
 ]
 
 [[package]]

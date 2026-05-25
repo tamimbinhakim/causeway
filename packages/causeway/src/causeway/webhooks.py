@@ -92,8 +92,8 @@ def verify_signature(
         raise Unauthorized("missing webhook signature")
     try:
         ts_int = int(timestamp)
-    except ValueError as exc:
-        raise Unauthorized("malformed webhook timestamp") from exc
+    except ValueError:
+        raise Unauthorized("malformed webhook timestamp") from None
 
     current = int(now if now is not None else time.time())
     if abs(current - ts_int) > max_skew_seconds:
@@ -359,8 +359,8 @@ async def verify(
 
     try:
         parsed = msgspec.json.decode(body) if body else {}
-    except msgspec.DecodeError as exc:
-        raise Unauthorized("webhook body is not valid JSON") from exc
+    except msgspec.DecodeError:
+        raise Unauthorized("webhook body is not valid JSON") from None
     if not isinstance(parsed, dict):
         raise Unauthorized("webhook body must be a JSON object")
 

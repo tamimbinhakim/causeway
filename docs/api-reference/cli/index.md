@@ -8,7 +8,7 @@ causeway — a lean backend framework for type-safe Python APIs.
 
 Commands:
   new <name>                 Scaffold a new app.
-  dev                        Run the dev server + watcher + TS codegen.
+  dev                        Run the dev server + smart route hot-swap.
   build                      Emit the IR, the TS client, and a wheel.
   plugins                    List registered plugin adapters.
   plugin new <name>          Scaffold a new plugin package.

@@ -67,10 +67,11 @@ Causeway expects to import your app as `app`. If you rename it, pass `--module` 
 
 `causeway dev` runs:
 
-1. Walks `src/app/routes/` → registers every handler → emits a typed `client.ts`.
-2. Boots `uvicorn` on `127.0.0.1:8000` with `--reload`.
+1. Walks `src/app/routes/` and registers every handler.
+2. Boots `uvicorn` once behind Causeway's smart hot-swap wrapper.
 3. Mounts `/healthz`, `/readyz`, `/__causeway` (diagnostics).
-4. Hot-reloads on every saved file.
+4. Hot-swaps route edits without restarting the process. Bad reloads keep the
+   last good app running; lifecycle-sensitive edits print `restart required`.
 
 On a clean boot you see one line per registered route. If a route is missing from `/__causeway`, the discovery rules in [Defining routes](../building/routing/defining-routes.md) explain why.
 

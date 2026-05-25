@@ -1,6 +1,9 @@
 # Errors
 
-Built-in `HttpError` subclasses in `causeway.errors`. Raise them from a handler (or a guard) and the framework renders `application/problem+json`.
+Built-in `HttpError` subclasses in `causeway.errors`. Declare them with
+`@raises(...)` and raise them from a handler to return a typed `Result` error
+envelope. Undeclared errors that reach the global renderer use
+`application/problem+json`.
 
 ```python
 from causeway.errors import (
@@ -27,8 +30,8 @@ class HttpError(Exception):
 
 - `status` — HTTP status code.
 - `code` — stable wire identifier (snake_case). **Don't change after shipping.**
-- `message` — human-readable. Surfaced as `detail` in the rendered body.
-- `detail` — dict. Surfaced as `params` in the rendered body.
+- `message` — human-readable. Surfaced as `error.message` in typed envelopes and `detail` in problem+json fallback responses.
+- `detail` — machine-readable dict. Surfaced as `error.detail` in typed envelopes and `params` in problem+json fallback responses.
 
 ## Subclassing
 
@@ -44,16 +47,36 @@ Declare on the handler with `@raises(QuotaExceeded)` to flow it into the typed c
 
 ## Wire shape
 
+Declared route error:
+
 ```json
 HTTP/1.1 404 Not Found
+content-type: application/json
+
+{
+  "ok": false,
+  "error": {
+    "kind": "NotFound",
+    "status": 404,
+    "code": "not_found",
+    "message": "user 00000000-...",
+    "detail": {},
+    "request_id": "abc123"
+  }
+}
+```
+
+Unhandled fallback error:
+
+```json
+HTTP/1.1 500 Internal Server Error
 content-type: application/problem+json
 
 {
-  "type": "about:blank#not_found",
-  "title": "not_found",
-  "status": 404,
-  "detail": "user 00000000-...",
-  "params": {},
+  "type": "about:blank#internal",
+  "title": "internal",
+  "status": 500,
+  "detail": "internal server error",
   "request_id": "abc123"
 }
 ```
@@ -67,6 +90,10 @@ The renderer also handles two non-HttpError exceptions for convenience:
 | `PermissionError` | 403 `forbidden`                   |
 | `LookupError`     | 404 `not_found`                   |
 | anything else     | 500 `internal` (message scrubbed) |
+
+Built-in `HttpError` values suppress parser/decoder exception chains, so
+expected 4xx failures stay short in tests and tools. Unexpected internal errors
+keep their normal server traceback.
 
 ## `render_problem`
 

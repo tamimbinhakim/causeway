@@ -1,6 +1,6 @@
 # Hot reload
 
-How the dev loop handles `.py` saves without losing state where it can preserve it.
+How the dev loop handles `.py` saves without restarting the server process.
 
 ## What `causeway dev` does
 
@@ -8,58 +8,81 @@ How the dev loop handles `.py` saves without losing state where it can preserve 
 causeway dev
 ```
 
-is roughly:
+starts uvicorn once around a Causeway-owned hot-swap ASGI wrapper:
 
 ```
-uvicorn app:app --reload --reload-includes='*.py'
+uvicorn -> HotSwapApp -> current app snapshot
 ```
 
-— with a few extras layered on:
+On boot, Causeway imports your app, discovers the route tree, starts normal
+lifespan resources, and begins watching Python files. On a route edit it:
 
-1. The app factory pattern means each reload calls `create_app(...)` from scratch — routes re-discover, scopes re-bind.
-2. The dyadpy watcher tails the route tree and re-emits `client.ts` on every save.
-3. The module cache (`causeway.routing._module_cache`) gets reset between reloads via `reset_module_cache()` so re-imports pick up fresh source.
+1. batches file-system events for a short debounce window,
+2. resets Causeway's route-module cache,
+3. re-imports the app entry module,
+4. re-discovers routes,
+5. swaps the new snapshot in only if the rebuild succeeds.
 
-## What's preserved across reloads
+In-flight requests keep using the old snapshot. New requests use the new
+snapshot immediately after the swap.
 
-- **Plugin connections.** `register(...)` calls run in `plugins.py`; on reload the registry rebuilds, but you control what shuts down via `shutdown()` on each adapter. Reuse Redis pools, S3 sessions, etc., if your adapter is idempotent on startup.
-- **OS-level resources.** TCP sockets that uvicorn opens stay open.
+## What's preserved
 
-## What's lost
+- **The server process and socket.** Uvicorn is not restarted for route edits.
+- **In-flight requests.** A request that started before the swap finishes on the
+  old snapshot.
+- **Plugin connections and process-local resources.** The initial app lifespan
+  owns startup/shutdown; route edits do not tear down DB pools, Redis clients,
+  task adapters, or in-memory dev state.
 
-- **In-process state** that lives in module-level globals. A counter you incremented? Gone.
-- **In-flight requests.** Uvicorn drains gracefully but doesn't preserve sessions.
-- **`@task` adapter state** (with `InMemoryAdapter`). Use a real broker for anything that has to survive a code change.
+## Failed reloads
 
-If you want state that survives reloads:
+If a route edit has a syntax error, bad import, bad annotation, or route
+conflict, Causeway prints a short diagnostic and keeps serving the previous app:
 
-- Put it behind a `_scope.py` `startup()` that's idempotent.
-- Use an external store (Redis, Postgres) accessed via a plugin.
+```text
+reload failed - serving previous app
 
-## Why a process reload at all
-
-Uvicorn's `--reload` runs the app inside a child process and replaces the child on every change. This is the only reliable way to evict Python module caches in CPython — `importlib.reload` can leave stale references in unrelated modules.
-
-The trade-off is a sub-second restart on every save, vs. correctness gaps that surface days later. We pick correctness.
-
-## Watch list
-
-By default, every `.py` under the project root is watched. To watch additional file types (templates, YAML config):
-
-```bash
-uvicorn app:app --reload --reload-includes='*.py' --reload-includes='*.yaml'
+SyntaxError: expected ':'
+trace:
+  app/routes/users/$id.py:14 in <module>
+    async def show(id: UUID) -> User
+full traceback: set CAUSEWAY_FULL_TRACEBACK=1
 ```
 
-Or wire it into your own dev script — `causeway dev` is a convenience over uvicorn, not a hard wrapper.
+## Restart-required changes
 
-## Debugging reload loops
+Some changes intentionally do not hot-swap:
 
-Symptoms: file save → reload → reload → reload (loop).
+- Python files outside the route tree, such as `app/plugins.py`,
+  `app/lifespan.py`, or config modules.
+- `_scope.py` files that declare `startup()` or `shutdown()`.
 
-Common cause: a file that the reload process itself writes (e.g. a regenerated `client.ts`). Add it to `--reload-excludes`:
+Those files can change lifecycle resources. Causeway prints `restart required`
+instead of doing a misleading partial reload.
 
-```bash
-uvicorn app:app --reload --reload-excludes='client.ts'
+## Terminal output
+
+The dev server reports each reload transaction:
+
+```text
+Causeway dev
+
+  server     http://127.0.0.1:8000
+  app        app:app
+  routes     app/routes  18 routes
+  reload     smart hot-swap
+
+[12:41:08] changed   app/routes/users/$id.py
+[12:41:08] reload ok 43ms  generation=7  routes=18
+  ~ GET    /users/{id}  app/routes/users/$id.py
+```
+
+Access logs are short too:
+
+```text
+[12:41:11] GET    /users/42       200  5ms
+[12:41:12] POST   /login          401  3ms
 ```
 
 ## See also

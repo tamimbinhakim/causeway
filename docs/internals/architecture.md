@@ -26,7 +26,7 @@ src/app/routes/**/*.py
   _middleware.py          causeway.toml manifest
   _scope.py                    │
         │                      ▼
-        ▼                  Generated client.ts
+        ▼                  Generated client/
    Scoped DI graph
 ```
 
@@ -111,18 +111,18 @@ class TaskAdapter(Protocol):
 
 `causeway dev` runs the whole loop in one process:
 
-1. Auto-discovery of `src/app/routes/` → registers handlers → triggers
-   TS regeneration.
-2. Hot-reload of `_middleware.py` and `_scope.py` without losing
-   in-memory state where safe.
+1. Auto-discovery of `src/app/routes/` → registers handlers.
+2. Smart route hot-swap without restarting uvicorn: rebuild a new app snapshot,
+   then atomically swap it in after validation. In-flight requests stay on the
+   previous snapshot.
 3. A diagnostics page at `http://localhost:8000/__causeway` showing the
    route tree, registered tasks, current config (secrets redacted),
    plugin list, current OTel trace tail.
-4. A rich error overlay (Starlette debug middleware enhanced with route
-   context).
+4. Rich terminal logging for route diffs, reload failures, restart-required
+   files, and short request lines.
 
-`causeway build` produces a single artifact: the IR snapshot, the generated
-`client.ts`, and a deployable Python wheel.
+`causeway build` produces the release artifacts: the IR snapshot, the generated
+`client/` directory, and a deployable Python wheel.
 
 ## Why this shape
 

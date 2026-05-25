@@ -2,8 +2,11 @@
 
 Causeway uses two error mechanisms in tandem:
 
-1. **Typed `HttpError` subclasses** that flow into the response body and the generated TypeScript client.
-2. **`application/problem+json`** ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)) as the wire shape, automatically.
+1. **Typed `HttpError` subclasses** for errors you declare with `@raises(...)`.
+   These return Dyadpy's `Result` envelope so the generated TypeScript client can
+   force exhaustive handling.
+2. **`application/problem+json`** ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457))
+   for undeclared/unhandled exceptions that reach the global renderer.
 
 ## Built-in errors
 
@@ -24,7 +27,7 @@ Each carries:
 - a `status` int (HTTP status code),
 - a stable `code` string (the wire identifier),
 - an optional `message` (string),
-- an optional `detail` (dict, surfaced as `params` in the rendered body).
+- an optional `detail` dict for machine-readable fields.
 
 ## Raising an error
 
@@ -45,14 +48,18 @@ async def show(id: UUID) -> User:
 
 ```json
 HTTP/1.1 404 Not Found
-content-type: application/problem+json
+content-type: application/json
 
 {
-  "type": "about:blank#not_found",
-  "title": "not_found",
-  "status": 404,
-  "detail": "user 00000000-...",
-  "request_id": "abc123"
+  "ok": false,
+  "error": {
+    "kind": "NotFound",
+    "status": 404,
+    "code": "not_found",
+    "message": "user 00000000-...",
+    "detail": {},
+    "request_id": "abc123"
+  }
 }
 ```
 
@@ -109,14 +116,18 @@ raise BadRequest(
 )
 ```
 
-- `message` → human-readable, surfaced as `detail` in the problem+json body.
-- `detail` (dict) → machine-readable, surfaced as `params` in the body.
+- `message` → human-readable, surfaced as `error.message` in declared error envelopes and `detail` in problem+json fallback responses.
+- `detail` (dict) → machine-readable, surfaced as `error.detail` in declared error envelopes and `params` in problem+json fallback responses.
 
-The client can inspect both: `error.detail` (the message string), `error.params` (the dict).
+The client can inspect both: `error.message` (string), `error.detail` (dict).
 
 ## What about non-typed exceptions?
 
-Anything that isn't an `HttpError` subclass is rendered as `500 internal` with a generic message:
+Anything that is not declared on the route with `@raises(...)` is not converted
+into a `Result` branch. If it reaches Causeway's global renderer, it becomes
+`application/problem+json`.
+
+Unknown internal exceptions are rendered as `500 internal` with a generic message:
 
 ```json
 {
@@ -138,7 +149,16 @@ Two convenience exceptions get special treatment (so `@guard` functions can stay
 
 ## Request id in errors
 
-If the [`RequestIdMiddleware`](../observability/index.md) is installed (the default), every error response carries a `request_id` field. Pair it with structured logs and you can grep one request across services.
+If the [`RequestIdMiddleware`](../observability/index.md) is installed (the default),
+every typed error envelope carries `error.request_id`, and every problem+json
+error carries top-level `request_id`. Pair it with structured logs and you can
+grep one request across services.
+
+## Traceback shape
+
+Public 4xx errors should be short. Causeway raises built-in `HttpError` values
+without chaining parser/decoder exceptions into the traceback. Undeclared
+internal exceptions still keep the full server-side traceback for debugging.
 
 ## Errors in guards
 

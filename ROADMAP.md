@@ -14,7 +14,7 @@ else either rides on top or doesn't belong inside.
 
 ### Core (in `causeway`)
 
-- [ ] **File-based router** — `[id].py`, `(group)/`, `_middleware.py`,
+- [ ] **File-based router** — `$id.py`, `(group)/`, `_middleware.py`,
       `_scope.py`. Discovery via `pathlib.Path.glob()` +
       `importlib.util.spec_from_file_location()`. Emits route
       registrations into the IR.
@@ -56,7 +56,7 @@ v0.2 is about removing rough edges.
 
 - [ ] **Route-tree diff in CI.** `causeway diff <old> <new>` flags removed
       routes / renamed fields / narrowed types as breaking.
-- [ ] **WebSocket route convention** — `[id].ws.py`.
+- [ ] **WebSocket route convention** — `$id.ws.py`.
 - [ ] **Coverage gate** — ≥ 85% across `causeway/*` source (CI-enforced).
 - [ ] **Reproducible benchmark suite** — Causeway vs FastAPI vs Litestar vs
       the underlying RPC layer (raw `dyadpy`) across cold-start +

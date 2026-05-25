@@ -23,13 +23,17 @@ causeway build [--target <dir>]
 ```
 dist/
 ├── ir.json                          # IR snapshot
-├── client.ts                        # Generated TypeScript client
+├── client/                          # Generated TypeScript client directory
+│   ├── index.ts
+│   ├── types.d.ts
+│   ├── meta.ts
+│   └── routes/
 └── my_app-0.0.1-py3-none-any.whl    # Python wheel
 ```
 
 ## Pipeline
 
-1. Calls `python -m dyadpy codegen --out dist/client.ts` for the TS client.
+1. Calls `python -m dyadpy codegen --out dist/client` for the TS client.
 2. Calls `python -m build --wheel --outdir dist/` for the wheel.
 
 Both run via subprocess so failures surface with the original tool's error message.

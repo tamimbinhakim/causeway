@@ -59,7 +59,7 @@ async def reset(ctx: Context) -> None:
     await enqueue_reset()
 ```
 
-For error statuses, raise — see [Errors](./errors.md).
+For error statuses, raise a declared `HttpError` — see [Errors](./errors.md).
 
 ## Custom headers
 

@@ -59,13 +59,14 @@ create_app(
 
 ## Return value
 
-A `starlette.applications.Starlette` instance. Run with `uvicorn`:
+A `starlette.applications.Starlette` instance. Run directly with `uvicorn`:
 
 ```bash
-uvicorn app:app --reload
+uvicorn app:app
 ```
 
-Or via the CLI (which adds the file watcher and TS codegen):
+Or via the CLI, which adds the smart route watcher, richer logs, diagnostics,
+and failed-reload protection:
 
 ```bash
 causeway dev

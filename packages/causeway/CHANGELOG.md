@@ -7,6 +7,31 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.4.0...causeway-v0.4.1) (2026-05-25)
+
+### ⚠ BREAKING CHANGES
+
+- `causeway build` now writes the generated TypeScript client to
+  `dist/client/` instead of `dist/client.ts`, matching Dyadpy's optimized
+  generated-client layout.
+
+### Features
+
+- add smart dev hot reload that swaps changed route snapshots in-process
+  without restarting uvicorn for ordinary route edits.
+- keep the last good app serving when a reload fails, with rich route diff
+  logging and short failure summaries.
+- use compact uncaught exception tracebacks by default for cleaner terminal
+  debugging.
+
+### Bug Fixes
+
+- keep typed error responses and webhook/pagination failures concise and
+  copyable while preserving request ids and useful status fields.
+- render undeclared `HttpError` values through Causeway's problem+json
+  response path while Dyadpy still handles compact traceback logging for raw
+  apps.
+
 ## [0.4.0](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.3.8...causeway-v0.4.0) (2026-05-23)
 
 ### ⚠ BREAKING CHANGES
