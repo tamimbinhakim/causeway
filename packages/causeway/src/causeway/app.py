@@ -173,6 +173,13 @@ def _build_mode_is_binary() -> bool:
 
 
 def _collect_class_middleware(found: Any) -> list[StarletteMiddleware]:
+    """Chain every per-route class middleware into a single ``BaseHTTPMiddleware``.
+
+    Each ``BaseHTTPMiddleware`` spawns an ``anyio.create_task_group()`` + a
+    memory-object-stream pair per request — meaningful overhead. Collapsing
+    N middlewares into one wrapper keeps the same outer→inner ordering and
+    per-route path/method gating while paying that cost just once.
+    """
     seen: dict[int, tuple[CausewayMiddleware, dict[str, list[re.Pattern[str]]]]] = {}
     order: list[int] = []
     path_cache: dict[str, re.Pattern[str]] = {}
@@ -195,27 +202,32 @@ def _collect_class_middleware(found: Any) -> list[StarletteMiddleware]:
                 order.append(mid)
             entry[1].setdefault(method, []).append(regex)
 
-    entries: list[StarletteMiddleware] = []
-    for mid in order:
-        mw, by_method = seen[mid]
-        entries.append(
-            StarletteMiddleware(BaseHTTPMiddleware, dispatch=_gated_dispatch(mw, by_method)),
-        )
-    return entries
+    if not order:
+        return []
+    chain = [seen[mid] for mid in order]
+    return [StarletteMiddleware(BaseHTTPMiddleware, dispatch=_chained_dispatch(chain))]
 
 
-def _gated_dispatch(
-    mw: CausewayMiddleware,
-    by_method: dict[str, list[re.Pattern[str]]],
+def _chained_dispatch(
+    chain: list[tuple[CausewayMiddleware, dict[str, list[re.Pattern[str]]]]],
 ) -> Any:
     async def dispatch(request: Any, call_next: Any) -> Any:
-        regexes = by_method.get(request.method)
-        if regexes is not None:
-            path = request.url.path
-            for regex in regexes:
-                if regex.fullmatch(path) is not None:
-                    return await mw(request, call_next)
-        return await call_next(request)
+        path = request.url.path
+        method = request.method
+        matching = [
+            mw
+            for mw, by_method in chain
+            if any((r.fullmatch(path) is not None) for r in (by_method.get(method) or ()))
+        ]
+        if not matching:
+            return await call_next(request)
+
+        async def step(i: int, req: Any) -> Any:
+            if i == len(matching):
+                return await call_next(req)
+            return await matching[i](req, lambda r: step(i + 1, r))
+
+        return await step(0, request)
 
     return dispatch
 

@@ -1,7 +1,9 @@
 """Observability: request-id middleware, structlog setup, OTel hooks.
 
 Causeway wires correlation; the exporter is the user's choice. OTel setup is
-a no-op when the SDK isn't installed.
+a no-op when the SDK isn't installed. ``structlog`` is loaded lazily so
+``import causeway`` doesn't pay its ~16ms cost when the caller never
+configures structured logging.
 """
 
 from __future__ import annotations
@@ -10,12 +12,15 @@ import logging
 import uuid
 from typing import Any
 
-import structlog
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _log = logging.getLogger("causeway.observability")
+
+# Sentinel for "structlog isn't loaded yet" so the request-id middleware can
+# skip the context bind without import-ordering games.
+_structlog: Any = None
 
 
 class RequestIdMiddleware:
@@ -27,7 +32,7 @@ class RequestIdMiddleware:
     a single id through a request fan-out.
     """
 
-    HEADER = "x-request-id"
+    HEADER = b"x-request-id"
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -37,20 +42,26 @@ class RequestIdMiddleware:
             await self.app(scope, receive, send)
             return
 
-        headers = dict(scope.get("headers", []) or [])
-        existing = headers.get(self.HEADER.encode())
+        existing: bytes | None = None
+        for name, value in scope.get("headers", ()) or ():
+            if name == self.HEADER:
+                existing = value
+                break
         request_id = existing.decode() if existing else uuid.uuid4().hex
         scope.setdefault("state", {})
         scope["state"]["request_id"] = request_id
 
+        header_pair = (self.HEADER, request_id.encode())
+
         async def send_with_header(message: Message) -> None:
             if message["type"] == "http.response.start":
-                raw_headers = list(message.get("headers", []))
-                raw_headers.append((self.HEADER.encode(), request_id.encode()))
-                message["headers"] = raw_headers
+                message["headers"] = [*message.get("headers", ()), header_pair]
             await send(message)
 
-        with structlog.contextvars.bound_contextvars(request_id=request_id):
+        if _structlog is not None:
+            with _structlog.contextvars.bound_contextvars(request_id=request_id):
+                await self.app(scope, receive, send_with_header)
+        else:
             await self.app(scope, receive, send_with_header)
 
 
@@ -60,6 +71,12 @@ def configure_logging(*, level: str = "INFO", json: bool = True) -> None:
     Pass ``json=False`` for a pretty console renderer in dev. Production runs
     keep ``json=True`` so a log shipper can ingest the lines directly.
     """
+    global _structlog
+    # Deferred so ``import causeway`` doesn't pay structlog's import cost
+    # for apps that never configure structured logging.
+    import structlog
+
+    _structlog = structlog
     timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
     pre_chain: list[Any] = [
         structlog.contextvars.merge_contextvars,
