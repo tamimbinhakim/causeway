@@ -11,11 +11,14 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
 from causeway._runtime import App
+
+if TYPE_CHECKING:
+    from causeway.errors import HttpErrorFormatter
 
 
 class TestApp:
@@ -43,6 +46,7 @@ class TestApp:
         settings: Any = None,
         diagnostics: bool = False,
         request_id: bool = False,
+        error_formatter: HttpErrorFormatter | None = None,
     ) -> TestApp:
         """Discover ``routes_root`` and wire a fresh app for in-process testing.
 
@@ -63,6 +67,7 @@ class TestApp:
             diagnostics=diagnostics,
             request_id=request_id,
             error_renderer_=True,
+            error_formatter=error_formatter,
         )
         return cls(app)
 
@@ -144,7 +149,6 @@ async def stub(provider: Callable[..., Any], value: Any) -> AsyncIterator[None]:
 # Event / webhook capture helpers
 # ---------------------------------------------------------------------------
 from dataclasses import dataclass as _dataclass  # noqa: E402
-from typing import TYPE_CHECKING  # noqa: E402
 
 from causeway._testing import (  # noqa: E402 - inline-scenario surface
     Expectation,

@@ -10,9 +10,15 @@ Handlers with no ``@raises`` return the bare value — keeps the simple case sim
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from dataclasses import asdict
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from starlette.requests import Request
+
+    from causeway.errors import HttpErrorFormatter
 
 F = TypeVar("F", bound=Callable[..., object])
 
@@ -44,7 +50,12 @@ def get_declared_raises(handler: object) -> tuple[type[Exception], ...]:
     return getattr(handler, _RAISES_ATTR, ())
 
 
-def exception_to_payload(exc: Exception) -> dict[str, Any]:
+def exception_to_payload(
+    exc: Exception,
+    *,
+    request: Request | None = None,
+    error_formatter: HttpErrorFormatter | None = None,
+) -> dict[str, Any]:
     """Serialize an exception to ``{ "kind": ClassName, ...fields }``.
 
     Tries, in order: ``exc.to_dict()`` → ``dataclasses.asdict`` →
@@ -55,7 +66,7 @@ def exception_to_payload(exc: Exception) -> dict[str, Any]:
     body: dict[str, Any]
     to_dict: Any = getattr(exc, "to_dict", None)
     if callable(to_dict):
-        raw: Any = to_dict()
+        raw: Any = _call_to_dict(to_dict, request=request, error_formatter=error_formatter)
         body = {str(k): v for k, v in dict(raw).items()}
     elif _is_dataclass_instance(exc):
         body = asdict(exc)  # type: ignore[call-overload]
@@ -65,6 +76,26 @@ def exception_to_payload(exc: Exception) -> dict[str, Any]:
         body = {"message": str(exc)}
     _merge_class_metadata(exc, body)
     return {"kind": type(exc).__name__, **body}
+
+
+def _call_to_dict(
+    to_dict: Callable[..., Any],
+    *,
+    request: Request | None,
+    error_formatter: HttpErrorFormatter | None,
+) -> Any:
+    try:
+        params = inspect.signature(to_dict).parameters
+    except (TypeError, ValueError):
+        return to_dict()
+
+    accepts_kwargs = any(p.kind is p.VAR_KEYWORD for p in params.values())
+    kwargs: dict[str, Any] = {}
+    if accepts_kwargs or "request" in params:
+        kwargs["request"] = request
+    if accepts_kwargs or "error_formatter" in params:
+        kwargs["error_formatter"] = error_formatter
+    return to_dict(**kwargs)
 
 
 def _merge_class_metadata(exc: Exception, body: dict[str, Any]) -> None:

@@ -121,6 +121,35 @@ raise BadRequest(
 
 The client can inspect both: `error.message` (string), `error.detail` (dict).
 
+## App-level formatting
+
+Causeway keeps error creation close to the handler, but lets the app translate
+typed `HttpError` values into final wire messages at the boundary. Pass
+`error_formatter=` to `create_app`:
+
+```python
+from starlette.requests import Request
+
+from causeway import create_app
+from causeway.errors import HttpError
+
+
+def format_error(exc: HttpError, request: Request | None) -> dict:
+    if exc.message == "invalid_phone":
+        return {
+            "message": "Phone number is not valid for the selected country",
+            "detail": {**exc.detail, "reason": "invalid_phone"},
+        }
+    return {"message": exc.message}
+
+
+app = create_app("app/routes", error_formatter=format_error)
+```
+
+The formatter is called for both declared `@raises(...)` result envelopes and
+undeclared `HttpError` values rendered as problem+json. Any omitted `status`,
+`code`, `message`, or `detail` field is filled from the original error.
+
 ## What about non-typed exceptions?
 
 Anything that is not declared on the route with `@raises(...)` is not converted

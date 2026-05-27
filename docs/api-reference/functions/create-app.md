@@ -23,6 +23,7 @@ create_app(
     diagnostics: bool = True,
     request_id: bool = True,
     error_renderer_: bool = True,
+    error_formatter: HttpErrorFormatter | None = None,
 ) -> Starlette
 ```
 
@@ -38,6 +39,7 @@ create_app(
 | `diagnostics`      | `True`              | Mount `/__causeway`. Disable in production.                                                                   |
 | `request_id`       | `True`              | Install `RequestIdMiddleware` at the app boundary.                                                            |
 | `error_renderer_`  | `True`              | Install the problem+json renderer for all exceptions.                                                         |
+| `error_formatter`  | `None`              | Optional app-level formatter for `HttpError` payloads in both typed `Result` envelopes and problem+json.      |
 
 ## What it does
 
@@ -49,7 +51,8 @@ create_app(
 6. Wraps the inner runtime `App` in a Starlette app with:
    - `RequestIdMiddleware` (when `request_id=True`),
    - every collected class `Middleware` instance from `_middleware.py` files,
-   - the problem+json error renderer (when `error_renderer_=True`).
+   - the problem+json error renderer (when `error_renderer_=True`),
+   - the `HttpError` formatter (when `error_formatter` is provided).
 7. Walks the three event-related trees:
    - `events_root`: imports each `.py`; every `Event` subclass registers itself by `wire_name` via `__init_subclass__`.
    - `listeners_root`: imports each `.py` so `@<Event>.listen` decorators run at module scope.
@@ -59,7 +62,8 @@ create_app(
 
 ## Return value
 
-A `starlette.applications.Starlette` instance. Run directly with `uvicorn`:
+A runnable ASGI app that exposes the underlying Starlette app methods (such as
+`router` and `add_middleware`). Run directly with `uvicorn`:
 
 ```bash
 uvicorn app:app

@@ -21,7 +21,7 @@ from causeway._loader import import_path
 from causeway._runtime import App
 from causeway._traceback import ExceptionShield
 from causeway.diagnostics import attach as attach_diagnostics
-from causeway.errors import error_renderer
+from causeway.errors import HttpErrorFormatter, make_error_renderer
 from causeway.health import attach as attach_health
 from causeway.middleware import Middleware as CausewayMiddleware
 from causeway.observability import RequestIdMiddleware
@@ -38,6 +38,7 @@ def create_app(
     diagnostics: bool = True,
     request_id: bool = True,
     error_renderer_: bool = True,
+    error_formatter: HttpErrorFormatter | None = None,
 ) -> Any:
     _discover_plugins(routes_root)
     found = discover(routes_root)
@@ -51,6 +52,7 @@ def create_app(
         diagnostics=diagnostics,
         request_id=request_id,
         error_renderer_=error_renderer_,
+        error_formatter=error_formatter,
     )
 
 
@@ -62,6 +64,7 @@ def create_app_frozen(
     diagnostics: bool = False,
     request_id: bool = True,
     error_renderer_: bool = True,
+    error_formatter: HttpErrorFormatter | None = None,
 ) -> Any:
     if _build_mode_is_binary() and diagnostics:
         diagnostics = False
@@ -73,6 +76,7 @@ def create_app_frozen(
         diagnostics=diagnostics,
         request_id=request_id,
         error_renderer_=error_renderer_,
+        error_formatter=error_formatter,
     )
 
 
@@ -85,8 +89,10 @@ def _assemble(
     diagnostics: bool,
     request_id: bool,
     error_renderer_: bool,
+    error_formatter: HttpErrorFormatter | None,
 ) -> Any:
-    inner = App(exception_handler=error_renderer if error_renderer_ else None)
+    renderer = make_error_renderer(error_formatter) if error_renderer_ else None
+    inner = App(exception_handler=renderer, error_formatter=error_formatter)
     register(inner, found)
     attach_health(inner)
     if diagnostics:
@@ -98,8 +104,8 @@ def _assemble(
     middleware.extend(_collect_class_middleware(found))
 
     exception_handlers: dict[Any, Any] = {}
-    if error_renderer_:
-        exception_handlers[Exception] = error_renderer
+    if renderer is not None:
+        exception_handlers[Exception] = renderer
 
     _ = events  # discovery already had its side effects; nothing to install
 

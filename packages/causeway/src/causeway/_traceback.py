@@ -398,6 +398,9 @@ class ExceptionShield:
         self.app = app
         self._fallback_logger = logging.getLogger("causeway.shield")
 
+    def __getattr__(self, name: str) -> object:
+        return getattr(self.app, name)
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)

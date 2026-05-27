@@ -20,7 +20,7 @@ import re
 import typing
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Annotated, Any, cast, get_args, get_origin
+from typing import TYPE_CHECKING, Annotated, Any, cast, get_args, get_origin
 
 import msgspec
 from starlette.background import BackgroundTask
@@ -39,6 +39,9 @@ from causeway._runtime.streaming import (
     stream_event_type,
 )
 from causeway._traceback import log_exception
+
+if TYPE_CHECKING:
+    from causeway.errors import HttpErrorFormatter
 
 _MISSING: Any = object()
 _PATH_PARAM_RE = re.compile(r"\{([^}:]+)(?::[^}]+)?\}")
@@ -593,10 +596,19 @@ def _build_response(result: Any, plan: HandlerPlan, ctx: Context | None) -> Resp
     return resp
 
 
-def _build_error_response(exc: Exception, ctx: Context | None) -> Response:
+def _build_error_response(
+    exc: Exception,
+    ctx: Context | None,
+    *,
+    error_formatter: HttpErrorFormatter | None = None,
+) -> Response:
     headers = _apply_ctx_headers(ctx, {})
     background = _ctx_background(ctx)
-    payload = exception_to_payload(exc)
+    payload = exception_to_payload(
+        exc,
+        request=ctx.request if ctx is not None else None,
+        error_formatter=error_formatter,
+    )
     request_id = _request_id(ctx)
     if request_id is not None:
         payload["request_id"] = request_id
@@ -650,6 +662,7 @@ class RouteRunner:
     handler: Callable[..., Any]
     plan: HandlerPlan
     exception_handler: ExceptionHandler | None = None
+    error_formatter: HttpErrorFormatter | None = None
 
     async def handle(self, request: Request) -> Response:
         teardown: list[TeardownFn] = []
@@ -693,7 +706,11 @@ class RouteRunner:
             # raised inside the handler body or inside a ``Depends(...)`` provider.
             if isinstance(exc, self.plan.raises):
                 await _run_teardown(teardown)
-                return _build_error_response(exc, ctx_for_response)
+                return _build_error_response(
+                    exc,
+                    ctx_for_response,
+                    error_formatter=self.error_formatter,
+                )
             await _run_teardown(teardown)
             return await self._handle_unhandled(exc, ctx_for_response, request)
         finally:
@@ -828,7 +845,11 @@ class RouteRunner:
             yield encode_done()
         except Exception as exc:
             if isinstance(exc, self.plan.raises):
-                payload = exception_to_payload(exc)
+                payload = exception_to_payload(
+                    exc,
+                    request=request,
+                    error_formatter=self.error_formatter,
+                )
                 request_id = _request_id_from_request(request)
                 if request_id is not None:
                     payload["request_id"] = request_id

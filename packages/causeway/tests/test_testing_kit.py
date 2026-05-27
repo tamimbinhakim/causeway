@@ -36,6 +36,31 @@ async def test_testapp_includes_health_endpoints(tmp_path: Path) -> None:
     assert resp.status_code == 200
 
 
+async def test_testapp_from_routes_accepts_error_formatter(tmp_path: Path) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "index.py",
+        """from causeway import get, raises
+from causeway.errors import BadRequest
+
+@get
+@raises(BadRequest)
+async def r() -> dict:
+    raise BadRequest('raw')
+""",
+    )
+
+    app = TestApp.from_routes(
+        routes,
+        error_formatter=lambda exc, request: {"message": f"{request.url.path}: {exc.message}"},
+    )
+    resp = await app.get("/")
+
+    assert resp.status_code == 400
+    assert resp.json()["error"]["message"] == "/: raw"
+
+
 async def test_diagnostics_snapshot_includes_known_fields() -> None:
     data = snapshot()
     assert set(data.keys()) >= {"routes", "tasks", "cron", "plugins", "config"}

@@ -25,6 +25,7 @@ from starlette.routing import Route as StarletteRoute
 from starlette.routing import WebSocketRoute as StarletteWebSocketRoute
 
 from causeway._runtime.runtime import ExceptionHandler, HandlerPlan, RouteRunner, build_plan
+from causeway.errors import HttpErrorFormatter
 
 # ``causeway._runtime.bidi`` is imported lazily inside the ``websocket`` decorator and the
 # build path — it drags ``starlette.websockets`` which costs ~5 ms at import
@@ -76,6 +77,7 @@ class App:
     routes: list[Route] = field(default_factory=_new_routes)
     websocket_routes: list[WebSocketRoute] = field(default_factory=_new_ws_routes)
     exception_handler: ExceptionHandler | None = None
+    error_formatter: HttpErrorFormatter | None = None
     _starlette: Starlette | None = None
 
     def _register(self, method: HttpMethod, path: str) -> Callable[[Handler], Handler]:
@@ -145,6 +147,7 @@ class App:
                 handler=r.handler,
                 plan=r.plan,
                 exception_handler=self.exception_handler,
+                error_formatter=self.error_formatter,
             )
             starlette_routes.append(
                 StarletteRoute(

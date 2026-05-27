@@ -9,6 +9,7 @@ original exception is kept off the wire so internal types don't leak.
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 from starlette.requests import Request
@@ -32,6 +33,15 @@ class HttpError(Exception):
         self.message = message or self.code
         self.detail = detail or {}
         self.__suppress_context__ = True
+
+    def to_dict(
+        self,
+        *,
+        request: Request | None = None,
+        error_formatter: HttpErrorFormatter | None = None,
+    ) -> dict[str, Any]:
+        """Payload used by ``@raises`` result envelopes."""
+        return format_http_error(self, request=request, error_formatter=error_formatter)
 
 
 class BadRequest(HttpError):
@@ -69,18 +79,45 @@ class Internal(HttpError):
     code = "internal"
 
 
-def render_problem(exc: BaseException, *, request_id: str | None = None) -> Response:
+HttpErrorFormatter = Callable[[HttpError, Request | None], Mapping[str, Any]]
+ErrorRenderer = Callable[[Request, Exception], Awaitable[Response]]
+
+
+def format_http_error(
+    exc: HttpError,
+    *,
+    request: Request | None = None,
+    error_formatter: HttpErrorFormatter | None = None,
+) -> dict[str, Any]:
+    """Return the canonical wire payload for a typed HTTP error."""
+    raw = dict(error_formatter(exc, request)) if error_formatter is not None else {}
+
+    raw.setdefault("status", exc.status)
+    raw.setdefault("code", exc.code)
+    raw.setdefault("message", exc.message)
+    raw.setdefault("detail", exc.detail)
+    return raw
+
+
+def render_problem(
+    exc: BaseException,
+    *,
+    request_id: str | None = None,
+    request: Request | None = None,
+    error_formatter: HttpErrorFormatter | None = None,
+) -> Response:
     """Turn an exception into an ``application/problem+json`` response."""
     if isinstance(exc, HttpError):
+        payload = format_http_error(exc, request=request, error_formatter=error_formatter)
+        status = int(payload["status"])
         body: dict[str, Any] = {
-            "type": f"about:blank#{exc.code}",
-            "title": exc.code,
-            "status": exc.status,
-            "detail": exc.message,
+            "type": f"about:blank#{payload['code']}",
+            "title": payload["code"],
+            "status": status,
+            "detail": payload["message"],
         }
-        if exc.detail:
-            body["params"] = exc.detail
-        status = exc.status
+        if payload["detail"]:
+            body["params"] = payload["detail"]
     elif isinstance(exc, PermissionError):
         body = {
             "type": "about:blank#forbidden",
@@ -112,28 +149,46 @@ def render_problem(exc: BaseException, *, request_id: str | None = None) -> Resp
     return JSONResponse(body, status_code=status, media_type="application/problem+json")
 
 
+def make_error_renderer(error_formatter: HttpErrorFormatter | None = None) -> ErrorRenderer:
+    """Build a Starlette exception renderer with optional ``HttpError`` formatting."""
+
+    async def renderer(request: Request, exc: Exception) -> Response:
+        request_id = getattr(request.state, "request_id", None)
+        if not isinstance(exc, (HttpError, PermissionError, LookupError)):
+            log_exception(
+                _log,
+                exc,
+                request=request,
+                request_id=request_id if isinstance(request_id, str) else None,
+            )
+        return render_problem(
+            exc,
+            request_id=request_id if isinstance(request_id, str) else None,
+            request=request,
+            error_formatter=error_formatter,
+        )
+
+    return renderer
+
+
 async def error_renderer(request: Request, exc: Exception) -> Response:
     """Starlette ``exception_handlers`` entry. Reads ``request.state.request_id`` if set."""
-    request_id = getattr(request.state, "request_id", None)
-    if not isinstance(exc, (HttpError, PermissionError, LookupError)):
-        log_exception(
-            _log,
-            exc,
-            request=request,
-            request_id=request_id if isinstance(request_id, str) else None,
-        )
-    return render_problem(exc, request_id=request_id)
+    return await make_error_renderer()(request, exc)
 
 
 __all__ = [
     "BadRequest",
     "Conflict",
+    "ErrorRenderer",
     "Forbidden",
     "HttpError",
+    "HttpErrorFormatter",
     "Internal",
     "NotFound",
     "TooManyRequests",
     "Unauthorized",
     "error_renderer",
+    "format_http_error",
+    "make_error_renderer",
     "render_problem",
 ]

@@ -46,6 +46,19 @@ async def test_create_app_includes_health_and_diagnostics(tmp_path: Path) -> Non
         assert (await client.get("/__causeway")).status_code == 200
 
 
+def test_create_app_result_exposes_starlette_app_methods(tmp_path: Path) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "index.py",
+        "from causeway import get\n@get\nasync def r() -> dict: return {}\n",
+    )
+    app = create_app(routes)
+
+    assert app.router is app.app.router
+    assert callable(app.add_middleware)
+
+
 async def test_class_middleware_wraps_responses(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(
@@ -124,6 +137,62 @@ async def r() -> dict:
         "detail": "sign in",
     }
     assert isinstance(body["request_id"], str)
+
+
+async def test_create_app_error_formatter_applies_to_result_and_problem_json(
+    tmp_path: Path,
+) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "declared.py",
+        """from causeway import get, raises
+from causeway.errors import BadRequest
+
+@get
+@raises(BadRequest)
+async def r() -> dict:
+    raise BadRequest('invalid_phone', detail={'field': 'phone'})
+""",
+    )
+    _write(
+        routes,
+        "undeclared.py",
+        """from causeway import get
+from causeway.errors import BadRequest
+
+@get
+async def r() -> dict:
+    raise BadRequest('invalid_phone', detail={'field': 'phone'})
+""",
+    )
+
+    def formatter(exc, request):
+        return {
+            "message": f"{request.url.path}: {exc.message}",
+            "detail": {**exc.detail, "formatted": True},
+        }
+
+    app = create_app(routes, error_formatter=formatter)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+        declared = await client.get("/declared")
+        problem = await client.get("/undeclared")
+
+    declared_error = declared.json()["error"]
+    assert declared.status_code == 400
+    assert {k: declared_error[k] for k in ("kind", "status", "code", "message", "detail")} == {
+        "kind": "BadRequest",
+        "status": 400,
+        "code": "bad_request",
+        "message": "/declared: invalid_phone",
+        "detail": {"field": "phone", "formatted": True},
+    }
+    assert isinstance(declared_error["request_id"], str)
+    assert problem.status_code == 400
+    assert problem.headers["content-type"].startswith("application/problem+json")
+    assert problem.json()["detail"] == "/undeclared: invalid_phone"
+    assert problem.json()["params"] == {"field": "phone", "formatted": True}
 
 
 def test_create_app_loads_app_plugins_and_runs_lifecycle(tmp_path: Path) -> None:

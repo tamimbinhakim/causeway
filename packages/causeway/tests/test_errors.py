@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 
+from starlette.requests import Request
+
+from causeway._runtime.errors import exception_to_payload
 from causeway.errors import (
     BadRequest,
     Conflict,
@@ -11,6 +14,7 @@ from causeway.errors import (
     HttpError,
     NotFound,
     Unauthorized,
+    format_http_error,
     render_problem,
 )
 
@@ -66,3 +70,39 @@ def test_http_error_carries_params() -> None:
     resp = render_problem(err)
     body = _body(resp)
     assert body["params"] == {"field": "email", "reason": "invalid"}
+
+
+def test_http_error_default_payload_matches_problem_shape() -> None:
+    payload = format_http_error(BadRequest("bad", detail={"field": "email"}))
+
+    assert payload == {
+        "status": 400,
+        "code": "bad_request",
+        "message": "bad",
+        "detail": {"field": "email"},
+    }
+
+
+def test_http_error_formatter_customizes_problem_and_result_payloads() -> None:
+    request = Request({"type": "http", "method": "GET", "path": "/x", "headers": []})
+
+    def formatter(exc: HttpError, req: Request | None) -> dict[str, object]:
+        assert req is request
+        return {
+            "message": f"Friendly: {exc.message}",
+            "detail": {"path": req.url.path if req is not None else ""},
+        }
+
+    problem = _body(
+        render_problem(BadRequest("raw_code"), request=request, error_formatter=formatter),
+    )
+    result_payload = exception_to_payload(
+        BadRequest("raw_code"),
+        request=request,
+        error_formatter=formatter,
+    )
+
+    assert problem["detail"] == "Friendly: raw_code"
+    assert problem["params"] == {"path": "/x"}
+    assert result_payload["message"] == "Friendly: raw_code"
+    assert result_payload["detail"] == {"path": "/x"}

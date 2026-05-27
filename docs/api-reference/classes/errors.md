@@ -26,6 +26,7 @@ class HttpError(Exception):
     code: str = "internal"
 
     def __init__(self, message: str | None = None, *, detail: dict | None = None): ...
+    def to_dict(self, *, request=None, error_formatter=None) -> dict: ...
 ```
 
 - `status` — HTTP status code.
@@ -95,12 +96,29 @@ Built-in `HttpError` values suppress parser/decoder exception chains, so
 expected 4xx failures stay short in tests and tools. Unexpected internal errors
 keep their normal server traceback.
 
+## Formatting `HttpError`
+
+```python
+from causeway.errors import HttpError, HttpErrorFormatter, format_http_error
+```
+
+`HttpErrorFormatter` is a callable:
+
+```python
+def formatter(error: HttpError, request: Request | None) -> dict: ...
+```
+
+Use `create_app(..., error_formatter=formatter)` to apply it to both declared
+typed error envelopes and problem+json fallback responses. The formatter can
+return any subset of `status`, `code`, `message`, and `detail`; missing fields
+are filled from the original error.
+
 ## `render_problem`
 
 ```python
 from causeway.errors import render_problem
 
-resp = render_problem(exc, request_id="abc")
+resp = render_problem(exc, request_id="abc", error_formatter=formatter)
 ```
 
 Used internally by the framework — useful in custom middleware if you need to render errors yourself.
