@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from dyadpy import App
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
+from causeway._runtime import App
 from causeway.observability import RequestIdMiddleware, configure_logging
 
 

@@ -1,28 +1,28 @@
 """Causeway CLI.
 
-Each command is a thin shell over dyadpy plus the convention layer:
-
 - ``causeway new <name>``        — scaffold a project from the template tree.
 - ``causeway dev``               — owned uvicorn dev server + smart route hot-swap.
+- ``causeway codegen``           — emit the typed TypeScript client directory.
 - ``causeway build``             — IR + generated client directory + wheel. ``--binary`` AOT-compiles via Nuitka.
 - ``causeway freeze``            — emit the AOT build tree without compiling.
 - ``causeway plugins``           — list registered adapters.
-- ``causeway diff``              — delegate to ``dyadpy diff``.
+- ``causeway diff``              — compare two IR snapshots; non-zero exit on breaking changes.
+- ``causeway ir``                — dump the route IR as JSON for diffing / external tooling.
 - ``causeway deploy <target>``   — invoke the matching ``DeployTarget`` adapter.
 - ``causeway plugin new <name>`` — scaffold a sibling plugin package.
-
-Anything heavy (codegen, diff) is dyadpy's job; Causeway supplies the
-project shape.
 """
 
 from __future__ import annotations
 
+import importlib
+import json
 import os
 import subprocess
 import sys
+from dataclasses import asdict
 from importlib import metadata
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 from rich.console import Console
@@ -109,7 +109,7 @@ def build(
         typer.Option(
             "--module",
             "-m",
-            help="``module:attr`` of your ``dyadpy.App`` to introspect for codegen.",
+            help="``module:attr`` of your ASGI app to introspect for codegen.",
         ),
     ] = "app:app",
     binary: Annotated[
@@ -153,21 +153,8 @@ def build(
         return
 
     target.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "dyadpy.cli",
-            "codegen",
-            "--out",
-            str(target / "client"),
-            module,
-        ],
-        check=False,
-    )
-    if result.returncode != 0:
-        console.print("[red]codegen failed[/red]")
-        raise typer.Exit(code=result.returncode)
+    routes = _write_client(module, target / "client")
+    console.print(f"[green]codegen[/green] -> {target / 'client'} ({routes} routes)")
     subprocess.run(
         [sys.executable, "-m", "build", "--wheel", "--outdir", str(target)],
         check=False,
@@ -278,19 +265,127 @@ def plugins() -> None:
 
 
 @app.command()
+def codegen(
+    module: Annotated[
+        str,
+        typer.Argument(help="``module:attr`` of your ASGI app."),
+    ] = "app:app",
+    out: Annotated[
+        Path,
+        typer.Option("--out", "-o", help="Where to write the generated client directory."),
+    ] = Path("src/lib/causeway/client"),
+) -> None:
+    """Emit the typed TypeScript client directory and exit."""
+    routes = _write_client(module, out)
+    console.print(f"[green]wrote[/green] {out} ({routes} routes)")
+
+
+@app.command()
+def ir(
+    module: Annotated[
+        str,
+        typer.Argument(help="``module:attr`` of your ASGI app."),
+    ] = "app:app",
+    out: Annotated[
+        Path,
+        typer.Option("--out", "-o", help="Where to write the IR snapshot."),
+    ] = Path("causeway-ir.json"),
+) -> None:
+    """Emit the route IR as a JSON snapshot for diffing / external tooling."""
+    from causeway._runtime.ir import build_ir
+
+    app_obj = _load_runtime_app(module)
+    ir_value = build_ir(app_obj)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(asdict(ir_value), indent=2), encoding="utf-8")
+    console.print(f"[green]wrote[/green] {out} ({len(ir_value.routes)} routes)")
+
+
+@app.command()
 def diff(
     baseline: Annotated[Path, typer.Argument(help="Baseline IR snapshot.")],
     candidate: Annotated[Path, typer.Argument(help="Candidate IR snapshot.")],
+    fmt: Annotated[
+        str,
+        typer.Option("--format", help="Output format: human | json | github"),
+    ] = "human",
 ) -> None:
-    """Compare two IR snapshots and flag breaking changes.
-
-    Delegates to ``dyadpy diff``. Causeway's contribution is the project
-    convention; the IR walk + classification is dyadpy's.
-    """
-    subprocess.run(
-        [sys.executable, "-m", "dyadpy.cli", "diff", str(baseline), str(candidate)],
-        check=False,
+    """Compare two IR snapshots and exit non-zero on breaking changes."""
+    from causeway._runtime.diff import (
+        diff_ir,
+        format_github,
+        format_human,
+        format_json,
+        load_ir,
     )
+
+    result = diff_ir(load_ir(baseline), load_ir(candidate))
+    if fmt == "json":
+        console.print(format_json(result))
+    elif fmt == "github":
+        # GitHub annotation commands go to stdout exactly as-is.
+        print(format_github(result))
+    else:
+        console.print(format_human(result))
+    if result.breaking:
+        raise typer.Exit(code=1)
+
+
+def _load_runtime_app(target: str) -> Any:
+    from causeway._runtime import App as RuntimeApp
+
+    module_name, _, attr = target.partition(":")
+    if not module_name or not attr:
+        raise typer.BadParameter("Target must be 'module:attr', e.g. 'app:app'.")
+    mod = importlib.import_module(module_name)
+    obj = getattr(mod, attr)
+    if not isinstance(obj, RuntimeApp):
+        # Causeway's create_app wraps the inner runtime App in Starlette; reach in.
+        inner = _find_inner_runtime_app(obj)
+        if inner is None:
+            raise typer.BadParameter(
+                f"{target} resolved to {type(obj).__name__}, not a causeway.App. "
+                "Pass the inner App (e.g. 'app:app.inner') or a module:attr that "
+                "exports App directly.",
+            )
+        obj = inner
+    return obj
+
+
+def _find_inner_runtime_app(obj: Any) -> Any:
+    """Best-effort: walk a Starlette/ExceptionShield wrapper to find the runtime App."""
+    from causeway._runtime import App as RuntimeApp
+
+    seen: set[int] = set()
+    cursor = obj
+    while cursor is not None and id(cursor) not in seen:
+        seen.add(id(cursor))
+        if isinstance(cursor, RuntimeApp):
+            return cursor
+        # ExceptionShield → .app
+        cursor = getattr(cursor, "app", None)
+        if cursor is None:
+            return None
+        if isinstance(cursor, RuntimeApp):
+            return cursor
+        # Starlette: routes[Mount("/", app=inner)]
+        routes = getattr(cursor, "routes", None)
+        if routes:
+            for route in routes:
+                mounted = getattr(route, "app", None)
+                if isinstance(mounted, RuntimeApp):
+                    return mounted
+    return None
+
+
+def _write_client(target: str, out: Path) -> int:
+    from causeway._runtime.codegen import write as write_client
+    from causeway._runtime.ir import build_ir
+
+    app_obj = _load_runtime_app(target)
+    ir_value = build_ir(app_obj)
+    write_client(ir_value, out)
+    return len(ir_value.routes)
 
 
 @app.command()

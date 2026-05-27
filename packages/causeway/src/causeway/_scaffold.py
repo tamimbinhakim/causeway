@@ -175,7 +175,7 @@ discovers ``routes/``, registers plugins, and attaches health endpoints.
 
 from __future__ import annotations
 
-from dyadpy import App
+from causeway._runtime import App
 
 from causeway.health import attach as attach_health
 from causeway.routing import discover, register

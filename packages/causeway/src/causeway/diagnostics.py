@@ -18,7 +18,7 @@ from causeway.plugins import registered
 from causeway.tasks import cron_jobs, registered_tasks
 
 if TYPE_CHECKING:
-    from dyadpy import App
+    from causeway._runtime import App
 
 
 def snapshot(*, settings: Any = None, manifest: Manifest | None = None) -> dict[str, Any]:

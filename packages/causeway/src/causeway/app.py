@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import re
 
-from dyadpy import App
 from starlette.applications import Starlette
 from starlette.middleware import Middleware as StarletteMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,6 +18,7 @@ import causeway.events as _events
 import causeway.plugins as _plugins
 import causeway.webhooks as _webhooks  # noqa: F401 — wires fan-out into Event.emit at import
 from causeway._loader import import_path
+from causeway._runtime import App
 from causeway._traceback import ExceptionShield
 from causeway.diagnostics import attach as attach_diagnostics
 from causeway.errors import error_renderer

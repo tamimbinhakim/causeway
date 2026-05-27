@@ -13,7 +13,7 @@ from causeway.middleware import Middleware, is_guard
 from causeway.scope import is_dependency
 
 if TYPE_CHECKING:
-    from dyadpy import App
+    from causeway._runtime import App
 
 Handler = Callable[..., Any]
 Provider = Callable[..., Any]
@@ -198,7 +198,7 @@ def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler
     import inspect as _inspect
     import typing as _typing
 
-    from dyadpy import Depends
+    from causeway._runtime import Depends
 
     def _key(fn: Callable[..., Any]) -> tuple[str, str] | None:
         code = getattr(fn, "__code__", None)
@@ -309,7 +309,7 @@ def _find_request(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
         if request is not None and hasattr(request, "headers"):
             return request
 
-    from dyadpy.context import current_context_var
+    from causeway._runtime.context import current_context_var
 
     try:
         return current_context_var.get().request

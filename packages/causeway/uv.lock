@@ -99,10 +99,10 @@ version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
-    { name = "dyadpy" },
     { name = "msgspec" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-multipart" },
     { name = "rich" },
     { name = "starlette" },
     { name = "structlog" },
@@ -149,7 +149,6 @@ requires-dist = [
     { name = "anyio", specifier = ">=4.13.0" },
     { name = "causeway", extras = ["dramatiq", "otel", "binary"], marker = "extra == 'all'" },
     { name = "dramatiq", extras = ["redis"], marker = "extra == 'dramatiq'", specifier = ">=2.1.0" },
-    { name = "dyadpy", specifier = ">=0.1.11" },
     { name = "msgspec", specifier = ">=0.19" },
     { name = "nuitka", marker = "extra == 'binary'", specifier = ">=2.5" },
     { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.41.1" },
@@ -158,6 +157,7 @@ requires-dist = [
     { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.41.1" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.1" },
+    { name = "python-multipart", specifier = ">=0.0.18" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "starlette", specifier = ">=1.0.1" },
     { name = "structlog", specifier = ">=25.5.0" },
@@ -413,25 +413,6 @@ wheels = [
 [package.optional-dependencies]
 redis = [
     { name = "redis" },
-]
-
-[[package]]
-name = "dyadpy"
-version = "0.1.11"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "msgspec" },
-    { name = "python-multipart" },
-    { name = "rich" },
-    { name = "starlette" },
-    { name = "typer" },
-    { name = "uvicorn", extra = ["standard"] },
-    { name = "watchfiles" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/69/5b/a15d4d6b5da077dae26791d91bd82a3e8dd0cb59cfd115d3415769b3557d/dyadpy-0.1.11.tar.gz", hash = "sha256:e1485933c4b411e49328b0328195f2cc80df76345acd72da7668dfa808e7109e", size = 79562, upload-time = "2026-05-25T06:24:30.355Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/58/3a59b5bc3e6e6025828a49adbe13e3194f4b2cdb7ebe908f1a4d6657b209/dyadpy-0.1.11-py3-none-any.whl", hash = "sha256:9a75d51b2b5e5dfcf60609f3db903bec7d525747da38c510b5f8108578bba608", size = 63240, upload-time = "2026-05-25T06:24:28.592Z" },
 ]
 
 [[package]]

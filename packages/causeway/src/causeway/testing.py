@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from dyadpy import App
+
+from causeway._runtime import App
 
 
 class TestApp:

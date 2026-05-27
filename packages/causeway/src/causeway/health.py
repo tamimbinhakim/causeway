@@ -13,12 +13,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dyadpy import Context
-
+from causeway._runtime import Context
 from causeway.plugins import all_ready
 
 if TYPE_CHECKING:
-    from dyadpy import App
+    from causeway._runtime import App
 
 
 async def healthz() -> dict[str, str]:

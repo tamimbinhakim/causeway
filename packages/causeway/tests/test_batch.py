@@ -23,8 +23,9 @@ def test_batch_marks_handler() -> None:
 
 @pytest.mark.asyncio
 async def test_batch_sets_207_on_failure() -> None:
-    from dyadpy.context import Context, current_context_var
     from starlette.requests import Request
+
+    from causeway._runtime.context import Context, current_context_var
 
     @batch
     async def handler() -> BatchResult[_Item, BadRequest]:
@@ -47,8 +48,9 @@ async def test_batch_sets_207_on_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_batch_sets_200_when_all_succeed() -> None:
-    from dyadpy.context import Context, current_context_var
     from starlette.requests import Request
+
+    from causeway._runtime.context import Context, current_context_var
 
     @batch
     async def handler() -> BatchResult[_Item, BadRequest]:
@@ -68,8 +70,9 @@ async def test_batch_sets_200_when_all_succeed() -> None:
 
 @pytest.mark.asyncio
 async def test_batch_handles_empty_input() -> None:
-    from dyadpy.context import Context, current_context_var
     from starlette.requests import Request
+
+    from causeway._runtime.context import Context, current_context_var
 
     @batch
     async def handler() -> BatchResult[_Item, BadRequest]:

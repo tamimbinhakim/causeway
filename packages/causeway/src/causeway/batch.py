@@ -82,7 +82,7 @@ def _apply_status(result: Any) -> None:
         return
     # The context var is set by dyadpy's runtime around each handler invocation;
     # outside that loop (e.g. direct call from tests) there's nothing to mutate.
-    from dyadpy.context import current_context_var
+    from causeway._runtime.context import current_context_var
 
     try:
         ctx = current_context_var.get()

@@ -6,8 +6,8 @@ from typing import Any, ClassVar
 
 import httpx
 import pytest
-from dyadpy import App
 
+from causeway._runtime import App
 from causeway.health import attach
 from causeway.plugins import clear, register
 

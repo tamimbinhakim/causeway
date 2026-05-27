@@ -8,8 +8,8 @@ from typing import Any
 
 import httpx
 import pytest
-from dyadpy import App
 
+from causeway._runtime import App
 from causeway.routing import discover, register
 
 
@@ -117,7 +117,7 @@ async def r() -> dict:
     # when one isn't present in the handler signature. Simulate that here.
     from dataclasses import dataclass
 
-    from dyadpy.context import Context, current_context_var
+    from causeway._runtime.context import Context, current_context_var
 
     @dataclass
     class _FakeReq:
@@ -162,7 +162,7 @@ async def r() -> dict:
 
     from dataclasses import dataclass
 
-    from dyadpy.context import Context, current_context_var
+    from causeway._runtime.context import Context, current_context_var
 
     @dataclass
     class _FakeReq:

@@ -1,25 +1,43 @@
 """Causeway — a lean backend framework for type-safe Python APIs.
 
 Public API surface. Anything not listed in ``__all__`` (or imported from a
-private underscore module like ``causeway._methods``) is implementation
-detail and may change in any release. See ``docs/stability/semver.md`` and
-``CHANGELOG.md``.
+private underscore module like ``causeway._methods`` / ``causeway._runtime``)
+is implementation detail and may change in any release. See
+``docs/stability/semver.md`` and ``CHANGELOG.md``.
 
-Re-exported from ``dyadpy`` so app code only depends on ``causeway``:
+The RPC runtime (the type-safe Python↔TypeScript substrate) lives in
+``causeway._runtime`` — app code only needs the re-exports here:
 
+- :class:`App` — ASGI app + route registry (used internally by :func:`create_app`).
+- :class:`Context` — per-request controls (response headers/cookies/status, after-callbacks).
 - :func:`Depends` — DI marker for handler parameters.
 - :func:`raises` — declare exception types the handler may raise (flows to
   the generated TS client's ``Result<T, E>`` union).
 - :func:`stream` — SSE return type marker.
+- :func:`bidi`, :class:`BidiChannel` — WebSocket bidirectional channels.
+- :func:`after` — register a callback to run after the response is sent.
+- :class:`Form` — multipart/form body marker.
 - :data:`Bytes` — raw-body sentinel.
+- :class:`SsePayload` — server-sent event payload helper.
 """
 
 from __future__ import annotations
 
-from dyadpy import Bytes, Depends, raises, stream
-
 from causeway import errors
 from causeway._methods import delete, get, patch, post, put
+from causeway._runtime import (
+    App,
+    BidiChannel,
+    Bytes,
+    Context,
+    Depends,
+    Form,
+    SsePayload,
+    after,
+    bidi,
+    raises,
+    stream,
+)
 from causeway.app import create_app
 from causeway.auth import check_permission, expand_permissions, require_permission
 from causeway.batch import BatchFailure, BatchResult, batch
@@ -47,12 +65,16 @@ from causeway.webhooks import (
 __version__ = "0.4.1"
 
 __all__ = [
+    "App",
     "BatchFailure",
     "BatchResult",
+    "BidiChannel",
     "Bytes",
+    "Context",
     "Cursor",
     "Depends",
     "Event",
+    "Form",
     "IdempotencyMiddleware",
     "InMemoryWebhookStore",
     "InMemoryWebhooks",
@@ -63,12 +85,15 @@ __all__ = [
     "Paginated",
     "RequestIdMiddleware",
     "Settings",
+    "SsePayload",
     "Subscriber",
     "WebhookDeliveryFailed",
     "WebhookStore",
     "Webhooks",
     "__version__",
+    "after",
     "batch",
+    "bidi",
     "check_permission",
     "configure_logging",
     "configure_otel",

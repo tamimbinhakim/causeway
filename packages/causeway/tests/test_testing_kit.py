@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dyadpy import App
-
+from causeway._runtime import App
 from causeway.diagnostics import snapshot
 from causeway.testing import TestApp
 
