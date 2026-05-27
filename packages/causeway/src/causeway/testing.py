@@ -68,7 +68,7 @@ class TestApp:
 
     @classmethod
     def wrap(cls, app: App) -> TestApp:
-        """Wrap an existing ``dyadpy.App`` — useful for app-factory patterns."""
+        """Wrap an existing ``causeway.App`` — useful for app-factory patterns."""
         return cls(app)
 
     @asynccontextmanager

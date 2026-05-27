@@ -89,7 +89,7 @@ class _It:
 
     @property
     def app(self) -> Any:
-        """Underlying dyadpy App. Escape hatch for advanced usage."""
+        """Underlying causeway App. Escape hatch for advanced usage."""
         return None if self._test_app is None else self._test_app._app
 
     # ---- HTTP --------------------------------------------------------------

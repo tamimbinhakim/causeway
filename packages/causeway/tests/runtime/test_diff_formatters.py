@@ -1,4 +1,4 @@
-"""Cover the output-format helpers of dyadpy.diff."""
+"""Cover the output-format helpers of causeway._runtime.diff."""
 
 # pyright: basic
 
@@ -50,4 +50,4 @@ def test_github_format_emits_workflow_commands() -> None:
     out = format_github(r)
     assert "::error" in out
     assert "::notice" in out
-    assert "title=dyadpy-diff" in out
+    assert "title=causeway-diff" in out

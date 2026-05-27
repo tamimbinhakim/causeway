@@ -314,7 +314,7 @@ def _find_request(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
     try:
         return current_context_var.get().request
     except LookupError as exc:
-        msg = "guard ran outside an active dyadpy request — no Request available"
+        msg = "guard ran outside an active request — no Request available"
         raise RuntimeError(msg) from exc
 
 

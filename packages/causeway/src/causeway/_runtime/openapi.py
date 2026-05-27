@@ -1,6 +1,6 @@
 """IR → OpenAPI 3.1 export.
 
-For users who also need to serve external (non-Dyadpy) clients — generate
+For users who also need to serve external (non-causeway) clients — generate
 a standard OpenAPI 3.1 document from the same IR the TS codegen consumes.
 We don't ship Swagger UI; that's a separate concern.
 
@@ -24,7 +24,7 @@ from typing import Any
 from causeway._runtime.ir import AppIR, RouteIR
 
 
-def render(ir: AppIR, *, title: str = "Dyadpy API", version: str = "0.0.0") -> dict[str, Any]:
+def render(ir: AppIR, *, title: str = "Causeway API", version: str = "0.0.0") -> dict[str, Any]:
     paths: dict[str, dict[str, Any]] = {}
     for route in ir.routes:
         method_obj = _render_route(route)
@@ -38,7 +38,7 @@ def render(ir: AppIR, *, title: str = "Dyadpy API", version: str = "0.0.0") -> d
     }
 
 
-def write(ir: AppIR, out: Path, *, title: str = "Dyadpy API", version: str = "0.0.0") -> None:
+def write(ir: AppIR, out: Path, *, title: str = "Causeway API", version: str = "0.0.0") -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(render(ir, title=title, version=version), indent=2), encoding="utf-8")
 

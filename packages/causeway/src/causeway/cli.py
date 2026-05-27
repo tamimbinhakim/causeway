@@ -302,6 +302,76 @@ def ir(
 
 
 @app.command()
+def openapi(
+    module: Annotated[
+        str,
+        typer.Argument(help="``module:attr`` of your ASGI app."),
+    ] = "app:app",
+    out: Annotated[
+        Path,
+        typer.Option("--out", "-o", help="Where to write the OpenAPI document."),
+    ] = Path("openapi.json"),
+    title: Annotated[str, typer.Option(help="OpenAPI document title.")] = "Causeway API",
+    api_version: Annotated[
+        str, typer.Option("--api-version", help="OpenAPI document version.")
+    ] = "0.0.0",
+) -> None:
+    """Emit an OpenAPI 3.1 document alongside the TS client — for non-Causeway consumers."""
+    from causeway._runtime.ir import build_ir
+    from causeway._runtime.openapi import write as write_openapi
+
+    app_obj = _load_runtime_app(module)
+    ir_value = build_ir(app_obj)
+    write_openapi(ir_value, out, title=title, version=api_version)
+    console.print(f"[green]wrote[/green] {out} ({len(ir_value.routes)} routes)")
+
+
+@app.command()
+def swift(
+    module: Annotated[
+        str,
+        typer.Argument(help="``module:attr`` of your ASGI app."),
+    ] = "app:app",
+    out: Annotated[
+        Path,
+        typer.Option("--out", "-o", help="Where to write the Swift client."),
+    ] = Path("Causeway.swift"),
+) -> None:
+    """Generate a Swift client off the same IR."""
+    from causeway._runtime.ir import build_ir
+    from causeway._runtime.polyglot import write_swift
+
+    app_obj = _load_runtime_app(module)
+    ir_value = build_ir(app_obj)
+    write_swift(ir_value, out)
+    console.print(f"[green]wrote[/green] {out} ({len(ir_value.routes)} routes)")
+
+
+@app.command()
+def kotlin(
+    module: Annotated[
+        str,
+        typer.Argument(help="``module:attr`` of your ASGI app."),
+    ] = "app:app",
+    out: Annotated[
+        Path,
+        typer.Option("--out", "-o", help="Where to write the Kotlin client."),
+    ] = Path("Causeway.kt"),
+    package: Annotated[
+        str, typer.Option(help="Kotlin package name for the generated code.")
+    ] = "com.causeway.generated",
+) -> None:
+    """Generate a Kotlin client off the same IR."""
+    from causeway._runtime.ir import build_ir
+    from causeway._runtime.polyglot import write_kotlin
+
+    app_obj = _load_runtime_app(module)
+    ir_value = build_ir(app_obj)
+    write_kotlin(ir_value, out, package=package)
+    console.print(f"[green]wrote[/green] {out} ({len(ir_value.routes)} routes)")
+
+
+@app.command()
 def diff(
     baseline: Annotated[Path, typer.Argument(help="Baseline IR snapshot.")],
     candidate: Annotated[Path, typer.Argument(help="Candidate IR snapshot.")],

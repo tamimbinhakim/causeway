@@ -58,7 +58,7 @@ def test_nuitka_command_includes_required_packages_and_excludes_dev_surface() ->
     )
     joined = " ".join(cmd)
 
-    for required in ("causeway", "dyadpy", "starlette", "uvicorn", "msgspec", "app"):
+    for required in ("causeway", "starlette", "uvicorn", "msgspec", "app"):
         assert f"--include-package={required}" in joined
     for plugin in ("causeway_storage_s3", "causeway_db_sqlmodel"):
         assert f"--include-package={plugin}" in joined

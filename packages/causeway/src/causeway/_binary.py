@@ -136,7 +136,6 @@ def _nuitka_command(
         "--remove-output",
         "--assume-yes-for-downloads",
         "--include-package=causeway",
-        "--include-package=dyadpy",
         "--include-package=starlette",
         "--include-package=uvicorn",
         "--include-package=pydantic",

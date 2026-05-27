@@ -125,7 +125,7 @@ class Context:
 # around each handler invocation; outside of a handler the var is unset and
 # calling ``after`` raises.
 current_context_var: contextvars.ContextVar[Context] = contextvars.ContextVar(
-    "_dyadpy_current_context",
+    "_causeway_current_context",
 )
 
 

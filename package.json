@@ -2,7 +2,7 @@
   "name": "causeway-monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "A lean backend framework for type-safe Python APIs — file-based routing, typed config/DI, scoped providers, plugin registry, and background tasks.",
+  "description": "A lean backend framework for type-safe Python APIs — file-based routing, typed config/DI, scoped providers, plugin registry, and background tasks. Generates typed TypeScript clients off your Python handler signatures.",
   "homepage": "https://github.com/tamimbinhakim/causeway#readme",
   "bugs": {
     "url": "https://github.com/tamimbinhakim/causeway/issues"
@@ -14,21 +14,28 @@
     "url": "git+https://github.com/tamimbinhakim/causeway.git"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/*/frontend"
   ],
   "scripts": {
-    "lint": "pnpm lint:py && pnpm lint:docs",
+    "build": "pnpm -r --filter=./packages/causeway-* run build",
+    "test:js": "pnpm -r --filter=./packages/causeway-* run test",
+    "typecheck:js": "pnpm -r --filter=./packages/causeway-* run typecheck",
+    "lint": "pnpm lint:ts && pnpm lint:py && pnpm lint:docs",
+    "lint:ts": "oxlint .",
     "lint:py": "uv run --directory packages/causeway ruff check .",
     "lint:docs": "prettier --check \"**/*.{md,json,yaml,yml}\"",
-    "format": "pnpm format:py && pnpm format:docs",
+    "format": "pnpm format:ts && pnpm format:py && pnpm format:docs",
+    "format:ts": "oxfmt --ignore-path .oxfmtignore .",
     "format:py": "uv run --directory packages/causeway ruff format .",
     "format:docs": "prettier --write \"**/*.{md,json,yaml,yml}\"",
-    "format:check": "pnpm format:check:py && pnpm format:check:docs",
+    "format:check": "pnpm format:check:ts && pnpm format:check:py && pnpm format:check:docs",
+    "format:check:ts": "oxfmt --ignore-path .oxfmtignore --check .",
     "format:check:py": "uv run --directory packages/causeway ruff format --check .",
     "format:check:docs": "prettier --check \"**/*.{md,json,yaml,yml}\"",
     "typecheck": "uv run --directory packages/causeway mypy src",
     "test": "uv run --directory packages/causeway pytest",
-    "clean": "rimraf node_modules .turbo packages/*/dist packages/*/.venv",
+    "clean": "pnpm -r run clean && rimraf node_modules .turbo packages/*/dist packages/*/.venv",
     "prepare": "husky",
     "commitlint": "commitlint --edit"
   },
@@ -37,10 +44,17 @@
     "@commitlint/config-conventional": "21.0.1",
     "husky": "9.1.7",
     "lint-staged": "17.0.4",
+    "oxfmt": "0.49.0",
+    "oxlint": "1.64.0",
     "prettier": "3.8.3",
-    "rimraf": "6.1.3"
+    "rimraf": "6.1.3",
+    "typescript": "6.0.3"
   },
   "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "oxlint --fix",
+      "oxfmt --ignore-path .oxfmtignore"
+    ],
     "packages/causeway/**/*.py": [
       "uv run --directory packages/causeway ruff check --fix",
       "uv run --directory packages/causeway ruff format"

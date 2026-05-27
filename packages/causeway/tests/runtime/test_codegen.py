@@ -134,7 +134,7 @@ def test_result_import_omitted_when_no_route_raises() -> None:
         return "pong"
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions } from "@dyadpy/ts";' in files["types.d.ts"]
+    assert 'import type { CallOptions } from "causeway-ts";' in files["types.d.ts"]
     assert "Result" not in files["types.d.ts"]
 
 
@@ -156,7 +156,7 @@ def test_result_import_omitted_for_streaming_only_raises() -> None:
         yield Tick(n=1)
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions } from "@dyadpy/ts";' in files["types.d.ts"]
+    assert 'import type { CallOptions } from "causeway-ts";' in files["types.d.ts"]
     assert "Result<" not in files["types.d.ts"]
 
 
@@ -177,7 +177,7 @@ def test_result_import_present_when_any_route_raises() -> None:
         return {"id": thing_id}
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions, Result } from "@dyadpy/ts";' in files["types.d.ts"]
+    assert 'import type { CallOptions, Result } from "causeway-ts";' in files["types.d.ts"]
 
 
 def test_render_emits_configurable_api_factory_for_ssr() -> None:
@@ -190,7 +190,7 @@ def test_render_emits_configurable_api_factory_for_ssr() -> None:
     files = render(build_ir(app))
     out = "\n".join(files.values())
     assert files["index.ts"].startswith(
-        "// @ts-nocheck\n/* eslint-disable */\n// biome-ignore-all lint: generated dyadpy client\n"
+        "// @ts-nocheck\n/* eslint-disable */\n// biome-ignore-all lint: generated causeway client\n"
     )
     assert 'export type ApiClientOptions = Omit<LazyClientConfig, "routeMeta" | "loadRoute">' in out
     assert "export interface ApiRoutes" in files["types.d.ts"]
@@ -209,7 +209,7 @@ def test_load_route_emits_one_import_per_chunk_not_per_route() -> None:
     # Bundlers (Turbopack especially) track every `import(...)` call site as a
     # separate code-split computation in their persistent cache. The loader
     # must dedupe to one import per chunk file or the cache explodes on apps
-    # with hundreds of routes — see https://github.com/tamimbinhakim/dyadpy.
+    # with hundreds of routes — see https://github.com/tamimbinhakim/causeway.
     app = App()
 
     @app.get("/users")

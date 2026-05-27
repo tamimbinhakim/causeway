@@ -97,8 +97,8 @@ async def test_header_param(client_factory):
         return {"ua": ua}
 
     async with client_factory(app) as client:
-        r = await client.get("/whoami", headers={"user-agent": "dyadpy-test"})
-    assert r.json() == {"ua": "dyadpy-test"}
+        r = await client.get("/whoami", headers={"user-agent": "causeway-test"})
+    assert r.json() == {"ua": "causeway-test"}
 
 
 async def test_context_injected(client_factory):

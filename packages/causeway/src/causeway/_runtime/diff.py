@@ -18,8 +18,8 @@ Non-breaking changes — informational, exit 0:
 - The response schema gains an optional property.
 - An enum gains a value.
 
-The diff operates on the JSON form of the IR. Emit with ``dyadpy ir`` and
-diff with ``dyadpy diff old.json new.json``.
+The diff operates on the JSON form of the IR. Emit with ``causeway ir`` and
+diff with ``causeway diff old.json new.json``.
 """
 
 from __future__ import annotations
@@ -292,7 +292,7 @@ def format_github(diff: DiffResult) -> str:
     lines: list[str] = []
     for c in diff.changes:
         level = "error" if c.severity == "breaking" else "notice"
-        lines.append(f"::{level} title=dyadpy-diff::[{c.code}] {c.message}")
+        lines.append(f"::{level} title=causeway-diff::[{c.code}] {c.message}")
     return "\n".join(lines)
 
 

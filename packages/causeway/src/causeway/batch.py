@@ -80,7 +80,7 @@ def batch(handler: Callable[..., Any]) -> Callable[..., Any]:
 def _apply_status(result: Any) -> None:
     if not isinstance(result, BatchResult):
         return
-    # The context var is set by dyadpy's runtime around each handler invocation;
+    # The context var is set by the runtime around each handler invocation;
     # outside that loop (e.g. direct call from tests) there's nothing to mutate.
     from causeway._runtime.context import current_context_var
 

@@ -70,10 +70,10 @@ def _build_full_ir():
 def test_swift_emits_preamble_and_client() -> None:
     out = render_swift(_build_full_ir())
     assert "import Foundation" in out
-    assert "public struct DyadpyClient" in out
+    assert "public struct CausewayClient" in out
     assert "convertToSnakeCase" in out  # encoder snake_case mapping
     assert "convertFromSnakeCase" in out  # decoder snake_case mapping
-    assert "public enum DyadpyRPCError" in out
+    assert "public enum CausewayRPCError" in out
 
 
 def test_swift_struct_with_camel_fields() -> None:
@@ -99,7 +99,7 @@ def test_swift_method_with_path_query_header() -> None:
 def test_swift_method_with_body_param() -> None:
     out = render_swift(_build_full_ir())
     assert "func createPost(data: CreatePost)" in out
-    assert "DyadpyClient.encoder.encode(data)" in out
+    assert "CausewayClient.encoder.encode(data)" in out
 
 
 def test_swift_emits_error_enum_for_raises() -> None:
@@ -116,7 +116,7 @@ def test_swift_streaming_method_returns_async_throwing_stream() -> None:
     assert "session.bytes(for: req)" in out
     assert 'eventName == "done"' in out
     assert 'eventName == "error"' in out
-    assert "DyadpyClient.decoder.decode(Tick.self" in out
+    assert "CausewayClient.decoder.decode(Tick.self" in out
 
 
 # ----------------------- Kotlin ----------------------- #
@@ -125,8 +125,8 @@ def test_swift_streaming_method_returns_async_throwing_stream() -> None:
 def test_kotlin_emits_preamble_and_client() -> None:
     out = render_kotlin(_build_full_ir(), package="demo.api")
     assert "package demo.api" in out
-    assert "class DyadpyClient(" in out
-    assert "class DyadpyRPCError" in out
+    assert "class CausewayClient(" in out
+    assert "class CausewayRPCError" in out
     assert "kotlinx.serialization.Serializable" in out
 
 
@@ -150,7 +150,7 @@ def test_kotlin_method_with_path_query_header() -> None:
 def test_kotlin_method_with_body_encodes_struct() -> None:
     out = render_kotlin(_build_full_ir())
     assert "suspend fun createPost(data: CreatePost):" in out
-    assert "dyadpyJson.encodeToString(data)" in out
+    assert "causewayJson.encodeToString(data)" in out
 
 
 def test_kotlin_emits_sealed_class_for_raises() -> None:
@@ -165,6 +165,6 @@ def test_kotlin_streaming_returns_flow() -> None:
     # Stream endpoint returns a Flow<EventT> backed by an SSE parser.
     assert "fun feed(): kotlinx.coroutines.flow.Flow<Tick>" in out
     assert "flow {" in out
-    assert "dyadpyJson.decodeFromString<Tick>" in out
+    assert "causewayJson.decodeFromString<Tick>" in out
     assert "event: text/event-stream" in out or 'Accept", "text/event-stream' in out
     assert "Dispatchers.IO" in out

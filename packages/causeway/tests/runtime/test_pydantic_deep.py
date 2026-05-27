@@ -53,7 +53,7 @@ def test_field_alias_used_on_output() -> None:
 
     body = TestClient(app).get("/post").json()
     # by_alias=True is Pydantic default for model_dump(mode='json')? — depends. Document.
-    # Dyadpy's to_jsonable uses model_dump(mode='json') which by default uses field name,
+    # causeway's to_jsonable uses model_dump(mode='json') which by default uses field name,
     # not alias. The alias appears in the JSON schema, so the TS client sees ``postTitle``.
     # If users want alias on the wire, they configure ``model_config = ConfigDict(serialize_by_alias=True)``.
     assert "title" in body or "postTitle" in body

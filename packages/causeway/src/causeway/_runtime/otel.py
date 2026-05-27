@@ -1,4 +1,4 @@
-"""OpenTelemetry middleware — opt-in tracing for Dyadpy apps.
+"""OpenTelemetry middleware — opt-in tracing for causeway apps.
 
 Lazy-import OpenTelemetry so apps that don't use it pay zero cost. Wraps
 the ASGI app and emits one span per request with the route name, method,
@@ -38,7 +38,7 @@ def instrument(app: ASGIApp) -> ASGIApp:
     except ImportError:
         return app
 
-    tracer = trace.get_tracer("dyadpy")
+    tracer = trace.get_tracer("causeway")
 
     async def wrapped(scope: Scope, receive: Receive, send: Send) -> None:
         if scope.get("type") != "http":

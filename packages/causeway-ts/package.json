@@ -1,0 +1,70 @@
+{
+  "name": "causeway-ts",
+  "version": "0.1.6-alpha.0",
+  "description": "Tiny TypeScript runtime imported by causeway-generated clients.",
+  "keywords": [
+    "python",
+    "rpc",
+    "sse",
+    "streaming",
+    "trpc",
+    "typescript",
+    "causeway"
+  ],
+  "homepage": "https://github.com/tamimbinhakim/causeway#readme",
+  "bugs": {
+    "url": "https://github.com/tamimbinhakim/causeway/issues"
+  },
+  "license": "MIT",
+  "author": "Tamim Bin Hakim (@tamimbinhakim)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tamimbinhakim/causeway.git",
+    "directory": "packages/causeway-ts"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./sse": {
+      "types": "./dist/sse.d.ts",
+      "import": "./dist/sse.js",
+      "require": "./dist/sse.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist .turbo"
+  },
+  "devDependencies": {
+    "@types/node": "25.7.0",
+    "tsup": "8.5.1",
+    "vite": "8.0.12",
+    "vitest": "4.1.6"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

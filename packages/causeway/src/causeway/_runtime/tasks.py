@@ -168,7 +168,7 @@ def mount_task_routes(
     - ``POST <path>``: validates handler inputs, calls ``backend.enqueue``,
       returns ``{"task_id": "..."}``. Inputs are taken from the handler's
       own signature, so query/body/path conventions are identical to a
-      regular Dyadpy route.
+      regular causeway route.
     - ``GET <path>/{task_id}``: returns ``TaskState[T]`` (a one-shot poll).
     - ``GET <path>/{task_id}/events``: SSE stream of ``TaskState[T]``
       updates, terminating once the task reaches a final status.

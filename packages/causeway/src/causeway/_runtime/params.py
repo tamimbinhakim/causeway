@@ -1,6 +1,6 @@
 """Parameter location markers.
 
-Use these inside ``Annotated[T, ...]`` to tell Dyadpy where a handler's
+Use these inside ``Annotated[T, ...]`` to tell causeway where a handler's
 parameter lives on the wire:
 
     @app.post("/login")
@@ -10,7 +10,7 @@ parameter lives on the wire:
         ua: Annotated[str, Header("user-agent")] = "",
     ) -> Session: ...
 
-If no marker is given, Dyadpy infers: path-template names → ``Path``, structural
+If no marker is given, causeway infers: path-template names → ``Path``, structural
 types (Struct/dataclass/TypedDict) → ``Body``, everything else → ``Query``.
 
 For HTML form submissions add the ``Form()`` marker to the body annotation:

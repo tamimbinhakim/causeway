@@ -1,4 +1,4 @@
-"""Cover the less-trodden branches in dyadpy.errors."""
+"""Cover the less-trodden branches in causeway._runtime.errors."""
 
 # pyright: basic
 

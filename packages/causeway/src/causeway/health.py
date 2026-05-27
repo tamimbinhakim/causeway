@@ -6,7 +6,7 @@
 
 A user can override either by adding ``routes/healthz.py`` /
 ``routes/readyz.py`` in their app. Causeway's defaults attach only if the path
-isn't already in the dyadpy App's route table.
+isn't already in the runtime App's route table.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ async def readyz(ctx: Context) -> dict[str, object]:
 
 
 def attach(app: App) -> None:
-    """Register ``/healthz`` and ``/readyz`` on the dyadpy App if absent."""
+    """Register ``/healthz`` and ``/readyz`` on the runtime App if absent."""
     existing = {(r.method, r.path) for r in app.routes}
     if ("GET", "/healthz") not in existing:
         app.get("/healthz")(healthz)
