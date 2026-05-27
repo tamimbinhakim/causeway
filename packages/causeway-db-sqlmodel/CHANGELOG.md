@@ -7,6 +7,17 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0](https://github.com/tamimbinhakim/causeway/compare/causeway-db-sqlmodel-v0.6.0...causeway-db-sqlmodel-v0.7.0) (2026-05-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **npm:** scope JS packages under @causewayjs
+
+### Features
+
+* **npm:** scope JS packages under [@causewayjs](https://github.com/causewayjs) ([7dfa11e](https://github.com/tamimbinhakim/causeway/commit/7dfa11e6051dbc398727a600a3cf87f0524c8ae5))
+
 ## [0.6.0](https://github.com/tamimbinhakim/causeway/compare/causeway-db-sqlmodel-v0.5.1...causeway-db-sqlmodel-v0.6.0) (2026-05-23)
 
 ### Features

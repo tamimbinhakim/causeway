@@ -7,6 +7,18 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.5.0...causeway-v0.6.0) (2026-05-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **npm:** scope JS packages under @causewayjs
+
+### Features
+
+* **errors:** add HTTP error formatter hook ([fb8e1a1](https://github.com/tamimbinhakim/causeway/commit/fb8e1a1d58485b65e9222e321b34509482a4daf8))
+* **npm:** scope JS packages under [@causewayjs](https://github.com/causewayjs) ([7dfa11e](https://github.com/tamimbinhakim/causeway/commit/7dfa11e6051dbc398727a600a3cf87f0524c8ae5))
+
 ## [0.5.0](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.4.1...causeway-v0.5.0) (2026-05-27)
 
 
