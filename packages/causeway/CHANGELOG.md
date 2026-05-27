@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.6.0...causeway-v0.6.1) (2026-05-27)
+
+
+### Bug Fixes
+
+* **traceback:** keep error panel prefix-safe ([042d6bd](https://github.com/tamimbinhakim/causeway/commit/042d6bd6c16c7ab09e6d014e4a34691f82adff63))
+
 ## [0.6.0](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.5.0...causeway-v0.6.0) (2026-05-27)
 
 
