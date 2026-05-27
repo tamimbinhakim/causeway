@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "causeway-storage-s3"
-version = "0.10.0"
+version = "0.11.0"
 description = "S3 / R2 / MinIO storage adapter for Causeway."
 readme = "README.md"
 license = { text = "MIT" }

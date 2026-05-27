@@ -7,6 +7,30 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.4.1...causeway-v0.5.0) (2026-05-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* bring TS + Solid + Svelte + React packages under causeway brand
+* absorb dyadpy into causeway as causeway._runtime
+
+### Features
+
+* absorb dyadpy into causeway as causeway._runtime ([f21fef1](https://github.com/tamimbinhakim/causeway/commit/f21fef104ac52b214f74e0fa47b46b2d5d02e845))
+* bring TS + Solid + Svelte + React packages under causeway brand ([502099f](https://github.com/tamimbinhakim/causeway/commit/502099ffb8c92a72d24d4eeadf9ad59b424d3593))
+* **traceback:** rich error panels and shield against double-logging ([eb14c51](https://github.com/tamimbinhakim/causeway/commit/eb14c5130faadc203dde2a0783a42dc87c754271))
+
+
+### Bug Fixes
+
+* **observability:** detect structlog via sys.modules each request ([8dbfe13](https://github.com/tamimbinhakim/causeway/commit/8dbfe13bc1e00d8168678a119f904b9579c1650c))
+
+
+### Performance
+
+* collapse class-middleware wraps + lazy-load structlog ([43cde88](https://github.com/tamimbinhakim/causeway/commit/43cde88dc9a86c5d84b403c557503c0e62a907a4))
+
 ## [0.4.1](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.4.0...causeway-v0.4.1) (2026-05-25)
 
 ### ⚠ BREAKING CHANGES
