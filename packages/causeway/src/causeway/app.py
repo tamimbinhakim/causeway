@@ -19,6 +19,7 @@ import causeway.events as _events
 import causeway.plugins as _plugins
 import causeway.webhooks as _webhooks  # noqa: F401 — wires fan-out into Event.emit at import
 from causeway._loader import import_path
+from causeway._traceback import ExceptionShield
 from causeway.diagnostics import attach as attach_diagnostics
 from causeway.errors import error_renderer
 from causeway.health import attach as attach_health
@@ -122,12 +123,17 @@ def _assemble(
                 if callable(shutdown):
                     await shutdown()
 
-    return Starlette(
+    starlette = Starlette(
         routes=[Mount("/", app=inner)],
         middleware=middleware,
         exception_handlers=exception_handlers,
         lifespan=lifespan,
     )
+    # Starlette's ServerErrorMiddleware re-raises every unhandled exception
+    # after the registered handler renders the 500 response. Without this
+    # shield, that re-raise reaches the ASGI server and a giant Python
+    # traceback gets printed on top of our compact one.
+    return ExceptionShield(starlette)
 
 
 def _discover_plugins(routes_root: str | Path) -> None:

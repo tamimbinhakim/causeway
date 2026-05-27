@@ -90,9 +90,11 @@ class HotSwapApp:
                     status_code = raw_status
             await send(message)
 
-        await snapshot.app(scope, receive, send_with_status)
-        if scope["type"] == "http":
-            self._reporter.access(scope, status_code, (time.perf_counter() - started) * 1000)
+        try:
+            await snapshot.app(scope, receive, send_with_status)
+        finally:
+            if scope["type"] == "http":
+                self._reporter.access(scope, status_code, (time.perf_counter() - started) * 1000)
 
 
 class Reporter:
