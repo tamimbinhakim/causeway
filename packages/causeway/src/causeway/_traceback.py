@@ -1,15 +1,10 @@
-"""Compact, rich exception formatting + ASGI shield for dev/server diagnostics.
+"""Rich exception panels + ASGI shield that absorbs Starlette's re-raise.
 
-Goals:
-- One clear error block per failure, not Python's chained mega-trace.
-- Real root cause surfaced (unwrap ``ExceptionGroup`` and ``__cause__``/
-  ``__context__`` chains).
-- Hints for common operational errors (Redis/Postgres down, missing module,
-  missing file).
-- No double logging: ``ExceptionShield`` consumes the re-raise that
-  Starlette's ``ServerErrorMiddleware`` always emits after running a
-  registered handler, so the ASGI server never prints its own mega-trace
-  on top of ours.
+One block per failure: root-caused (unwrap ``ExceptionGroup`` and
+``__cause__``/``__context__``), with an operator hint for common
+operational errors (Redis/Postgres down, missing module/file). The
+shield stops Starlette's ``ServerErrorMiddleware`` re-raise from
+reaching the ASGI server so its mega-trace never lands on top of ours.
 """
 
 from __future__ import annotations

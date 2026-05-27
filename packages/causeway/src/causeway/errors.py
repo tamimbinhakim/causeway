@@ -1,14 +1,9 @@
-"""Causeway's error types + problem+json renderer.
+"""HTTP error types + ``application/problem+json`` renderer (RFC 9457).
 
-Causeway's own error classes mirror the common HTTP error shape so handlers
-declare them via ``@raises(NotFound)`` and the generated TS client gets a
-discriminated union. The base class :class:`HttpError` carries the status
-code, a stable ``code`` string, and an optional ``detail`` map; the
-renderer turns it into ``application/problem+json`` per RFC 9457.
-
-Anything not subclassing :class:`HttpError` becomes a 500 with a generic
-``"internal"`` code in the rendered body — the original exception class
-is kept off the wire by default so internal types don't leak.
+Subclass :class:`HttpError` to add typed errors that flow to the
+generated TS client as a discriminated union (via ``@raises(...)``).
+Anything that isn't an :class:`HttpError` becomes a generic 500 — the
+original exception is kept off the wire so internal types don't leak.
 """
 
 from __future__ import annotations
@@ -118,9 +113,7 @@ def render_problem(exc: BaseException, *, request_id: str | None = None) -> Resp
 
 
 async def error_renderer(request: Request, exc: Exception) -> Response:
-    """Starlette ``exception_handlers`` entry. Pulls the request id off
-    ``request.state.request_id`` if the request-id middleware set one.
-    """
+    """Starlette ``exception_handlers`` entry. Reads ``request.state.request_id`` if set."""
     request_id = getattr(request.state, "request_id", None)
     if not isinstance(exc, (HttpError, PermissionError, LookupError)):
         log_exception(
