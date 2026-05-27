@@ -5,10 +5,26 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      path:
-        description: "Ad-hoc: package path under packages/ (e.g. causeway-auth-jwt). Reads version from pyproject.toml, publishes to PyPI, tags, creates a GitHub release."
+      package:
+        description: "PyPI package to publish, or all to publish every unpublished/current package."
         required: true
-        type: string
+        default: all
+        type: choice
+        options:
+          - all
+          - causeway
+          - causeway-auth-jwt
+          - causeway-cache-redis
+          - causeway-db-sqlmodel
+          - causeway-deploy-docker
+          - causeway-deploy-fly
+          - causeway-deploy-modal
+          - causeway-flags-growthbook
+          - causeway-mailer-smtp
+          - causeway-observe-sentry
+          - causeway-storage-fs
+          - causeway-storage-s3
+          - causeway-tasks-dramatiq
 
 # Default is read-only. release-please needs write, publishers need OIDC.
 permissions:
@@ -54,13 +70,15 @@ jobs:
           python-version: "3.13"
       - name: Build ${{ matrix.path }}
         working-directory: ${{ matrix.path }}
-        run: uv build
+        run: |
+          rm -rf dist
+          uv build
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
           packages-dir: ${{ matrix.path }}/dist
 
-  publish-ad-hoc:
-    name: Publish ${{ inputs.path }} (ad-hoc)
+  publish-manual:
+    name: Publish ${{ matrix.name }} to PyPI
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -68,40 +86,108 @@ jobs:
       id-token: write
     environment:
       name: pypi
+      url: https://pypi.org/p/${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: causeway, dir: causeway }
+          - { name: causeway-auth-jwt, dir: causeway-auth-jwt }
+          - { name: causeway-cache-redis, dir: causeway-cache-redis }
+          - { name: causeway-db-sqlmodel, dir: causeway-db-sqlmodel }
+          - { name: causeway-deploy-docker, dir: causeway-deploy-docker }
+          - { name: causeway-deploy-fly, dir: causeway-deploy-fly }
+          - { name: causeway-deploy-modal, dir: causeway-deploy-modal }
+          - { name: causeway-flags-growthbook, dir: causeway-flags-growthbook }
+          - { name: causeway-mailer-smtp, dir: causeway-mailer-smtp }
+          - { name: causeway-observe-sentry, dir: causeway-observe-sentry }
+          - { name: causeway-storage-fs, dir: causeway-storage-fs }
+          - { name: causeway-storage-s3, dir: causeway-storage-s3 }
+          - { name: causeway-tasks-dramatiq, dir: causeway-tasks-dramatiq }
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v7.1.1
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
+      - if: inputs.package == 'all' || inputs.package == matrix.name
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
+      - if: inputs.package == 'all' || inputs.package == matrix.name
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v7.1.1
+      - if: inputs.package == 'all' || inputs.package == matrix.name
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
         with:
           python-version: "3.13"
 
-      - name: Read version
-        id: ver
-        working-directory: packages/${{ inputs.path }}
+      - if: inputs.package == 'all' || inputs.package == matrix.name
+        name: Read package metadata
+        id: meta
         run: |
           set -euo pipefail
-          VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.+)"/\1/')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          PACKAGE_DIR="packages/${{ matrix.dir }}"
+          NAME=$(python - "$PACKAGE_DIR/pyproject.toml" <<'PY'
+          import sys, tomllib
+          print(tomllib.load(open(sys.argv[1], "rb"))["project"]["name"])
+          PY
+          )
+          VERSION=$(python - "$PACKAGE_DIR/pyproject.toml" <<'PY'
+          import sys, tomllib
+          print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])
+          PY
+          )
+          PUBLISHED=$(python - "$NAME" "$VERSION" <<'PY'
+          import json, sys, urllib.error, urllib.request
 
-      - name: Build
-        working-directory: packages/${{ inputs.path }}
-        run: uv build
+          name, version = sys.argv[1:3]
+          try:
+              with urllib.request.urlopen(f"https://pypi.org/pypi/{name}/json", timeout=20) as response:
+                  releases = json.load(response)["releases"]
+          except urllib.error.HTTPError as exc:
+              if exc.code == 404:
+                  print("false")
+                  raise SystemExit
+              raise
+          print("true" if version in releases else "false")
+          PY
+          )
+          {
+            echo "name=$NAME"
+            echo "version=$VERSION"
+            echo "tag=${{ matrix.dir }}-v$VERSION"
+            echo "published=$PUBLISHED"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$PUBLISHED" = "true" ]; then
+            echo "$NAME==$VERSION is already on PyPI; publish will be skipped."
+          fi
 
-      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+      - if: (inputs.package == 'all' || inputs.package == matrix.name) && steps.meta.outputs.published != 'true'
+        name: Build ${{ matrix.name }}
+        working-directory: packages/${{ matrix.dir }}
+        run: |
+          rm -rf dist
+          uv build
+
+      - if: (inputs.package == 'all' || inputs.package == matrix.name) && steps.meta.outputs.published != 'true'
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
-          packages-dir: packages/${{ inputs.path }}/dist
+          packages-dir: packages/${{ matrix.dir }}/dist
 
-      - name: Tag and release
+      - if: inputs.package == 'all' || inputs.package == matrix.name
+        name: Tag and release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_DIR: packages/${{ matrix.dir }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          NAME: ${{ steps.meta.outputs.name }}
         run: |
           set -euo pipefail
-          NAME="${{ inputs.path }}"
-          VERSION="${{ steps.ver.outputs.version }}"
-          TAG="${NAME}-v${VERSION}"
-          git tag "$TAG"
-          git push origin "$TAG"
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes "Release of \`$NAME\` $VERSION. See packages/$NAME/CHANGELOG.md." \
-            --target main
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists; skipping tag push."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG release already exists; skipping release create."
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "Release of \`$NAME\` $VERSION. See $PACKAGE_DIR/CHANGELOG.md." \
+              --target main
+          fi
