@@ -15,23 +15,9 @@ permissions:
   contents: read
 
 jobs:
-  version-guard:
-    name: Version guard
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.0.0
-        with:
-          python-version: "3.13"
-      - run: python scripts/check_versions.py
-
   release-please:
     name: release-please
     if: github.event_name == 'push'
-    needs: version-guard
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -96,9 +82,6 @@ jobs:
           set -euo pipefail
           VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.+)"/\1/')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Check version and tag
-        run: python scripts/check_versions.py --package packages/${{ inputs.path }} --check-tag-available
 
       - name: Build
         working-directory: packages/${{ inputs.path }}

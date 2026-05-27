@@ -58,9 +58,9 @@ v0.2 is about removing rough edges.
       routes / renamed fields / narrowed types as breaking.
 - [ ] **WebSocket route convention** — `$id.ws.py`.
 - [ ] **Coverage gate** — ≥ 85% across `causeway/*` source (CI-enforced).
-- [ ] **Reproducible benchmark suite** — Causeway vs FastAPI vs Litestar vs
-      the underlying RPC layer (raw `dyadpy`) across cold-start +
-      p50/p95/p99 + req/s.
+- [ ] **Reproducible benchmark suite** — Causeway vs FastAPI vs Litestar
+      across cold-start + p50/p95/p99 + req/s. The RPC substrate
+      (`causeway._runtime`) doubles as the floor measurement.
 - [ ] **Plugin sandbox tests** — fixtures that boot a causeway app with
       arbitrary plugin combos and run a smoke route to catch contract
       regressions.

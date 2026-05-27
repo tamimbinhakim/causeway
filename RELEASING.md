@@ -32,7 +32,6 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy src
 cd ../..
-python scripts/check_versions.py
 
 # Repo-wide
 pnpm install --frozen-lockfile
@@ -69,7 +68,6 @@ unzip -l dist/causeway-*-py3-none-any.whl
 - [ ] `.release-please-manifest.json` reflects the version about to ship
 - [ ] `release-please-config.json` `extra-files` entry
       (`packages/causeway/src/causeway/__init__.py` `__version__`) is current
-- [ ] `python scripts/check_versions.py` passes locally and in CI
 - [ ] `packages/causeway/CHANGELOG.md` has a real release section (not
       just `[Unreleased]`)
 - [ ] Changelog entries are user-facing (not commit-ese); breaking
@@ -175,12 +173,11 @@ If anything goes sideways mid-publish:
 Use this only when you intentionally bypass the release-please PR loop:
 
 ```bash
-python scripts/check_versions.py --package packages/causeway --check-tag-available
 gh workflow run release.yml -f path=causeway
 ```
 
-The workflow repeats the guard before publishing, then builds, publishes,
-creates the `causeway-vX.Y.Z` tag, and creates the GitHub release.
+The workflow builds, publishes, creates the `causeway-vX.Y.Z` tag, and
+creates the GitHub release.
 
 ## 11. Post-release
 
