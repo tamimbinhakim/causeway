@@ -1,4 +1,4 @@
-// `causeway-ts` — the tiny zero-dep runtime generated Causeway clients import.
+// `@causewayjs/ts` — the tiny zero-dep runtime generated Causeway clients import.
 // Static typing lives in the generated `.d.ts`; this file only does plumbing.
 
 export { createLazyClient } from "./client.js";

@@ -1,0 +1,70 @@
+name: Publish npm packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Which npm package to publish (or 'all' for all four)"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - "@causewayjs/ts"
+          - "@causewayjs/react"
+          - "@causewayjs/solid"
+          - "@causewayjs/svelte"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.pkg }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { pkg: "@causewayjs/ts", dir: causeway-ts }
+          - { pkg: "@causewayjs/react", dir: causeway-react }
+          - { pkg: "@causewayjs/solid", dir: causeway-solid }
+          - { pkg: "@causewayjs/svelte", dir: causeway-svelte }
+        # The matrix above always includes all four; the step-level `if` below
+        # filters to the requested package when the input isn't `all`. (GitHub
+        # Actions doesn't support a clean way to filter the matrix itself off
+        # workflow_dispatch input.)
+    steps:
+      - if: inputs.package == 'all' || inputs.package == matrix.pkg
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.0
+      - if: inputs.package == 'all' || inputs.package == matrix.pkg
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.0
+      - if: inputs.package == 'all' || inputs.package == matrix.pkg
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - if: inputs.package == 'all' || inputs.package == matrix.pkg
+        run: pnpm install --frozen-lockfile
+      - if: inputs.package == 'all' || inputs.package == matrix.pkg
+        run: pnpm --filter @causewayjs/ts build
+      - if: (inputs.package == 'all' || inputs.package == matrix.pkg) && matrix.pkg != '@causewayjs/ts'
+        run: pnpm --filter ${{ matrix.pkg }} build
+      - if: inputs.package == 'all' || inputs.package == matrix.pkg
+        name: Publish ${{ matrix.pkg }} to npm
+        working-directory: packages/${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION already published; skipping."
+          else
+            npm publish --provenance --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

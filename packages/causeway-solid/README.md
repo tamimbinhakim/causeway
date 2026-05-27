@@ -1,4 +1,4 @@
-# causeway-solid
+# @causewayjs/solid
 
 SolidJS resource bindings for [Causeway](https://github.com/tamimbinhakim/causeway)-generated
 clients. Three factory functions on top of the typed `api`:
@@ -12,13 +12,13 @@ clients. Three factory functions on top of the typed `api`:
 ## Install
 
 ```bash
-pnpm add causeway-solid causeway-ts solid-js
+pnpm add @causewayjs/solid @causewayjs/ts solid-js
 ```
 
 ## Use
 
 ```tsx
-import { createCausewayResources } from "causeway-solid";
+import { createCausewayResources } from "@causewayjs/solid";
 import { api } from "./lib/dyadpy/client";
 
 const resources = createCausewayResources(api);

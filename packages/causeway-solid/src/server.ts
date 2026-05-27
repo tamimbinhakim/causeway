@@ -1,4 +1,4 @@
-import { forwardHeaders, unwrapResult } from "causeway-ts";
+import { forwardHeaders, unwrapResult } from "@causewayjs/ts";
 
 import type { ArgsOf, DataOf, UnaryKeys } from "./types.js";
 

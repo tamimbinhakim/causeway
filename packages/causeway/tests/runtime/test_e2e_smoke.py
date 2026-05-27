@@ -340,7 +340,7 @@ def test_codegen_for_smoke_app_renders_every_section(app: App) -> None:
     out = "\n".join(files.values())
 
     assert "AUTO-GENERATED" in out
-    assert 'from "causeway-ts"' in out
+    assert 'from "@causewayjs/ts"' in out
     assert "Result" in files["types.d.ts"]
 
     assert "export interface ApiRoutes" in out

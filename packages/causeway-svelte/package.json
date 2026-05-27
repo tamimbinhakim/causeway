@@ -1,5 +1,5 @@
 {
-  "name": "causeway-svelte",
+  "name": "@causewayjs/svelte",
   "version": "0.1.1-alpha.0",
   "description": "Svelte store bindings (query, mutation, subscription) for causeway-generated clients.",
   "keywords": [
@@ -59,14 +59,14 @@
   },
   "devDependencies": {
     "@types/node": "25.7.0",
-    "causeway-ts": "workspace:*",
+    "@causewayjs/ts": "workspace:*",
     "svelte": "5.55.5",
     "tsup": "8.5.1",
     "vite": "8.0.12",
     "vitest": "4.1.6"
   },
   "peerDependencies": {
-    "causeway-ts": "workspace:*",
+    "@causewayjs/ts": "workspace:*",
     "svelte": ">=4.0.0 <6"
   },
   "engines": {

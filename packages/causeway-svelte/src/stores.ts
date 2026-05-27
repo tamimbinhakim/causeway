@@ -1,4 +1,4 @@
-import { unwrapResult } from "causeway-ts";
+import { unwrapResult } from "@causewayjs/ts";
 import { readable, writable } from "svelte/store";
 import type { Readable, Writable } from "svelte/store";
 

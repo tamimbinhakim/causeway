@@ -1,4 +1,4 @@
-# causeway-svelte
+# @causewayjs/svelte
 
 Svelte 5 store bindings for [Causeway](https://github.com/tamimbinhakim/causeway)-generated
 clients. Three factory functions on top of the typed `api`:
@@ -12,14 +12,14 @@ clients. Three factory functions on top of the typed `api`:
 ## Install
 
 ```bash
-pnpm add causeway-svelte causeway-ts svelte
+pnpm add @causewayjs/svelte @causewayjs/ts svelte
 ```
 
 ## Use
 
 ```svelte
 <script lang="ts">
-  import { createCausewayStores } from "causeway-svelte";
+  import { createCausewayStores } from "@causewayjs/svelte";
   import { api } from "$lib/dyadpy/client";
 
   const stores = createCausewayStores(api);

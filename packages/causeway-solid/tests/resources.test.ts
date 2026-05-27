@@ -1,7 +1,7 @@
 import { createRoot } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { CausewayError } from "causeway-ts";
+import { CausewayError } from "@causewayjs/ts";
 
 import { createCausewayResources } from "../src/index.js";
 

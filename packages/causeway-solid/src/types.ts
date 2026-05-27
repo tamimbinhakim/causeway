@@ -1,7 +1,7 @@
-// Mirrors causeway-react / causeway-svelte type-level helpers so all three
+// Mirrors @causewayjs/react / @causewayjs/svelte type-level helpers so all three
 // Bindings share the same shape.
 
-import type { Result } from "causeway-ts";
+import type { Result } from "@causewayjs/ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;

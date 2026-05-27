@@ -1,5 +1,5 @@
 {
-  "name": "causeway-react",
+  "name": "@causewayjs/react",
   "version": "0.2.5-alpha.0",
   "description": "React hooks (useQuery, useMutation, useSubscription) on top of TanStack Query for causeway-generated clients.",
   "keywords": [
@@ -65,7 +65,7 @@
     "@types/node": "25.7.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "causeway-ts": "workspace:*",
+    "@causewayjs/ts": "workspace:*",
     "happy-dom": "20.9.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -75,7 +75,7 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": ">=5.0.0 <6",
-    "causeway-ts": ">=0.1.5-alpha.0 <0.2.0",
+    "@causewayjs/ts": ">=0.1.5-alpha.0 <0.2.0",
     "react": ">=18.0.0"
   },
   "engines": {

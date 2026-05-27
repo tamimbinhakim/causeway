@@ -1,5 +1,5 @@
 // Tiny SSE parser. Bundled instead of pulling `eventsource-parser` so
-// `causeway-ts` stays zero-deps.
+// `@causewayjs/ts` stays zero-deps.
 
 export interface SSEEvent {
   event?: string;

@@ -1,5 +1,5 @@
 {
-  "name": "causeway-ts",
+  "name": "@causewayjs/ts",
   "version": "0.1.6-alpha.0",
   "description": "Tiny TypeScript runtime imported by causeway-generated clients.",
   "keywords": [

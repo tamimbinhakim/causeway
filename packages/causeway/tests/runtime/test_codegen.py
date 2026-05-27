@@ -134,7 +134,7 @@ def test_result_import_omitted_when_no_route_raises() -> None:
         return "pong"
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions } from "causeway-ts";' in files["types.d.ts"]
+    assert 'import type { CallOptions } from "@causewayjs/ts";' in files["types.d.ts"]
     assert "Result" not in files["types.d.ts"]
 
 
@@ -156,7 +156,7 @@ def test_result_import_omitted_for_streaming_only_raises() -> None:
         yield Tick(n=1)
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions } from "causeway-ts";' in files["types.d.ts"]
+    assert 'import type { CallOptions } from "@causewayjs/ts";' in files["types.d.ts"]
     assert "Result<" not in files["types.d.ts"]
 
 
@@ -177,7 +177,7 @@ def test_result_import_present_when_any_route_raises() -> None:
         return {"id": thing_id}
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions, Result } from "causeway-ts";' in files["types.d.ts"]
+    assert 'import type { CallOptions, Result } from "@causewayjs/ts";' in files["types.d.ts"]
 
 
 def test_render_emits_configurable_api_factory_for_ssr() -> None:

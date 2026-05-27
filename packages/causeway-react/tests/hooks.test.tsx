@@ -4,7 +4,7 @@ import { act, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { CausewayError } from "causeway-ts";
+import { CausewayError } from "@causewayjs/ts";
 
 import { createReactClient } from "../src/index.js";
 import type { ReactRouteMeta } from "../src/index.js";

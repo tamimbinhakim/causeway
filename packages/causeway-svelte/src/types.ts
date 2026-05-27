@@ -1,7 +1,7 @@
-// Mirrors causeway-react's type-level helpers so the Svelte and React bindings
+// Mirrors @causewayjs/react's type-level helpers so the Svelte and React bindings
 // Stay structurally interchangeable from the codegen's point of view.
 
-import type { Result } from "causeway-ts";
+import type { Result } from "@causewayjs/ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;

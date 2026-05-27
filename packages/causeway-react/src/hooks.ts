@@ -39,8 +39,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { buildNamespaceTree } from "./proxy.js";
 import type { NamespaceEntry, ReactRouteMeta, TreeNode } from "./proxy.js";
 import type { StreamItemOf, SubscriptionStatus } from "./types.js";
-import { unwrapResult } from "causeway-ts";
-import type { CallOptions, Err } from "causeway-ts";
+import { unwrapResult } from "@causewayjs/ts";
+import type { CallOptions, Err } from "@causewayjs/ts";
 
 function makeQueryKey(method: string, args?: unknown): readonly unknown[] {
   return args === undefined ? [method] : [method, args];
@@ -402,7 +402,7 @@ function sortedKeys(value: Record<string, unknown>): string[] {
   return keys;
 }
 
-// Use the shared envelope unwrapper from causeway-ts so the failure branch
+// Use the shared envelope unwrapper from @causewayjs/ts so the failure branch
 // throws a real `CausewayError` instance (with `message`, `kind`, stack trace).
 // A bare `throw value.error` would surface a plain object and break
 // `err instanceof Error` / `err.message` in user code.

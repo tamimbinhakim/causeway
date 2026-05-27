@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 describe("CSR safety", () => {
-  it("loads `causeway-react` without DOM globals", async () => {
+  it("loads `@causewayjs/react` without DOM globals", async () => {
     expect(typeof globalThis.window).toBe("undefined");
     expect(typeof globalThis.document).toBe("undefined");
 
@@ -10,7 +10,7 @@ describe("CSR safety", () => {
     expect(typeof mod.createReactClient).toBe("function");
   });
 
-  it("loads `causeway-react/server` without DOM globals", async () => {
+  it("loads `@causewayjs/react/server` without DOM globals", async () => {
     expect(typeof globalThis.window).toBe("undefined");
     expect(typeof globalThis.document).toBe("undefined");
 

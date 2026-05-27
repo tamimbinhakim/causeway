@@ -1,4 +1,4 @@
-import { unwrapResult } from "causeway-ts";
+import { unwrapResult } from "@causewayjs/ts";
 import { createEffect, createResource, createSignal, onCleanup } from "solid-js";
 import type { Accessor, ResourceReturn } from "solid-js";
 

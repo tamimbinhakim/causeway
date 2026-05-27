@@ -36,7 +36,7 @@ def _render_types_header(ir: AppIR) -> str:
     type_imports = ["CallOptions"]
     if any(route.raises and not route.streams for route in ir.routes):
         type_imports.append("Result")
-    return HEADER_BANNER + f'import type {{ {", ".join(type_imports)} }} from "causeway-ts";\n'
+    return HEADER_BANNER + f'import type {{ {", ".join(type_imports)} }} from "@causewayjs/ts";\n'
 
 
 def _section() -> str:
@@ -118,8 +118,8 @@ def _render_types_file(state: _RenderState) -> str:
 def _render_index(state: _RenderState) -> str:
     return (
         HEADER_BANNER
-        + 'import { createLazyClient } from "causeway-ts";\n'
-        + 'import type { LazyClientConfig } from "causeway-ts";\n'
+        + 'import { createLazyClient } from "@causewayjs/ts";\n'
+        + 'import type { LazyClientConfig } from "@causewayjs/ts";\n'
         + 'import { routeMeta } from "./meta";\n'
         + 'import { loadRoute } from "./routes";\n'
         + 'import type { ApiRoutes } from "./types";\n\n'
@@ -137,7 +137,7 @@ def _render_meta_file(state: _RenderState) -> str:
     entries_by_index = _flatten_namespace_entries(state.route_tree)
     lines = [
         HEADER_BANNER,
-        'import type { RouteMeta } from "causeway-ts";\n\n',
+        'import type { RouteMeta } from "@causewayjs/ts";\n\n',
         "export const routeMeta: ReadonlyArray<RouteMeta> = [\n",
     ]
     for i, route in enumerate(state.ir.routes):
@@ -166,7 +166,7 @@ def _render_route_files(state: _RenderState) -> dict[str, str]:
     unique_chunks = sorted(routes_by_chunk.keys())
     index_lines = [
         HEADER_BANNER,
-        'import type { RouteDescriptor } from "causeway-ts";\n\n',
+        'import type { RouteDescriptor } from "@causewayjs/ts";\n\n',
         "const chunkLoaders: Record<string, () => Promise<Record<string, RouteDescriptor>>> = {\n",
     ]
     for chunk in unique_chunks:
@@ -199,7 +199,7 @@ def _render_route_files(state: _RenderState) -> dict[str, str]:
     for chunk_name, indexes in routes_by_chunk.items():
         lines = [
             HEADER_BANNER,
-            'import type { RouteDescriptor } from "causeway-ts";\n',
+            'import type { RouteDescriptor } from "@causewayjs/ts";\n',
         ]
         for i in indexes:
             route = state.ir.routes[i]

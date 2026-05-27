@@ -1,4 +1,4 @@
-import type { RouteMeta } from "causeway-ts";
+import type { RouteMeta } from "@causewayjs/ts";
 
 /** Namespace-tree builder for the React client. */
 

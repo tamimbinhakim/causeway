@@ -1,5 +1,5 @@
 {
-  "name": "causeway-solid",
+  "name": "@causewayjs/solid",
   "version": "0.1.1-alpha.0",
   "description": "SolidJS resource bindings (query, mutation, subscription) for causeway-generated clients.",
   "keywords": [
@@ -60,7 +60,7 @@
   },
   "devDependencies": {
     "@types/node": "25.7.0",
-    "causeway-ts": "workspace:*",
+    "@causewayjs/ts": "workspace:*",
     "happy-dom": "20.9.0",
     "solid-js": "1.9.12",
     "tsup": "8.5.1",
@@ -69,7 +69,7 @@
     "vitest": "4.1.6"
   },
   "peerDependencies": {
-    "causeway-ts": "workspace:*",
+    "@causewayjs/ts": "workspace:*",
     "solid-js": ">=1.8.0 <2"
   },
   "engines": {

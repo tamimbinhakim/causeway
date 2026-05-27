@@ -1,32 +1,32 @@
-# causeway-ts
+# @causewayjs/ts
 
 > The tiny TypeScript runtime imported by causeway-generated clients.
 
 ```bash
-pnpm add causeway-ts
+pnpm add @causewayjs/ts
 ```
 
 You shouldn't have to think about this package much. The
 [`causeway`](https://pypi.org/project/causeway/) Python CLI writes a generated
-`client/` directory into your frontend that imports from `causeway-ts`. That's it.
+`client/` directory into your frontend that imports from `@causewayjs/ts`. That's it.
 
-> **Why `causeway-ts` and not `causeway-react`?**
+> **Why `@causewayjs/ts` and not `@causewayjs/react`?**
 > Because this package is intentionally framework-agnostic. It's the
 > tiny TypeScript runtime that the generated client imports
 > regardless of where it ends up — Next.js, Vite + React, SvelteKit,
-> SolidStart, Astro, plain HTML, a Node script. The name `causeway-ts`
+> SolidStart, Astro, plain HTML, a Node script. The name `@causewayjs/ts`
 > reflects the language (TypeScript), not a framework. Framework-specific
 > bindings live in their own packages:
 >
-> | Package           | What it adds                                                          | Status                  |
-> | ----------------- | --------------------------------------------------------------------- | ----------------------- |
-> | `causeway-ts`     | The core TypeScript runtime. Required.                                | **v0.1 (this package)** |
-> | `causeway-react`  | `useQuery`, `useSubscription`, `useMutation` hooks via TanStack Query | v0.1                    |
-> | `causeway-svelte` | Svelte 5 store bindings                                               | v0.1                    |
-> | `causeway-solid`  | SolidJS `createResource` / signal bindings                            | v0.1                    |
+> | Package              | What it adds                                                          | Status                  |
+> | -------------------- | --------------------------------------------------------------------- | ----------------------- |
+> | `@causewayjs/ts`     | The core TypeScript runtime. Required.                                | **v0.1 (this package)** |
+> | `@causewayjs/react`  | `useQuery`, `useSubscription`, `useMutation` hooks via TanStack Query | v0.1                    |
+> | `@causewayjs/svelte` | Svelte 5 store bindings                                               | v0.1                    |
+> | `@causewayjs/solid`  | SolidJS `createResource` / signal bindings                            | v0.1                    |
 >
-> If you only need React, you'll still install `causeway-ts` (the
-> generated client imports it) _plus_ `causeway-react` for the hooks.
+> If you only need React, you'll still install `@causewayjs/ts` (the
+> generated client imports it) _plus_ `@causewayjs/react` for the hooks.
 
 Hard rules I've held this package to:
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
-import { CausewayError } from "causeway-ts";
+import { CausewayError } from "@causewayjs/ts";
 
 import { createCausewayStores } from "../src/index.js";
 

@@ -10,5 +10,5 @@ export default defineConfig({
   treeshake: true,
   minify: false,
   target: "es2022",
-  external: ["react", "react-dom", "@tanstack/react-query", "causeway-ts"],
+  external: ["react", "react-dom", "@tanstack/react-query", "@causewayjs/ts"],
 });
