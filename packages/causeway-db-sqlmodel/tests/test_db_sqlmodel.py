@@ -4,12 +4,14 @@ import types
 
 import pytest
 from msgspec import Struct
-from pydantic import SecretStr
+from pydantic import BaseModel, SecretStr
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
 from sqlmodel import Field, SQLModel
 
 import causeway.plugins as plugin_registry
-from causeway_db_sqlmodel import SqlModelSession, json_field, plugin
+from causeway_db_sqlmodel import SqlModelSession, TypedJson, json_field, plugin
 
 _DSN = "sqlite+aiosqlite:///:memory:"
 
@@ -98,6 +100,12 @@ async def test_health_false_when_dsn_unreachable() -> None:
         await db.shutdown()
 
 
+async def test_shutdown_before_startup_is_noop() -> None:
+    db = SqlModelSession(dsn=_DSN)
+    await db.shutdown()
+    assert await db.ready() is False
+
+
 async def test_typed_json_field_round_trips_struct() -> None:
     class Payload(Struct):
         enabled: bool
@@ -125,6 +133,50 @@ async def test_typed_json_field_round_trips_struct() -> None:
             assert doc.payload == Payload(enabled=True, labels=["kyc", "edd"])
     finally:
         await db.shutdown()
+
+
+def test_typed_json_uses_jsonb_for_postgres() -> None:
+    json_type = TypedJson(dict[str, str], none_as_null=True)
+    dialect = postgresql_dialect()
+
+    impl = json_type.load_dialect_impl(dialect)
+
+    assert isinstance(impl, JSONB)
+    assert impl.none_as_null is True
+
+
+def test_typed_json_processes_null_and_untyped_values() -> None:
+    json_type = TypedJson()
+
+    assert json_type.process_bind_param(None, object()) is None
+    assert json_type.process_result_value({"raw": True}, object()) == {"raw": True}
+
+
+def test_typed_json_processes_pydantic_values() -> None:
+    class PayloadModel(BaseModel):
+        enabled: bool
+
+    json_type = TypedJson(PayloadModel)
+
+    assert json_type.process_bind_param(PayloadModel(enabled=True), object()) == {
+        "enabled": True
+    }
+    assert json_type.process_result_value({"enabled": False}, object()) == PayloadModel(
+        enabled=False
+    )
+
+
+def test_json_field_accepts_default_options() -> None:
+    field = json_field(dict[str, str], default={"mode": "test"}, nullable=False)
+
+    assert field.default == {"mode": "test"}
+    assert field.nullable is False
+
+
+def test_json_field_accepts_default_factory() -> None:
+    field = json_field(list[str], default_factory=list)
+
+    assert field.default_factory is list
 
 
 def test_plugin_no_op_without_dsn() -> None:

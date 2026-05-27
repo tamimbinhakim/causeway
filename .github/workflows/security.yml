@@ -40,7 +40,8 @@ jobs:
           set -euo pipefail
           uv venv .venv-audit
           uv pip install --python .venv-audit/bin/python -e "./packages/causeway[all]"
-          for pkg in packages/causeway-*; do
+          for pyproject in packages/causeway-*/pyproject.toml; do
+            pkg="$(dirname "$pyproject")"
             uv pip install --python .venv-audit/bin/python -e "$pkg"
           done
           uv pip install --python .venv-audit/bin/python pip-audit
