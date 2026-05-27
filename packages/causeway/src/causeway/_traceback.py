@@ -25,7 +25,11 @@ from rich.text import Text
 
 _FULL_TRACE_ENV = "CAUSEWAY_FULL_TRACEBACK"
 _FRAME_LIMIT_ENV = "CAUSEWAY_TRACEBACK_FRAMES"
+_WIDTH_ENV = "CAUSEWAY_TRACEBACK_WIDTH"
 _DEFAULT_FRAME_LIMIT = 6
+_DEFAULT_PANEL_WIDTH = 100
+_MIN_PANEL_WIDTH = 56
+_LOG_PREFIX_HEADROOM = 24
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _STDLIB = Path(sysconfig.get_paths()["stdlib"]).resolve()
 _SITE_PACKAGES = tuple(Path(p).resolve() for p in sysconfig.get_paths().values() if "site" in p)
@@ -84,7 +88,15 @@ def render_exception(
 ) -> None:
     """Print a comprehensive error panel for ``exc`` to ``console``."""
     target = console or _console
-    target.print(build_exception_panel(exc, request=request, request_id=request_id, title=title))
+    target.print(
+        build_exception_panel(
+            exc,
+            request=request,
+            request_id=request_id,
+            title=title,
+            width=_panel_width(target),
+        )
+    )
 
 
 def build_exception_panel(
@@ -93,6 +105,7 @@ def build_exception_panel(
     request: Any | None = None,
     request_id: str | None = None,
     title: str = "unhandled exception",
+    width: int | None = None,
 ) -> Panel:
     """Compose the Rich ``Panel`` shown for an unhandled exception."""
     root = root_cause(exc)
@@ -152,6 +165,7 @@ def build_exception_panel(
         border_style="red",
         padding=(0, 1),
         expand=True,
+        width=width,
     )
 
 
@@ -361,6 +375,34 @@ def _frame_limit() -> int:
         return max(1, int(raw))
     except ValueError:
         return _DEFAULT_FRAME_LIMIT
+
+
+def _panel_width(console: Console) -> int:
+    configured = _configured_panel_width()
+    if configured is not None:
+        return configured
+
+    columns = max(1, console.size.width)
+    if columns <= _MIN_PANEL_WIDTH:
+        return columns
+    # Many dev processes run under tools that prefix every log line
+    # (`api:dev:`, `web:dev:`, etc.). Leaving a little right-side headroom
+    # keeps Rich's panel from being wrapped by the outer process, which makes
+    # the border look broken.
+    prefix_safe = columns - _LOG_PREFIX_HEADROOM
+    if prefix_safe < _MIN_PANEL_WIDTH:
+        prefix_safe = columns
+    return max(_MIN_PANEL_WIDTH, min(_DEFAULT_PANEL_WIDTH, prefix_safe))
+
+
+def _configured_panel_width() -> int | None:
+    raw = os.environ.get(_WIDTH_ENV)
+    if raw is None:
+        return None
+    try:
+        return max(_MIN_PANEL_WIDTH, int(raw))
+    except ValueError:
+        return None
 
 
 def _is_relative_to(path: Path, parent: Path) -> bool:

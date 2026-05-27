@@ -13,6 +13,7 @@ from causeway._traceback import (
     build_exception_panel,
     hint_for,
     log_exception,
+    render_exception,
     root_cause,
 )
 
@@ -146,6 +147,13 @@ def test_panel_renders_group_count() -> None:
     text = _capture_panel(group)
     assert "ExceptionGroup" in text
     assert "2 sub-exception" in text
+
+
+def test_render_exception_caps_width_for_prefixed_dev_logs() -> None:
+    console = Console(record=True, width=180, force_terminal=False, color_system=None)
+    render_exception(RuntimeError("x" * 260), console=console)
+    lines = console.export_text().splitlines()
+    assert max(len(line) for line in lines) == 100
 
 
 # --- log_exception ----------------------------------------------------------

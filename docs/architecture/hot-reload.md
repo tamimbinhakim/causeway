@@ -50,6 +50,10 @@ trace:
 full traceback: set CAUSEWAY_FULL_TRACEBACK=1
 ```
 
+Causeway keeps these diagnostics narrow enough to survive prefixed dev
+terminals, such as monorepo scripts that prepend `api:dev:` to every line. Set
+`CAUSEWAY_TRACEBACK_WIDTH=120` if you want a wider panel.
+
 ## Restart-required changes
 
 Some changes intentionally do not hot-swap:
