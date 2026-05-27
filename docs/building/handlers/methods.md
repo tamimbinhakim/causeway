@@ -55,11 +55,11 @@ All three are boot-time errors, not request-time — by the time you can hit the
 
 ## What about OPTIONS, HEAD, TRACE?
 
-Causeway doesn't ship `@options` / `@head` decorators. `OPTIONS` is handled by CORS middleware; `HEAD` is automatically derived from `GET` (Starlette default). If you need a custom method, drop down to `dyadpy.App.add_route` from your `plugins.py`.
+Causeway doesn't ship `@options` / `@head` decorators. `OPTIONS` is handled by CORS middleware; `HEAD` is automatically derived from `GET` (Starlette default). If you need a custom method, drop down to `causeway.App.add_route` from your `plugins.py`.
 
 ## Status codes
 
-Successful responses default to `200`. To return `201 Created` from a `POST` (the common case), return the resource — Causeway emits 201 automatically when the function name is `create` and the method is `POST`. For explicit control, raise `causeway.errors.*` or set `ctx.set_status(...)` from a `dyadpy.Context` parameter.
+Successful responses default to `200`. To return `201 Created` from a `POST` (the common case), return the resource — Causeway emits 201 automatically when the function name is `create` and the method is `POST`. For explicit control, raise `causeway.errors.*` or set `ctx.set_status(...)` from a `causeway.Context` parameter.
 
 ## Next
 

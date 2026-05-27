@@ -2,14 +2,14 @@
 
 Causeway emits a TypeScript client for your frontend from the same route IR that powers runtime validation. The Python signature is the contract; the client falls out the other end. No OpenAPI generator, no manual sync, no drift.
 
-This page covers what's in the client and how to consume it. The codegen itself lives in [`dyadpy`](https://github.com/tamimbinhakim/dyadpy) — Causeway's contribution is the project layout, the discovery walk, and the manifest.
+This page covers what's in the client and how to consume it. The IR walk + codegen live in [`causeway._runtime`](../../architecture/runtime-substrate.md); the convention layer's contribution is the project layout, the discovery walk, and the manifest.
 
 ## How it's generated
 
 The codegen pipeline is:
 
 1. The file router walks `src/app/routes/` and produces a `Discovered` snapshot.
-2. `dyadpy` walks each handler's signature into the IR (intermediate representation).
+2. The runtime walks each handler's signature into the IR (intermediate representation).
 3. The codegen turns the IR into an optimized `client/` directory.
 
 The IR carries:
@@ -112,7 +112,7 @@ causeway build -o dist-main
 causeway diff dist-main/ir.json dist/ir.json
 ```
 
-`causeway diff` (a thin wrapper over `dyadpy diff`) reports:
+`causeway diff` (a thin wrapper over `causeway diff`) reports:
 
 - routes added / removed / changed,
 - response shape changes,
@@ -145,9 +145,9 @@ Ship `client/` to your frontend deploy, `*.whl` to your backend runtime.
 
 ## Caveats
 
-- The TS client mirrors the IR exactly. If a handler uses a Python type `dyadpy` can't represent (custom classes without serialization hints, `Any`-typed parameters), the codegen falls back to `unknown` on the client side — type safety degrades to runtime checking.
+- The TS client mirrors the IR exactly. If a handler uses a Python type the runtime can't represent (custom classes without serialization hints, `Any`-typed parameters), the codegen falls back to `unknown` on the client side — type safety degrades to runtime checking.
 - Generated code shouldn't be hand-edited. If you need to wrap the client (error handling, retries, logging), build a thin layer in your frontend that imports from the generated module.
-- Cross-language IR consumption (Swift / Kotlin / Go clients) is a `dyadpy` feature, not Causeway-specific. Check the [`dyadpy` docs](https://github.com/tamimbinhakim/dyadpy) for the language matrix.
+- Cross-language clients (`causeway swift`, `causeway kotlin`, `causeway openapi`) all consume the same IR. If you need a target the runtime doesn't ship, walk `causeway._runtime.ir.AppIR` yourself — see [the runtime substrate guide](../../architecture/runtime-substrate.md).
 
 ## Next
 

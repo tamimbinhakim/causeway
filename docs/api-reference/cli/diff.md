@@ -1,6 +1,6 @@
 # `causeway diff`
 
-Compare two IR snapshots and flag breaking changes. Delegates to `dyadpy diff`.
+Compare two IR snapshots and flag breaking changes. Delegates to `causeway diff`.
 
 ```bash
 causeway diff dist-main/ir.json dist-pr/ir.json

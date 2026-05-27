@@ -48,7 +48,6 @@ Open <http://127.0.0.1:8000> and you should see a JSON response from the default
 
 `causeway` pulls in:
 
-- **`dyadpy`** — the typed-RPC engine. Walks Python signatures into an IR, generates the TypeScript client.
 - **`starlette`** — the ASGI primitives Causeway composes onto.
 - **`pydantic-settings`** — typed config.
 - **`structlog`** — structured logging.

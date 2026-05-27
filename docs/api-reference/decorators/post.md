@@ -23,7 +23,7 @@ Bare decorator — no arguments. Returns the function stamped with `__causeway_m
 - Anything else → `200 OK`.
 - Returning `None` → `204 No Content`.
 
-For explicit control, take a `dyadpy.Context` parameter and call `ctx.set_status(...)`.
+For explicit control, take a `causeway.Context` parameter and call `ctx.set_status(...)`.
 
 ## See also
 

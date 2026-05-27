@@ -16,7 +16,7 @@ Between 0.1.0 and 1.0 we'll add features without removing or renaming the existi
 
 ## What may change before 0.1.0
 
-- **`stream[T]` plus dyadpy's stream codegen** — currently SSE-only; bidirectional streaming is a candidate to slip in.
+- **`stream[T]` plus the runtime's stream codegen** — currently SSE-only; bidirectional streaming is a candidate to slip in.
 - **Catch-all segments (`$$rest`)** — currently raise `NotImplementedError`. They land in 0.2+, not 0.1.
 - **Inline scenarios DSL** — `expect` and `snapshot` may get richer matchers.
 

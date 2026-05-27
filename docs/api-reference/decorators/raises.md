@@ -17,7 +17,7 @@ async def show(id: UUID) -> User: ...
 raises(*errors: type[HttpError]) -> Callable[[Handler], Handler]
 ```
 
-Re-exported from `dyadpy`. The decorator stamps the handler with the declared error types so `dyadpy`'s codegen can emit them in the IR.
+The decorator stamps the handler with the declared error types so the codegen can emit them in the IR.
 
 ## Behavior
 

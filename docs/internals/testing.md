@@ -19,7 +19,7 @@ packages/causeway/tests/
 ├── test_plugins.py              # register / startup_all / shutdown_all
 ├── test_provider_binding.py     # @provide + Annotated[T, fn]
 ├── test_routing_discover.py     # walk + import
-├── test_routing_register.py     # binding to dyadpy.App
+├── test_routing_register.py     # binding to causeway.App
 ├── test_tasks.py                # @task, InMemoryAdapter, cron loop
 ├── test_testing_kit.py          # TestApp behaviors
 ├── test_inline_scenarios.py     # scenario/expect runtime
@@ -44,7 +44,7 @@ Each public module has a matching test file. New module → new test file.
 
 ## What we don't test
 
-**Framework dependencies.** We trust `pydantic-settings` to parse env vars, `structlog` to format logs, `dyadpy` to emit TypeScript. If a dependency has a bug, the fix is upstream.
+**Framework dependencies.** We trust `pydantic-settings` to parse env vars, `structlog` to format logs, `msgspec` to encode JSON. If a third-party dependency has a bug, the fix is upstream. The TypeScript codegen lives in `causeway._runtime` and is covered by `tests/runtime/test_codegen.py`.
 
 **Type-level behavior.** Pyright handles that. We run pyright in CI; type errors fail the build.
 

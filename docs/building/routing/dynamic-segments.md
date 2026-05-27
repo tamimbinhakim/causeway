@@ -42,7 +42,7 @@ The segment is just a string on the wire. The handler annotation drives parsing 
 | `id: str`               | anything URL-safe | never fails     |
 | `id: Literal["a", "b"]` | exact match       | 400 bad_request |
 
-> **Good to know.** This is `dyadpy` doing the work — `causeway` is just the file router. Any type `dyadpy` knows how to parse is fair game.
+> **Good to know.** This is `causeway._runtime` doing the work — the file router only stamps the URL pattern. Any type the runtime knows how to parse via `msgspec.convert` is fair game.
 
 ## Dynamic folders
 

@@ -12,6 +12,7 @@ If you're trying to **use** Causeway to build an app, you're in the wrong direct
 - **[Testing strategy](./testing.md)** — what we test, what we don't, where the bar is.
 - **[Releases](./releases.md)** — how release-please drives PyPI publishes, what changes versioning, how to ship a hotfix.
 - **[Writing a new official plugin](./plugin-authoring.md)** — the on-ramp for a maintainer adding a sibling `causeway-<role>-<impl>` package.
+- **[Runtime substrate](../architecture/runtime-substrate.md)** — `causeway._runtime`: the typed-RPC engine under the convention layer. Read this before touching `_runtime/*` or before building a different framework on the same primitives.
 
 ## Quick orientation
 
@@ -43,27 +44,29 @@ causeway/                                     # monorepo root (pnpm workspace)
 
 ## Where things live, at a glance
 
-| Concern                          | Lives in                                          |
-| -------------------------------- | ------------------------------------------------- |
-| File-based router                | `packages/causeway/src/causeway/routing.py`       |
-| URL pattern translation          | `packages/causeway/src/causeway/_paths.py`        |
-| Handler decorators               | `packages/causeway/src/causeway/_methods.py`      |
-| App factory                      | `packages/causeway/src/causeway/app.py`           |
-| Config (`Settings`)              | `packages/causeway/src/causeway/config.py`        |
-| Scoped DI                        | `packages/causeway/src/causeway/scope.py`         |
-| Plugin registry                  | `packages/causeway/src/causeway/plugins.py`       |
-| Plugin contracts (Protocols)     | `packages/causeway/src/causeway/contracts.py`     |
-| Reference adapters in core       | `packages/causeway/src/causeway/adapters.py`      |
-| Background tasks                 | `packages/causeway/src/causeway/tasks.py`         |
-| Cron parser                      | `packages/causeway/src/causeway/_cron.py`         |
-| Middleware base + `@guard`       | `packages/causeway/src/causeway/middleware.py`    |
-| Observability (request id, OTel) | `packages/causeway/src/causeway/observability.py` |
-| Errors + handlers                | `packages/causeway/src/causeway/errors.py`        |
-| Health endpoints                 | `packages/causeway/src/causeway/health.py`        |
-| Diagnostics (`/__causeway`)      | `packages/causeway/src/causeway/diagnostics.py`   |
-| Testing kit                      | `packages/causeway/src/causeway/testing.py`       |
-| CLI                              | `packages/causeway/src/causeway/cli.py`           |
-| Scaffolding (`causeway new`)     | `packages/causeway/src/causeway/_scaffold.py`     |
+| Concern                                         | Lives in                                          |
+| ----------------------------------------------- | ------------------------------------------------- |
+| **Runtime substrate** (RPC engine, IR, codegen) | `packages/causeway/src/causeway/_runtime/`        |
+| File-based router                               | `packages/causeway/src/causeway/routing.py`       |
+| URL pattern translation                         | `packages/causeway/src/causeway/_paths.py`        |
+| Handler decorators                              | `packages/causeway/src/causeway/_methods.py`      |
+| App factory                                     | `packages/causeway/src/causeway/app.py`           |
+| Config (`Settings`)                             | `packages/causeway/src/causeway/config.py`        |
+| Scoped DI                                       | `packages/causeway/src/causeway/scope.py`         |
+| Plugin registry                                 | `packages/causeway/src/causeway/plugins.py`       |
+| Plugin contracts (Protocols)                    | `packages/causeway/src/causeway/contracts.py`     |
+| Reference adapters in core                      | `packages/causeway/src/causeway/adapters.py`      |
+| Background tasks                                | `packages/causeway/src/causeway/tasks.py`         |
+| Cron parser                                     | `packages/causeway/src/causeway/_cron.py`         |
+| Middleware base + `@guard`                      | `packages/causeway/src/causeway/middleware.py`    |
+| Observability (request id, OTel)                | `packages/causeway/src/causeway/observability.py` |
+| Errors + handlers                               | `packages/causeway/src/causeway/errors.py`        |
+| Health endpoints                                | `packages/causeway/src/causeway/health.py`        |
+| Diagnostics (`/__causeway`)                     | `packages/causeway/src/causeway/diagnostics.py`   |
+| Rich tracebacks + ASGI shield                   | `packages/causeway/src/causeway/_traceback.py`    |
+| Testing kit                                     | `packages/causeway/src/causeway/testing.py`       |
+| CLI                                             | `packages/causeway/src/causeway/cli.py`           |
+| Scaffolding (`causeway new`)                    | `packages/causeway/src/causeway/_scaffold.py`     |
 
 ## The rule that decides most arguments
 

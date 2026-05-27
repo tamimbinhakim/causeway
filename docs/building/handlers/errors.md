@@ -3,8 +3,8 @@
 Causeway uses two error mechanisms in tandem:
 
 1. **Typed `HttpError` subclasses** for errors you declare with `@raises(...)`.
-   These return Dyadpy's `Result` envelope so the generated TypeScript client can
-   force exhaustive handling.
+   These return the runtime's `Result` envelope so the generated TypeScript client
+   can force exhaustive handling.
 2. **`application/problem+json`** ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457))
    for undeclared/unhandled exceptions that reach the global renderer.
 

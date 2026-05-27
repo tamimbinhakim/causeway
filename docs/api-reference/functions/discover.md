@@ -40,7 +40,7 @@ class DiscoveredRoute:
 
 ## Properties
 
-- **Pure.** No global state mutated, no `dyadpy.App` touched.
+- **Pure.** No global state mutated, no `causeway.App` touched.
 - **Sorted by specificity.** `Discovered.routes` is re-sorted so literal segments outrank parametric (`{name}`) ones at every depth — `/users/me` always registers before `/users/{id}` regardless of filesystem walk order. Ties preserve walk order (stable sort).
 - **Boot-checked.** Method conflicts (two `@get` for the same URL) raise `TypeError` here, not at request time.
 
@@ -51,11 +51,11 @@ class DiscoveredRoute:
   found = discover("src/app/routes")
   assert {(r.method, r.path) for r in found.routes} == EXPECTED
   ```
-- **Custom registration.** Hand the snapshot to your own dyadpy App if you want to compose differently.
+- **Custom registration.** Hand the snapshot to your own `causeway.App` if you want to compose differently.
 - **CI introspection.** Print the route table during build for review diffs.
 
 ## See also
 
-- [`register`](./register.md) — wires a `Discovered` snapshot onto a dyadpy App.
+- [`register`](./register.md) — wires a `Discovered` snapshot onto a `causeway.App`.
 - [`create_app`](./create-app.md) — the high-level wrapper most apps use.
 - [Architecture — boot pipeline](../../architecture/boot-pipeline.md)

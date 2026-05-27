@@ -33,7 +33,7 @@ dist/
 
 ## Pipeline
 
-1. Calls `python -m dyadpy codegen --out dist/client` for the TS client.
+1. Calls `causeway codegen` for the TS client.
 2. Calls `python -m build --wheel --outdir dist/` for the wheel.
 
 Both run via subprocess so failures surface with the original tool's error message.

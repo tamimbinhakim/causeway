@@ -26,7 +26,7 @@ When you add a new public symbol, **add it here too**. That's the contract.
 
 ### `app.py` — 171 lines
 
-`create_app(routes_root, *, events_root="app/events", listeners_root="app/listeners", subscribers_root="app/subscribers", settings=None, ...)` — the factory. Walks the routes tree plus (when present) the three event-related trees: `events_root` imports each `.py` so every `Event` subclass registers itself via `__init_subclass__`; `listeners_root` imports each `.py` so `@<Event>.listen` decorators run at module scope; `subscribers_root` imports each `.py` so module-level `Subscriber(...)` instances register against their event classes. Then registers handlers, wires lifespan hooks, attaches health endpoints, and returns a Starlette app wrapping the inner `dyadpy.App`. The `create_app_frozen` sibling takes a pre-built `Discovered` for the binary build path.
+`create_app(routes_root, *, events_root="app/events", listeners_root="app/listeners", subscribers_root="app/subscribers", settings=None, ...)` — the factory. Walks the routes tree plus (when present) the three event-related trees: `events_root` imports each `.py` so every `Event` subclass registers itself via `__init_subclass__`; `listeners_root` imports each `.py` so `@<Event>.listen` decorators run at module scope; `subscribers_root` imports each `.py` so module-level `Subscriber(...)` instances register against their event classes. Then registers handlers, wires lifespan hooks, attaches health endpoints, and returns a Starlette app wrapping the inner `causeway.App`. The `create_app_frozen` sibling takes a pre-built `Discovered` for the binary build path.
 
 ### `config.py` — 107 lines
 
@@ -51,14 +51,14 @@ The walker, the loader, the binder. The biggest module in core, and the one most
 Three phases:
 
 1. **`discover(routes_root)`** — recursive walk, builds `Discovered` (routes + middleware + lifespan hooks). Skips underscore-prefixed files. Handles `_middleware.py` and `_scope.py` as per-subtree composition. Detects method conflicts.
-2. **`register(app, found)`** — binds the discovered handlers onto a `dyadpy.App` via `@get` / `@post` decorators on the right paths.
+2. **`register(app, found)`** — binds the discovered handlers onto a `causeway.App` via `@get` / `@post` decorators on the right paths.
 3. **`_bind_providers` / `_compose_guards`** — wraps each handler with its provider chain (`Annotated[T, get_session]`) and guard chain (lightweight middleware functions).
 
 Three subtleties worth knowing if you're touching this file:
 
 - Modules are loaded via the shared `causeway._loader.import_path` helper (see below) so dotted / `$` filenames don't confuse Python's import system, and so `routing.py` and `events.py` share one module cache.
 - Provider matching is by `(source_location, name)` — `$id` files can be reloaded without losing provider identity.
-- The handler wrapper preserves dyadpy's view of the original signature (`__wrapped__`, `__annotations__`, `__globals__`) so string forward-refs resolve correctly when dyadpy inspects the wrapper.
+- The handler wrapper preserves the runtime's view of the original signature (`__wrapped__`, `__annotations__`, `__globals__`) so string forward-refs resolve correctly when `causeway._runtime.runtime.build_plan` inspects the wrapper.
 
 ### `_loader.py` — 42 lines
 
@@ -149,7 +149,7 @@ Signing helpers (`sign_payload`, `verify_signature`, `new_secret`) are unchanged
 
 ### `errors.py` — 135 lines
 
-`HttpError` hierarchy (`NotFound`, `BadRequest`, `Unauthorized`, `Forbidden`, …) and the global handler for undeclared exceptions. Declared `@raises(...)` errors flow through Dyadpy's typed `Result` envelope; undeclared exceptions render as RFC 7807 `application/problem+json`. The handler **never** leaks internal exception messages — the body for an uncaught exception is the generic `internal server error`. Subclass `HttpError` to opt into a custom message.
+`HttpError` hierarchy (`NotFound`, `BadRequest`, `Unauthorized`, `Forbidden`, …) and the global handler for undeclared exceptions. Declared `@raises(...)` errors flow through the runtime's typed `Result` envelope; undeclared exceptions render as RFC 7807 `application/problem+json`. The handler **never** leaks internal exception messages — the body for an uncaught exception is the generic `internal server error`. Subclass `HttpError` to opt into a custom message.
 
 ### `health.py` — 54 lines
 
@@ -183,7 +183,7 @@ Registered via the `pytest11` entry point. Adds `--causeway-routes`, `--update-s
 
 ### `cli.py` — 227 lines
 
-The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (owned uvicorn server + smart route hot-swap), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `dyadpy diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
+The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (owned uvicorn server + smart route hot-swap), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `causeway diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
 
 ### `_scaffold.py` — 290 lines
 

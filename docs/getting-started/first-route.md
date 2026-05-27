@@ -95,8 +95,8 @@ Multiple HTTP methods can share a route file; method conflicts are caught at boo
 ## What just happened
 
 1. The router walked `src/app/routes/`, translated `users/$id.py` into `/users/{id}` via the [path rules](../api-reference/file-conventions/index.md).
-2. It stamped the `@get` and `@patch` decorators with their HTTP methods, then registered both with `dyadpy.App`.
-3. dyadpy walked your handler signatures into the IR — `id: UUID` becomes a typed path parameter, `data: UserPatch` becomes a typed JSON body, `-> User` becomes the response type, `@raises(NotFound)` becomes a discriminated union on the wire.
+2. It stamped the `@get` and `@patch` decorators with their HTTP methods, then registered both with `causeway.App`.
+3. The runtime walked your handler signatures into the IR — `id: UUID` becomes a typed path parameter, `data: UserPatch` becomes a typed JSON body, `-> User` becomes the response type, `@raises(NotFound)` becomes a discriminated union on the wire.
 4. The same IR can emit a generated client with a nested `api.users.byId` function, typed end-to-end.
 
 ## Where to go next

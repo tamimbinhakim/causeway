@@ -44,9 +44,9 @@ create_app(
 1. Loads plugin entry points, then imports sibling `plugins.py` if present.
 2. Imports sibling `lifespan.py` if present.
 3. Calls `discover(routes_root)` to walk the tree.
-4. Builds a `dyadpy.App` and registers every discovered handler.
+4. Builds a `causeway.App` and registers every discovered handler.
 5. Attaches `/healthz` and `/readyz` unconditionally; `/__causeway` when `diagnostics=True`.
-6. Wraps the dyadpy app in a Starlette `Starlette` with:
+6. Wraps the inner runtime `App` in a Starlette app with:
    - `RequestIdMiddleware` (when `request_id=True`),
    - every collected class `Middleware` instance from `_middleware.py` files,
    - the problem+json error renderer (when `error_renderer_=True`).

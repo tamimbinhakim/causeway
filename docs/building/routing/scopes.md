@@ -35,7 +35,7 @@ Three rules:
 
 1. The provider is a plain function — sync, async, generator, or async generator. Generators that `yield` get teardown after the response.
 2. Each call creates a fresh instance — providers are **request-scoped**, not module-scoped.
-3. The handler binds the provider via `Annotated[T, provider]` — the file router rewrites that into `dyadpy.Depends(provider)` automatically.
+3. The handler binds the provider via `Annotated[T, provider]` — the file router rewrites that into `causeway.Depends(provider)` automatically.
 
 ## Composition
 
@@ -147,7 +147,7 @@ routes/users/_scope.py          @provide("idem")        looks up Idempotency-Key
 
 ## Caveats
 
-- A provider that depends on another provider is supported — Causeway hands them to `dyadpy.Depends`, which composes naturally.
+- A provider that depends on another provider is supported — Causeway hands them to `causeway.Depends`, which composes naturally.
 - Providers can't depend on themselves (cycle detection happens at request time and raises).
 - A `_scope.py` that doesn't export `startup` / `shutdown` is fine; both are optional.
 

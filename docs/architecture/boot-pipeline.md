@@ -28,8 +28,8 @@ What happens between `causeway dev` and your first request.
        │     ├─ rewrites Annotated[T, provider] → Depends(provider)
        │     └─ returns a Discovered snapshot
        │
-       ├─ register(dyadpy_app, discovered)
-       │     └─ wires each route onto the dyadpy.App
+       ├─ register(inner_app, discovered)
+       │     └─ wires each route onto the inner causeway.App
        │
        ├─ attach health endpoints (/healthz, /readyz)
        ├─ attach diagnostics (/__causeway) if enabled
@@ -37,7 +37,7 @@ What happens between `causeway dev` and your first request.
        ├─ install each class Middleware collected from _middleware.py files
        └─ install the problem+json error renderer
        ↓
-8. Starlette wraps the dyadpy app + middleware chain + lifespan
+8. Starlette wraps the inner runtime App + middleware chain + lifespan
        ↓
 9. Lifespan starts
        ├─ plugin startup() in registration order
@@ -87,7 +87,7 @@ A `_middleware.py` may export both. The walker separates them:
 - **`@guard` functions** are wrapped around each handler inline (via `_compose_guards`). They run before the handler body in the same async task.
 - **Class `Middleware` instances** are attached to the handler via `__causeway_class_middleware__`. `create_app` walks every discovered route and registers each unique instance as a `BaseHTTPMiddleware`-wrapped Starlette middleware at the app level.
 
-This split is why guards have access to the dyadpy context while class middleware sees the raw ASGI scope.
+This split is why guards have access to the runtime's request `Context` while class middleware sees the raw ASGI scope.
 
 ## See also
 

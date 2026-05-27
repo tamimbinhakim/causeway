@@ -24,7 +24,7 @@ async def watch(thread_id: str) -> stream[Event]:
 stream[T]    # type alias / marker
 ```
 
-Re-exported from `dyadpy`. The handler **must** be an async generator (`yield` inside an `async def`) whose return annotation is `stream[T]`.
+The handler **must** be an async generator (`yield` inside an `async def`) whose return annotation is `stream[T]`.
 
 ## Wire shape
 

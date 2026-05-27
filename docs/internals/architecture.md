@@ -4,12 +4,14 @@ This is what's actually happening when you type `causeway dev`. It's not magic,
 and the parts are small enough that you can read the whole thing in a
 weekend.
 
-> **One-line acknowledgement.** Causeway's typed-RPC layer — the IR format,
-> the TypeScript codegen, the streaming envelope — is provided by `dyadpy`,
-> a lower-level primitive that Causeway depends on. Everything below
-> describes Causeway's surface; the IR / codegen plumbing under it is mostly
-> Dyadpy doing its job. From an application author's perspective: it's
-> all Causeway.
+> **One-line acknowledgement.** Causeway's typed-RPC engine — the IR
+> format, the TypeScript codegen, the streaming envelope — lives in
+> `causeway._runtime`, a focused substrate the convention layer builds
+> on. Everything below describes the convention-layer surface; the IR /
+> codegen plumbing under it is the substrate doing its job. The split
+> is documented in
+> [the runtime substrate guide](../architecture/runtime-substrate.md);
+> from an application author's perspective it's all just Causeway.
 
 ## The 30-second mental model
 
@@ -141,13 +143,15 @@ Every shipped opinion is a future pain point for the 60% of users who
 already have a choice. Plugins make this opt-in. Core stays small,
 upgradable, and replaceable.
 
-**Why depend on `dyadpy` for the typed-RPC layer?**
+**Why factor the typed-RPC engine out as `causeway._runtime`?**
 Type extraction, IR generation, TypeScript codegen, and SSE streaming
-are a real piece of work on their own. `dyadpy` solves them well and
-versions independently, which lets Causeway focus on project shape (routing,
-scopes, plugins, tasks) without re-implementing the wire layer. The
-two compose cleanly: Causeway registers handlers; the lower layer turns
-them into a generated client.
+are a real piece of work on their own. Holding them in a focused
+submodule lets the convention layer (routing, scopes, plugins, tasks)
+build on a stable substrate without re-implementing the wire layer.
+The runtime is also reachable on its own: if you ever want to ship a
+different framework (different routing, different DI shape) on the same
+RPC engine, you can — see
+[the runtime substrate guide](../architecture/runtime-substrate.md).
 
 ## Where to read the code
 

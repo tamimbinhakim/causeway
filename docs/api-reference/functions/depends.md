@@ -1,6 +1,6 @@
 # `Depends`
 
-DI marker for handler parameters. Re-exported from `dyadpy`.
+DI marker for handler parameters.
 
 ```python
 from causeway import Depends

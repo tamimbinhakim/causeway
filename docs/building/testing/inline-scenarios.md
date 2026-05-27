@@ -59,7 +59,7 @@ with scenario("…") as it:
     it.request("OPTIONS", "/users")
 
     it.last           # most recent Response
-    it.app            # underlying dyadpy.App (escape hatch)
+    it.app            # underlying causeway.App (escape hatch)
 
     # DI / tasks
     it.override(get_session, lambda: fake_session)

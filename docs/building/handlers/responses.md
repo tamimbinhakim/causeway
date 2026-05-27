@@ -48,10 +48,10 @@ Defaults:
 - `POST` → `201 Created` when the function name is `create`; `200 OK` otherwise.
 - `DELETE` with `-> None` → `204 No Content`.
 
-For explicit control, take a `dyadpy.Context`:
+For explicit control, take a `causeway.Context`:
 
 ```python
-from dyadpy import Context
+from causeway import Context
 
 @post
 async def reset(ctx: Context) -> None:
@@ -64,7 +64,7 @@ For error statuses, raise a declared `HttpError` — see [Errors](./errors.md).
 ## Custom headers
 
 ```python
-from dyadpy import Context
+from causeway import Context
 
 @get
 async def show(id: UUID, ctx: Context) -> User:

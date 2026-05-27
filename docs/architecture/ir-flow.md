@@ -10,11 +10,11 @@ async def show(id: UUID) -> User: ...
        ▼
 DiscoveredRoute(method="GET", path="/users/{id}", handler=show, ...)
        │
-       │ (causeway.routing.register → dyadpy.App.get("/users/{id}")(show))
+       │ (causeway.routing.register → causeway.App.get("/users/{id}")(show))
        ▼
-dyadpy.App registers the route
+causeway.App registers the route
        │
-       │ (dyadpy walks the signature)
+       │ (causeway._runtime walks the signature)
        ▼
 IR entry:
   {
@@ -25,7 +25,7 @@ IR entry:
     errors: [{ ref: "NotFound" }],
   }
        │
-       │ (dyadpy codegen)
+       │ (causeway codegen)
        ▼
 client/:
   api.users.byId: (args: { id: string }) => Promise<Result<User, NotFound>>
@@ -47,12 +47,12 @@ client/:
 
 The IR is built from:
 
-1. **Handler signatures** — annotations on parameters and return type. Re-types via `dyadpy.inspect_signature`.
+1. **Handler signatures** — annotations on parameters and return type. Walked by `causeway._runtime.runtime.build_plan`.
 2. **`@raises(...)`** — declared error branches.
 3. **`stream[T]`** — marker for SSE handlers.
 4. **`causeway.toml`** — `[client] expose_settings`.
 
-The router doesn't transform types; it discovers and registers. Type-walking is `dyadpy`'s job.
+The router doesn't transform types; it discovers and registers. Type-walking is the runtime's job (`causeway._runtime`).
 
 ## Snapshotting
 
@@ -75,7 +75,7 @@ Each change is classified per [IR stability](../stability/ir-stability.md):
 
 ## Why an IR layer at all
 
-So one source of truth feeds many clients. Today: TypeScript. Tomorrow (in `dyadpy`'s roadmap): Swift, Kotlin, Go, OpenAPI for tooling that needs it. Each generator consumes the same IR.
+So one source of truth feeds many clients. Today: TypeScript (`causeway codegen`), OpenAPI 3.1 (`causeway openapi`), Swift (`causeway swift`), Kotlin (`causeway kotlin`). Tomorrow: Go, gRPC, anything else. Each generator consumes the same IR.
 
 It also makes contract-stability tooling tractable. `causeway diff` walks the IR rather than parsing Python — that's the only way you get fast, reliable breaking-change detection in CI.
 
@@ -85,4 +85,4 @@ It also makes contract-stability tooling tractable. `causeway diff` walks the IR
 - [`build`](../api-reference/cli/build.md)
 - [`diff`](../api-reference/cli/diff.md)
 - [IR stability](../stability/ir-stability.md)
-- [`dyadpy`](https://github.com/tamimbinhakim/dyadpy) — the engine that owns the IR.
+- [Runtime substrate](./runtime-substrate.md) — the substrate that owns the IR (`causeway._runtime`).

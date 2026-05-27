@@ -84,7 +84,7 @@ For HTTP/2 + Cloudflare, 15-30s is a reasonable interval. Tune for your stack.
 
 ## What's in `stream[T]`
 
-`stream[T]` is a marker that tells `dyadpy` "this handler is an async generator of `T`." The IR records the element type; the codegen emits the right client type (`AsyncIterable<T>` in TypeScript with proper narrowing).
+`stream[T]` is a marker that tells the runtime "this handler is an async generator of `T`." The IR records the element type; the codegen emits the right client type (`AsyncIterable<T>` in TypeScript with proper narrowing).
 
 ## Bidirectional streams
 

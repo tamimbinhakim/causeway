@@ -90,7 +90,7 @@ from causeway import post, Bytes
 async def upload(body: Bytes) -> dict: ...
 ```
 
-`Bytes` is a sentinel that tells `dyadpy` "give me the raw body, don't try to parse it."
+`Bytes` is a sentinel that tells the runtime "give me the raw body, don't try to parse it."
 
 ## Dependencies (scoped providers)
 
@@ -107,16 +107,16 @@ async def list_users(
 ) -> list[User]: ...
 ```
 
-The file router rewrites `Annotated[Session, get_session]` into `dyadpy.Depends(get_session)` at boot, so handler code stays declarative. See [Scopes](../routing/scopes.md).
+The file router rewrites `Annotated[Session, get_session]` into `causeway.Depends(get_session)` at boot, so handler code stays declarative. See [Scopes](../routing/scopes.md).
 
-> **Good to know.** Providers can take their own dependencies — Causeway hands the chain to `dyadpy.Depends`, which resolves it for you.
+> **Good to know.** Providers can take their own dependencies — Causeway hands the chain to `causeway.Depends`, which resolves it for you.
 
 ## The request context
 
-For everything else (cookies, state, the raw ASGI scope), take a `dyadpy.Context` or a `starlette.requests.Request`:
+For everything else (cookies, state, the raw ASGI scope), take a `causeway.Context` or a `starlette.requests.Request`:
 
 ```python
-from dyadpy import Context
+from causeway import Context
 
 @get
 async def show(id: UUID, ctx: Context) -> User:
@@ -124,7 +124,7 @@ async def show(id: UUID, ctx: Context) -> User:
     ...
 ```
 
-`Context` is dyadpy-native and gives you `ctx.set_status(...)`, `ctx.set_header(...)`, etc. `Request` is the Starlette object — use whichever feels more natural.
+`Context` is causeway's per-request handle and gives you `ctx.set_status(...)`, `ctx.set_header(...)`, etc. `Request` is the Starlette object — use whichever feels more natural.
 
 ## Putting it together
 

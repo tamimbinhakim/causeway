@@ -12,7 +12,7 @@ src/app/routes/users/$id.py     →    GET /users/{id}
                                      DELETE /users/{id}
 ```
 
-The router emits a [`Discovered` snapshot](../../api-reference/functions/discover.md). The Causeway `create_app` factory hands that snapshot to `dyadpy.App` for registration; the same snapshot drives the diagnostics page, the TS client codegen, and `causeway diff`.
+The router emits a [`Discovered` snapshot](../../api-reference/functions/discover.md). The Causeway `create_app` factory hands that snapshot to `causeway.App` for registration; the same snapshot drives the diagnostics page, the TS client codegen, and `causeway diff`.
 
 ## The two layouts
 

@@ -50,7 +50,7 @@ from causeway import get
 async def show(id: UUID, db: Annotated[Session, get_session]) -> User: ...
 ```
 
-The file router rewrites `Annotated[Session, get_session]` into `dyadpy.Depends(get_session)` at boot.
+The file router rewrites `Annotated[Session, get_session]` into `causeway.Depends(get_session)` at boot.
 
 ## Lifespan order
 

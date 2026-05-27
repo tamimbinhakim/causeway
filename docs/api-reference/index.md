@@ -34,8 +34,8 @@ Every public symbol Causeway exports, on its own page. Organized by kind: decora
 | [`raise_if_cancelled`](./functions/raise-if-cancelled.md) | Inside a `@task`: raise `CancelledError` if cancellation was requested. |
 | [`discover`](./functions/discover.md)                     | Walk a routes directory and return a snapshot. (Low-level.)             |
 | [`stream`](./functions/stream.md)                         | Marker for SSE return types: `stream[T]`.                               |
-| [`raises`](./functions/raises.md)                         | Declare typed errors (re-exported from `dyadpy`).                       |
-| [`Depends`](./functions/depends.md)                       | DI marker for handler params (re-exported from `dyadpy`).               |
+| [`raises`](./functions/raises.md)                         | Declare typed errors that flow to the TS client's `Result<T, E>` union. |
+| [`Depends`](./functions/depends.md)                       | DI marker for handler params.                                           |
 
 ## Classes
 

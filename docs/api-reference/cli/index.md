@@ -1,6 +1,6 @@
 # CLI
 
-The `causeway` command. Thin shell over the framework + `dyadpy`.
+The `causeway` command. One entry point for project shape, dev loop, codegen, IR introspection, and deployment.
 
 ```
 $ causeway --help

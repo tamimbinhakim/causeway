@@ -1,6 +1,6 @@
 # `TestApp`
 
-In-process ASGI test client. Wraps a `dyadpy.App` and proxies HTTP methods to an `httpx.AsyncClient` over an `ASGITransport`.
+In-process ASGI test client. Wraps a `causeway.App` and proxies HTTP methods to an `httpx.AsyncClient` over an `ASGITransport`.
 
 ```python
 from causeway.testing import TestApp
@@ -17,13 +17,13 @@ r = await app.post("/users", json={"name": "ada"})
 TestApp.from_routes(routes_root: str | Path) -> TestApp
 ```
 
-Walks `routes_root`, builds a fresh `dyadpy.App`, attaches health endpoints, returns a `TestApp`.
+Walks `routes_root`, builds a fresh `causeway.App`, attaches health endpoints, returns a `TestApp`.
 
 ```python
-TestApp.wrap(app: dyadpy.App) -> TestApp
+TestApp.wrap(app: causeway.App) -> TestApp
 ```
 
-Wraps an existing `dyadpy.App` — useful for app-factory patterns.
+Wraps an existing `causeway.App` — useful for app-factory patterns.
 
 ## HTTP methods
 

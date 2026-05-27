@@ -16,15 +16,11 @@ I tried four different OpenAPI-to-TypeScript generators. Some were better than o
 
 At some point I stopped trying to patch the gap and started thinking about what I actually wanted: a primitive that walks Python handlers directly into an IR (intermediate representation), then emits TypeScript that matches exactly what the server returns. No OpenAPI middle-man, no generator drift, no manual sync. The Python signature **is** the wire contract.
 
-That primitive is **[dyadpy](https://github.com/tamimbinhakim/dyadpy)**.
+That primitive lives inside Causeway as `causeway._runtime` — a small, focused substrate that does one thing: typed-RPC from Python to TypeScript, with streaming primitives for SSE and bidirectional async iterators. It knows nothing about routing, config, dependency injection, background jobs, middleware, or plugins. That layering is intentional — if you ever want to build a different framework on the same RPC engine, [the substrate is documented and reachable](./architecture/runtime-substrate.md). But on its own it's not enough to ship a product.
 
-dyadpy is small on purpose. It does one thing — typed-RPC from Python to TypeScript, with streaming primitives for SSE and bidirectional async iterators. It deliberately knows nothing about routing, config, dependency injection, background jobs, middleware, or plugins. That's a feature for the library, but it's a problem for the application author: if I want to actually ship a backend, I'd be writing the same scaffolding around dyadpy for the tenth time.
+**Causeway** is what you actually use: the substrate plus the layer that turns it into something you can build on. File-based routing, scoped DI, middleware composition, a plugin registry, a background-task contract, observability, and the CLI that ties it all together. You write Python handlers; Causeway walks them into the IR, the codegen emits the TypeScript client, and your frontend gets exactly the types your server produces.
 
-So I built **Causeway** — the layer that turns dyadpy into something you can build a product on.
-
-**dyadpy** is the typed-RPC engine. **Causeway** is the framework around it: file-based routing, scoped DI, middleware composition, a plugin registry, a background-task contract, observability, and the CLI that ties it all together. You write Python handlers; Causeway registers them with dyadpy, dyadpy emits the TypeScript client, and your frontend gets exactly the types your server produces.
-
-That's the whole shape.
+That's the whole shape: one install (`causeway`), one brand, but two layers under the hood — the runtime substrate and the convention layer on top of it.
 
 ## What I wanted that I wasn't getting elsewhere
 
@@ -122,9 +118,9 @@ If the world shifts, the plan shifts. Here are the specific shifts I've thought 
 
 ## Where to go from here
 
-- **[Get started](./getting-started.md)** — clone, scaffold, see the route tree and a typed handler in five minutes.
-- **[Routing](./routing.md)** — file-based routing conventions, both folder-style and dot-flat.
-- **[Plugins](./plugins.md)** — the plugin contract: discovery, registration, manifest.
-- **[Tasks](./tasks.md)** — `@task` contract and the adapter ecosystem.
-- **[Reference](./reference.md)** — every primitive on one page. The thing you'll keep open in a tab.
+- **[Get started](./getting-started/installation.md)** — install, scaffold, see the route tree and a typed handler in five minutes.
+- **[Routing](./building/routing/defining-routes.md)** — file-based routing conventions, both folder-style and dot-flat.
+- **[Plugins](./building/plugins/index.md)** — the plugin contract: discovery, registration, manifest.
+- **[Tasks](./building/tasks/index.md)** — `@task` contract and the adapter ecosystem.
+- **[Runtime substrate](./architecture/runtime-substrate.md)** — what lives inside `causeway._runtime`, when to reach into it, and how to build your own opinionated framework on the same RPC engine.
 - **[Internals](./internals/README.md)** — contributor's tour of the codebase.

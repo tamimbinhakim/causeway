@@ -72,6 +72,7 @@ What happens under the hood.
 - **[Boot pipeline](./architecture/boot-pipeline.md)** — what runs between `causeway dev` and your first request.
 - **[IR flow](./architecture/ir-flow.md)** — how a handler signature becomes a typed TS client.
 - **[Hot reload](./architecture/hot-reload.md)** — what's preserved across reloads, what isn't.
+- **[Runtime substrate](./architecture/runtime-substrate.md)** — `causeway._runtime`: what's in it, when to reach into it, and how to build your own opinionated framework on the same RPC engine.
 
 ## Deploying
 
