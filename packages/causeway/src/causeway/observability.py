@@ -2,13 +2,14 @@
 
 Causeway wires correlation; the exporter is the user's choice. OTel setup is
 a no-op when the SDK isn't installed. ``structlog`` is loaded lazily so
-``import causeway`` doesn't pay its ~16ms cost when the caller never
-configures structured logging.
+``import causeway`` doesn't pay its ~16ms import cost when the caller
+never configures structured logging.
 """
 
 from __future__ import annotations
 
 import logging
+import sys
 import uuid
 from typing import Any
 
@@ -18,9 +19,25 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _log = logging.getLogger("causeway.observability")
 
-# Sentinel for "structlog isn't loaded yet" so the request-id middleware can
-# skip the context bind without import-ordering games.
-_structlog: Any = None
+
+def _structlog_bind(request_id: str) -> Any:
+    """Return the structlog request-id context manager if structlog is loaded,
+    otherwise a no-op. Detected by ``sys.modules`` lookup so users who
+    import structlog themselves still get correlation without calling
+    ``configure_logging``.
+    """
+    mod = sys.modules.get("structlog")
+    if mod is None:
+        return _NoopBind
+    return mod.contextvars.bound_contextvars(request_id=request_id)
+
+
+class _NoopBindClass:
+    def __enter__(self) -> None: ...
+    def __exit__(self, *exc: object) -> None: ...
+
+
+_NoopBind = _NoopBindClass()
 
 
 class RequestIdMiddleware:
@@ -58,10 +75,7 @@ class RequestIdMiddleware:
                 message["headers"] = [*message.get("headers", ()), header_pair]
             await send(message)
 
-        if _structlog is not None:
-            with _structlog.contextvars.bound_contextvars(request_id=request_id):
-                await self.app(scope, receive, send_with_header)
-        else:
+        with _structlog_bind(request_id):
             await self.app(scope, receive, send_with_header)
 
 
@@ -71,12 +85,10 @@ def configure_logging(*, level: str = "INFO", json: bool = True) -> None:
     Pass ``json=False`` for a pretty console renderer in dev. Production runs
     keep ``json=True`` so a log shipper can ingest the lines directly.
     """
-    global _structlog
     # Deferred so ``import causeway`` doesn't pay structlog's import cost
     # for apps that never configure structured logging.
     import structlog
 
-    _structlog = structlog
     timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
     pre_chain: list[Any] = [
         structlog.contextvars.merge_contextvars,
