@@ -295,7 +295,7 @@ def _compose_guards(handler: Handler, middleware: list[Any]) -> Handler:
     handler_globals = getattr(handler, "__globals__", None)
     if handler_globals is not None:
         with_guards.__globals__.update(handler_globals)
-        with_guards.__dyadpy_localns__ = dict(handler_globals)  # type: ignore[attr-defined]
+        with_guards.__causeway_localns__ = dict(handler_globals)  # type: ignore[attr-defined]
     if mws:
         with_guards.__causeway_class_middleware__ = mws  # type: ignore[attr-defined]
     return with_guards

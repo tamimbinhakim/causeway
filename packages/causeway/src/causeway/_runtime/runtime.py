@@ -84,7 +84,7 @@ class HandlerPlan:
 
 def build_plan(handler: Callable[..., Any], path_template: str) -> HandlerPlan:
     sig = inspect.signature(handler)
-    localns: dict[str, Any] | None = getattr(handler, "__dyadpy_localns__", None)
+    localns: dict[str, Any] | None = getattr(handler, "__causeway_localns__", None)
     hints = typing.get_type_hints(handler, localns=localns, include_extras=True)
     path_params = set(_PATH_PARAM_RE.findall(path_template))
 

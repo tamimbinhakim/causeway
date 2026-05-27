@@ -180,7 +180,7 @@ def mount_task_routes(
     import typing as _typing
 
     handler_sig = inspect.signature(handler)
-    handler_localns: dict[str, Any] | None = getattr(handler, "__dyadpy_localns__", None)
+    handler_localns: dict[str, Any] | None = getattr(handler, "__causeway_localns__", None)
     # Forward the *handler's* module globals (plus any captured localns) so
     # ``typing.get_type_hints`` can resolve string annotations on the wrappers,
     # whose own ``__globals__`` would be this module (tasks.py).
@@ -245,8 +245,8 @@ def mount_task_routes(
     app.post(path)(submit)
     app.get(f"{path}/{{task_id}}")(status)
     app.get(f"{path}/{{task_id}}/events")(events)
-    # ``app._register`` stamps each handler's ``__dyadpy_localns__`` with its
+    # ``app._register`` stamps each handler's ``__causeway_localns__`` with its
     # *caller's* frame locals — which here is this function, not the user's
     # module. Overwrite with the handler's resolved namespace so deferred
     # annotations like ``-> TranscribeInput`` resolve correctly later.
-    setattr(submit, "__dyadpy_localns__", forward_ns)  # noqa: B010
+    setattr(submit, "__causeway_localns__", forward_ns)  # noqa: B010

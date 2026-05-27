@@ -402,50 +402,34 @@ def diff(
 
 
 def _load_runtime_app(target: str) -> Any:
+    """Resolve ``module:attr`` to the inner runtime App.
+
+    Accepts either a raw runtime ``App`` or the wrapped object returned by
+    ``causeway.create_app`` — ExceptionShield → Starlette → Mount → App.
+    """
     from causeway._runtime import App as RuntimeApp
 
     module_name, _, attr = target.partition(":")
     if not module_name or not attr:
         raise typer.BadParameter("Target must be 'module:attr', e.g. 'app:app'.")
-    mod = importlib.import_module(module_name)
-    obj = getattr(mod, attr)
-    if not isinstance(obj, RuntimeApp):
-        # Causeway's create_app wraps the inner runtime App in Starlette; reach in.
-        inner = _find_inner_runtime_app(obj)
-        if inner is None:
-            raise typer.BadParameter(
-                f"{target} resolved to {type(obj).__name__}, not a causeway.App. "
-                "Pass the inner App (e.g. 'app:app.inner') or a module:attr that "
-                "exports App directly.",
-            )
-        obj = inner
-    return obj
-
-
-def _find_inner_runtime_app(obj: Any) -> Any:
-    """Best-effort: walk a Starlette/ExceptionShield wrapper to find the runtime App."""
-    from causeway._runtime import App as RuntimeApp
-
-    seen: set[int] = set()
-    cursor = obj
-    while cursor is not None and id(cursor) not in seen:
-        seen.add(id(cursor))
+    obj = getattr(importlib.import_module(module_name), attr)
+    cursor: Any = obj
+    for _ in range(8):  # bounded — guards against ASGI shapes we don't recognize
         if isinstance(cursor, RuntimeApp):
             return cursor
-        # ExceptionShield → .app
-        cursor = getattr(cursor, "app", None)
-        if cursor is None:
-            return None
-        if isinstance(cursor, RuntimeApp):
-            return cursor
-        # Starlette: routes[Mount("/", app=inner)]
-        routes = getattr(cursor, "routes", None)
-        if routes:
-            for route in routes:
-                mounted = getattr(route, "app", None)
-                if isinstance(mounted, RuntimeApp):
-                    return mounted
-    return None
+        inner = getattr(cursor, "app", None)
+        if inner is not None:
+            cursor = inner
+            continue
+        for route in getattr(cursor, "routes", ()) or ():
+            mounted = getattr(route, "app", None)
+            if isinstance(mounted, RuntimeApp):
+                return mounted
+        break
+    raise typer.BadParameter(
+        f"{target} resolved to {type(obj).__name__}, not a causeway.App or a "
+        "create_app() result. Point at the module:attr that exports either.",
+    )
 
 
 def _write_client(target: str, out: Path) -> int:

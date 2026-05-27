@@ -138,10 +138,10 @@ class Reporter:
         self._route_diff(old.routes, new.routes)
 
     def reload_failed(self, exc: BaseException) -> None:
-        from causeway._traceback import format_exception
+        from causeway._traceback import render_exception
 
         self.console.print(f"[dim]{_stamp()}[/dim] [red]reload failed[/red] - serving previous app")
-        self.console.print(format_exception(exc))
+        render_exception(exc, title="reload failed", console=self.console)
 
     def access(self, scope: Scope, status_code: int | None, elapsed_ms: float) -> None:
         method = str(scope.get("method", "?"))

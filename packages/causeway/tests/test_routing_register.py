@@ -113,7 +113,7 @@ async def r() -> dict:
     assert len(found.routes) == 1
     route = found.routes[0]
 
-    # The wrapped handler reads the active Request from dyadpy's contextvar
+    # The wrapped handler reads the active Request from the runtime's contextvar
     # when one isn't present in the handler signature. Simulate that here.
     from dataclasses import dataclass
 

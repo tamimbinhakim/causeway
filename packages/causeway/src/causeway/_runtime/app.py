@@ -85,7 +85,7 @@ class App:
             # import annotations`` leaves annotations as strings that
             # ``get_type_hints`` can't evaluate.
             with contextlib.suppress(AttributeError, ValueError):
-                handler.__dyadpy_localns__ = dict(sys._getframe(1).f_locals)  # type: ignore[attr-defined]
+                handler.__causeway_localns__ = dict(sys._getframe(1).f_locals)  # type: ignore[attr-defined]
             self.routes.append(Route(method=method, path=path, handler=handler))
             self.invalidate()
             return handler
@@ -117,7 +117,7 @@ class App:
 
         def decorator(handler: Handler) -> Handler:
             with contextlib.suppress(AttributeError, ValueError):
-                handler.__dyadpy_localns__ = dict(sys._getframe(1).f_locals)  # type: ignore[attr-defined]
+                handler.__causeway_localns__ = dict(sys._getframe(1).f_locals)  # type: ignore[attr-defined]
             send_t, recv_t = _extract_bidi_types(handler)
             self.websocket_routes.append(
                 WebSocketRoute(
@@ -184,7 +184,7 @@ def _extract_bidi_types(handler: Handler) -> tuple[Any, Any]:
     from causeway._runtime.bidi import bidi_types, is_bidi_annotation
 
     sig = inspect.signature(handler)
-    localns: dict[str, Any] | None = getattr(handler, "__dyadpy_localns__", None)
+    localns: dict[str, Any] | None = getattr(handler, "__causeway_localns__", None)
     hints = typing.get_type_hints(handler, localns=localns, include_extras=True)
     for name in sig.parameters:
         annotation = hints.get(name, sig.parameters[name].annotation)

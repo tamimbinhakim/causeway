@@ -16,7 +16,7 @@ from typing import Any, TypeVar
 
 F = TypeVar("F", bound=Callable[..., object])
 
-_RAISES_ATTR = "__dyadpy_raises__"
+_RAISES_ATTR = "__causeway_raises__"
 
 
 def raises(*exc_types: type[Exception]) -> Callable[[F], F]:

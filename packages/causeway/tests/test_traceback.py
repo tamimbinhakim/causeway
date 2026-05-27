@@ -11,7 +11,6 @@ from rich.console import Console
 from causeway._traceback import (
     ExceptionShield,
     build_exception_panel,
-    format_exception,
     hint_for,
     log_exception,
     root_cause,
@@ -90,46 +89,6 @@ def test_root_cause_terminates_on_cycle() -> None:
     # Should not infinite-loop and should return one of the two.
     result = root_cause(a)
     assert result in (a, b)
-
-
-# --- format_exception (plain text) ------------------------------------------
-
-
-def test_format_exception_shows_root_type_and_message() -> None:
-    wrapped = _wrap(RuntimeError, ConnectionError("redis down"))
-    text = format_exception(wrapped)
-    assert "ConnectionError: redis down" in text
-    assert "full traceback: set CAUSEWAY_FULL_TRACEBACK=1" in text
-
-
-def test_format_exception_shows_wrapping_chain() -> None:
-    wrapped = _wrap(RuntimeError, ConnectionError("nope"), msg="wrapper")
-    text = format_exception(wrapped)
-    assert "wrapped by" in text
-    assert "RuntimeError" in text
-
-
-def test_format_exception_includes_request_and_id() -> None:
-    class _URL:
-        path = "/auth/login"
-
-    class _Req:
-        method = "POST"
-        url = _URL()
-
-    text = format_exception(RuntimeError("x"), request=_Req(), request_id="r-9")
-    assert "request: POST /auth/login" in text
-    assert "request_id: r-9" in text
-
-
-def test_format_exception_includes_hint_for_redis_failure() -> None:
-    text = format_exception(
-        ConnectionError(
-            "Error Multiple exceptions: [Errno 61] Connect call failed "
-            "('127.0.0.1', 6379) connecting to localhost:6379.",
-        ),
-    )
-    assert "Redis is unreachable" in text
 
 
 # --- hint_for ---------------------------------------------------------------

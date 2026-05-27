@@ -92,43 +92,6 @@ def render_exception(
     target.print(build_exception_panel(exc, request=request, request_id=request_id, title=title))
 
 
-def format_exception(
-    exc: BaseException,
-    *,
-    request: Any | None = None,
-    request_id: str | None = None,
-    max_frames: int | None = None,
-) -> str:
-    """Plain-text compact formatter. Kept for callers that want a string."""
-    root = root_cause(exc)
-    limit = max_frames if max_frames is not None else _frame_limit()
-    frames = _select_frames(root.__traceback__ or exc.__traceback__, limit)
-    lines = [f"{type(root).__name__}: {root or '<no message>'}"]
-    request_line = _request_line(request)
-    if request_line is not None:
-        lines.append(f"request: {request_line}")
-    if request_id is not None:
-        lines.append(f"request_id: {request_id}")
-    chain = _cause_chain(exc, stop=root)
-    if chain:
-        lines.append("wrapped by:")
-        for link in chain:
-            lines.append(f"  {type(link).__name__}: {link or '<no message>'}")
-    if frames:
-        lines.append("trace:")
-        for frame in frames:
-            lines.append(f"  {frame.filename}:{frame.lineno} in {frame.name}")
-            if frame.line:
-                lines.append(f"    {frame.line.strip()}")
-    else:
-        lines.append("trace: <not available>")
-    hint = hint_for(root)
-    if hint is not None:
-        lines.append(f"hint: {hint}")
-    lines.append(f"full traceback: set {_FULL_TRACE_ENV}=1")
-    return "\n".join(lines)
-
-
 def build_exception_panel(
     exc: BaseException,
     *,
@@ -488,7 +451,6 @@ async def _write_fallback_500(send: Send) -> None:
 __all__ = [
     "ExceptionShield",
     "build_exception_panel",
-    "format_exception",
     "hint_for",
     "log_exception",
     "render_exception",
