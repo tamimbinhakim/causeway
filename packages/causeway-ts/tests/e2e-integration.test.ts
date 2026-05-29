@@ -1,146 +1,83 @@
-// Generated-client surface against a fetch impl that mimics a real causeway
+// Generated-client transport against a fetch impl that mimics a real Causeway
 // server. Companion to `packages/causeway/tests/runtime/test_e2e_smoke.py`.
 
 import { describe, expect, it } from "vitest";
 
-import { createLazyClient } from "../src/index.js";
-import type { RouteDescriptor, RouteMeta } from "../src/index.js";
+import { createRouteKeyClient } from "../src/index.js";
+import type { CausewayClient, RouteDescriptor, RouteMeta } from "../src/index.js";
 
 type FetchImpl = typeof globalThis.fetch;
 
-const ROUTES = [
-  {
+const ROUTES: Record<string, RouteDescriptor> = {
+  me: {
     method: "GET",
     path: "/me",
-    name: "me",
-    segments: ["me"],
-    verb: "list",
+    routeKey: "GET /me",
     params: [{ name: "authorization", alias: "authorization", in: "header" }],
   },
-  {
+  getPost: {
     method: "GET",
     path: "/posts/{post_id}",
-    name: "getPost",
-    segments: ["posts"],
-    verb: "byId",
+    routeKey: "GET /posts/$post_id",
     params: [{ name: "postId", alias: "post_id", in: "path" }],
     result: true,
   },
-  {
+  createPost: {
     method: "POST",
     path: "/posts",
-    name: "createPost",
-    segments: ["posts"],
-    verb: "create",
+    routeKey: "POST /posts",
     params: [{ name: "data", alias: "data", in: "body" }],
   },
-  {
+  listPosts: {
     method: "GET",
     path: "/posts",
-    name: "listPosts",
-    segments: ["posts"],
-    verb: "list",
+    routeKey: "GET /posts",
     params: [{ name: "tag", alias: "tag", in: "query" }],
   },
-  {
+  uploadAvatar: {
     method: "POST",
     path: "/avatar",
-    name: "uploadAvatar",
-    segments: ["avatar"],
-    verb: "create",
+    routeKey: "POST /avatar",
     params: [{ name: "file", alias: "file", in: "file" }],
   },
-  {
+  login: {
     method: "POST",
     path: "/login",
-    name: "login",
-    segments: ["login"],
-    verb: "create",
+    routeKey: "POST /login",
     params: [{ name: "form", alias: "form", in: "body" }],
     formBody: true,
   },
-  {
+  stripeWebhook: {
     method: "POST",
     path: "/webhooks/stripe",
-    name: "stripeWebhook",
-    segments: ["webhooks", "stripe"],
-    verb: "create",
+    routeKey: "POST /webhooks/stripe",
     params: [{ name: "body", alias: "body", in: "body" }],
     binaryBody: true,
   },
-  {
+  exportCsv: {
     method: "GET",
     path: "/exports/{id}.csv",
-    name: "exportCsv",
-    segments: ["exports", "csv"],
-    verb: "byId",
+    routeKey: "GET /exports/$id.csv",
     params: [{ name: "id", alias: "id", in: "path" }],
     binaryResponse: true,
   },
-  {
+  feed: {
     method: "GET",
     path: "/feed",
-    name: "feed",
-    segments: ["feed"],
-    verb: "list",
+    routeKey: "GET /feed",
     params: [{ name: "count", alias: "count", in: "query" }],
     streams: true,
   },
-] as const satisfies ReadonlyArray<RouteDescriptor>;
-
-function routeMeta(route: RouteDescriptor): RouteMeta {
-  return {
-    id: route.name,
-    name: route.name,
-    segments: route.segments,
-    verb: route.verb,
-    ...((route.params?.length ?? 0) > 0 ? { hasArgs: true } : {}),
-    ...(route.streams ? { streams: true } : {}),
-  };
-}
-
-const ROUTE_META: RouteMeta[] = ROUTES.map(routeMeta);
-
-type Api = {
-  me: {
-    list: (a: {
-      authorization: string;
-    }) => Promise<{ id: number; email: string; createdAt: string }>;
-  };
-  posts: {
-    byId: (a: {
-      postId: number;
-    }) => Promise<
-      { ok: true; data: { id: number; authorId: number } } | { ok: false; error: { kind: string } }
-    >;
-    create: (a: { data: { title: string; bodyText: string } }) => Promise<{ id: number }>;
-    list: (a?: { tag?: string[] }) => Promise<Array<{ id: number }>>;
-  };
-  avatar: {
-    create: (a: { file: Blob }) => Promise<{ bytes: number }>;
-  };
-  login: {
-    create: (a: {
-      form: { email: string; password: string };
-    }) => Promise<{ token: string; userId: number }>;
-  };
-  webhooks: {
-    stripe: {
-      create: (a: { body: Uint8Array }) => Promise<unknown>;
-    };
-  };
-  exports: {
-    csv: {
-      byId: (a: { id: string }) => Promise<Blob>;
-    };
-  };
-  feed: {
-    list: (
-      a: { count: number },
-      opts?: { signal?: AbortSignal },
-    ) => AsyncIterable<{ kind: "tick"; seq: number } | { kind: "done"; total: number }>;
-  };
 };
+
+const ROUTE_META: RouteMeta[] = Object.entries(ROUTES).map(([id, route]) => ({
+  id,
+  routeKey: route.routeKey,
+  method: route.method,
+  path: route.path,
+  ...((route.params?.length ?? 0) > 0 ? { hasArgs: true } : {}),
+  ...(route.streams ? { streams: true } : {}),
+}));
 
 function makeServer(): { fetch: FetchImpl; calls: Request[] } {
   const calls: Request[] = [];
@@ -151,8 +88,8 @@ function makeServer(): { fetch: FetchImpl; calls: Request[] } {
     [
       "POST /posts",
       async (req) => {
-        const body = (await req.json()) as { title: string; body_text: string };
-        if (body.title !== "hi" || body.body_text !== "world") {
+        const body = await req.json();
+        if (!hasPostBody(body)) {
           return new Response("bad body", { status: 400 });
         }
         return json({ id: 1 });
@@ -244,11 +181,18 @@ function json(body: unknown): Response {
   });
 }
 
-function createApi(fetch: FetchImpl): Api {
-  return createLazyClient<Api>({
+function hasPostBody(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  return (
+    "title" in value && value.title === "hi" && "body_text" in value && value.body_text === "world"
+  );
+}
+
+function createClient(fetch: FetchImpl): CausewayClient {
+  return createRouteKeyClient({
     routeMeta: ROUTE_META,
     loadRoute: (id) => {
-      const route = ROUTES.find((item) => item.name === id);
+      const route = ROUTES[id];
       if (route === undefined) throw new Error(id);
       return route;
     },
@@ -257,43 +201,40 @@ function createApi(fetch: FetchImpl): Api {
   });
 }
 
-describe("e2e integration — generated-client surface against a causeway-shaped mock server", () => {
+describe("e2e integration — route-key client against a causeway-shaped mock server", () => {
   it("unary GET with header param + snake→camel response translation", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
-    const me = await api.me.list({ authorization: "Bearer tok" });
+    const me = await api.query("GET /me", { authorization: "Bearer tok" });
     expect(me).toEqual({ id: 1, email: "a@x.com", createdAt: "2025-01-01" });
 
     expect(server.calls[0]!.headers.get("authorization")).toBe("Bearer tok");
   });
 
-  it("path-param GET with Result envelope (ok branch)", async () => {
+  it("path-param GET unwraps a Result.ok branch", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
-    const r = await api.posts.byId({ postId: 42 });
-    expect(r.ok).toBe(true);
-    if (r.ok) expect(r.data).toEqual({ id: 42, authorId: 7 });
+    const post = await api.query("GET /posts/$post_id", { postId: 42 });
+    expect(post).toEqual({ id: 42, authorId: 7 });
   });
 
-  it("path-param GET with Result envelope (err branch — typed)", async () => {
+  it("path-param GET throws a typed Result.error branch", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
-    const r = await api.posts.byId({ postId: 404 });
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect((r.error as { kind: string }).kind).toBe("PostNotFound");
-      expect((r.error as unknown as { postId: number }).postId).toBe(404);
-    }
+    await expect(api.query("GET /posts/$post_id", { postId: 404 })).rejects.toMatchObject({
+      kind: "PostNotFound",
+      postId: 404,
+    });
   });
 
   it("POST body with camel→snake translation", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
-    const r = await api.posts.create({ data: { title: "hi", bodyText: "world" } });
+    const r = await api.mutate("POST /posts", { data: { title: "hi", bodyText: "world" } });
     expect(r).toEqual({ id: 1 });
     const req = server.calls[0]!;
     expect(req.headers.get("content-type")).toContain("application/json");
@@ -301,9 +242,9 @@ describe("e2e integration — generated-client surface against a causeway-shaped
 
   it("repeated query param expands to `?tag=a&tag=b`", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
-    const r = await api.posts.list({ tag: ["red", "blue"] });
+    const r = await api.query("GET /posts", { tag: ["red", "blue"] });
     expect(r).toEqual([
       { id: 1, tag: "red" },
       { id: 2, tag: "blue" },
@@ -314,10 +255,10 @@ describe("e2e integration — generated-client surface against a causeway-shaped
 
   it("multipart file upload uses FormData and lets fetch pick the boundary", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
     const blob = new Blob([new Uint8Array([1, 2, 3, 4, 5])]);
-    const r = await api.avatar.create({ file: blob });
+    const r = await api.mutate("POST /avatar", { file: blob });
     expect(r).toEqual({ bytes: 5 });
     expect(server.calls[0]!.headers.get("content-type")).toMatch(
       /^multipart\/form-data; boundary=/,
@@ -326,27 +267,29 @@ describe("e2e integration — generated-client surface against a causeway-shaped
 
   it("formBody routes encode as application/x-www-form-urlencoded with snake_case keys", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
-    const r = await api.login.create({ form: { email: "a@x.com", password: "hunter2" } });
+    const r = await api.mutate<{ token: string; userId: number }>("POST /login", {
+      form: { email: "a@x.com", password: "hunter2" },
+    });
     expect(r.token).toBe("tok-1");
     expect(r.userId).toBe(1);
   });
 
   it("binaryBody routes pass raw bytes through unmodified", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
     const payload = new Uint8Array([222, 173, 190, 239]);
-    const r = (await api.webhooks.stripe.create({ body: payload })) as { bytes: number };
+    const r = await api.mutate<{ bytes: number }>("POST /webhooks/stripe", { body: payload });
     expect(r.bytes).toBe(4);
   });
 
   it("binaryResponse routes hand back a Blob", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
-    const blob = await api.exports.csv.byId({ id: "abc" });
+    const blob = await api.query<Blob>("GET /exports/$id.csv", { id: "abc" });
     expect(blob).toBeInstanceOf(Blob);
     const text = await blob.text();
     expect(text).toContain("a,b,c");
@@ -354,10 +297,10 @@ describe("e2e integration — generated-client surface against a causeway-shaped
 
   it("streaming route parses SSE frames into AsyncIterable<T>", async () => {
     const server = makeServer();
-    const api = createApi(server.fetch);
+    const api = createClient(server.fetch);
 
     const seen: unknown[] = [];
-    for await (const ev of api.feed.list({ count: 3 })) {
+    for await (const ev of api.stream("GET /feed", { count: 3 })) {
       seen.push(ev);
     }
     expect(seen).toEqual([
@@ -368,7 +311,6 @@ describe("e2e integration — generated-client surface against a causeway-shaped
   });
 
   it("streaming route can be cancelled mid-flight", async () => {
-    // Build a server that emits frames slowly, give it a controller, abort.
     const calls: Request[] = [];
     const slowFetch: FetchImpl = async (input, init) => {
       const req = new Request(input, init);
@@ -393,10 +335,10 @@ describe("e2e integration — generated-client surface against a causeway-shaped
       });
     };
 
-    const api = createApi(slowFetch);
+    const api = createClient(slowFetch);
     const ac = new AbortController();
     const seen: unknown[] = [];
-    for await (const ev of api.feed.list({ count: 100 }, { signal: ac.signal })) {
+    for await (const ev of api.stream("GET /feed", { count: 100 }, { signal: ac.signal })) {
       seen.push(ev);
       if (seen.length >= 3) ac.abort();
     }

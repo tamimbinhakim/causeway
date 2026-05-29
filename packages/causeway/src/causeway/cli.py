@@ -8,6 +8,7 @@
 - ``causeway plugins``           — list registered adapters.
 - ``causeway diff``              — compare two IR snapshots; non-zero exit on breaking changes.
 - ``causeway ir``                — dump the route IR as JSON for diffing / external tooling.
+- ``causeway inspect``           — dump the Causeway App Graph.
 - ``causeway deploy <target>``   — invoke the matching ``DeployTarget`` adapter.
 - ``causeway plugin new <name>`` — scaffold a sibling plugin package.
 """
@@ -299,6 +300,39 @@ def ir(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(asdict(ir_value), indent=2), encoding="utf-8")
     console.print(f"[green]wrote[/green] {out} ({len(ir_value.routes)} routes)")
+
+
+@app.command(name="inspect")
+def inspect_graph(
+    module: Annotated[
+        str,
+        typer.Argument(help="``module:attr`` of your ASGI app."),
+    ] = "app:app",
+    json_: Annotated[bool, typer.Option("--json", help="Print raw graph JSON.")] = False,
+) -> None:
+    """Inspect the Causeway App Graph."""
+    from causeway.graph import build_graph
+
+    app_obj = _load_runtime_app(module)
+    graph = app_obj.graph or build_graph(app_obj)
+    data = graph.to_dict()
+    if json_:
+        print(json.dumps(data, indent=2))
+        return
+
+    table = Table(title="Causeway App Graph")
+    table.add_column("Method")
+    table.add_column("Route Key")
+    table.add_column("HTTP Path")
+    table.add_column("Refreshes")
+    for route in data["routes"]:
+        table.add_row(
+            str(route["method"]),
+            str(route["route_key"]),
+            str(route["http_path"]),
+            ", ".join(str(value) for value in route["refreshes"]),
+        )
+    console.print(table)
 
 
 @app.command()

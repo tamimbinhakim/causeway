@@ -1,29 +1,23 @@
-# Registration stability
+# IR Stability
 
-Causeway registers three kinds of things into its IR: **routes**,
-**middleware**, and **background tasks**. The IR is the contract
-between Causeway and every downstream consumer (the generated TypeScript
-client, the diagnostics page, `causeway diff`, snapshot tests, deploy
-adapters).
+Causeway keeps two inspectable shapes: the **IR** and the **App Graph**.
 
-This page describes what's frozen in those registrations and how the
-surface evolves.
+The IR is the wire contract between Causeway and generated clients:
+routes, params, bodies, responses, declared errors, streams, and exposed
+settings. The App Graph is the framework metadata shape: source files,
+route keys, scopes, middleware, providers, refreshes, permissions,
+idempotency, plugins, tasks, and events.
 
-> The IR format itself is provided by the lower-level RPC layer Causeway
-> depends on. The stability rules here are about Causeway's **registrations**
-> into it — what we put in, not the file format itself.
+This page is about the IR contract: what is frozen, what can evolve, and what counts as breaking. See [App Graph](../client/app-graph.md) for the metadata shape that sits beside it.
 
 ## What lives in the IR
 
 For each Causeway app:
 
-- **Routes** — path + method + handler input/output schemas + declared
-  raises + middleware chain.
+- **Routes** — route key + path + method + handler input/output schemas +
+  declared raises + stream marker.
 - **Background tasks** — task id (module path + function name), queue,
   retry / backoff policy, payload schema.
-- **Plugins** — list of registered adapters by contract (`TaskAdapter`,
-  `Storage`, `KV`, `AuthProvider`, …). Informational; not part of the
-  wire contract.
 
 If `causeway.toml` exposes config keys (`[client] expose_settings = [...]`),
 those keys also land in the IR — secrets are explicitly excluded.
@@ -44,6 +38,7 @@ Breaking (require a major bump and a deprecation cycle):
 - Changing a field's type in a non-widening way.
 - Changing the URL pattern of a registered route (e.g. flipping
   `(group)/` semantics).
+- Changing the public route key for an existing route.
 - Changing the queue or retry policy default for `@task`.
 
 ## Deprecation cycle
@@ -81,6 +76,7 @@ annotate the PR with GitHub error annotations and require a `feat!:` or
 ## What's _not_ in the IR
 
 - Source file paths (handlers move; the IR shouldn't break when they do).
+- Middleware/provider implementation details.
 - Private modules / helpers.
 - Plugin adapter internals (only the contract type is registered, not
   the implementation).
@@ -99,7 +95,6 @@ The IR is consumed by:
 
 - **The typed-client codegen** — generates the TypeScript client off the
   IR snapshot.
-- **`/__causeway`** — the dev diagnostics page.
 - **`causeway diff`** — the CI breaking-change checker.
 - **`causeway-deploy-*`** — deploy adapters that need to know "which routes
   are streaming", "which tasks are long-running" to set timeouts

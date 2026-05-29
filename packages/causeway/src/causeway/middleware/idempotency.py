@@ -62,6 +62,11 @@ class IdempotencyMiddleware:
         self.methods = tuple(m.upper() for m in methods)
         self.header = header.lower()
         self._kv = kv
+        self.__causeway_idempotency__ = {
+            "ttl_seconds": ttl_seconds,
+            "methods": self.methods,
+            "header": self.header,
+        }
 
     async def __call__(self, req: Request, call_next: CallNext) -> Response:
         if req.method.upper() not in self.methods:

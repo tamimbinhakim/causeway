@@ -1,21 +1,30 @@
-import { unwrapResult } from "@causewayjs/ts";
 import { createEffect, createResource, createSignal, onCleanup } from "solid-js";
 import type { Accessor, ResourceReturn } from "solid-js";
 
-import type { ArgsOf, DataOf, ErrorOf, StreamItemOf, StreamKeys, UnaryKeys } from "./types.js";
+import type {
+  CallOptions,
+  CausewayClient,
+  RegisteredMutationRouteKey,
+  RegisteredQueryRouteKey,
+  RegisteredRouteData,
+  RegisteredRouteError,
+  RegisteredRouteInput,
+  RouteInputValue,
+  UnregisteredRouteKey,
+} from "@causewayjs/client";
 
-type Unary = (args?: unknown, opts?: { signal?: AbortSignal }) => Promise<unknown>;
-type Stream = (args?: unknown, opts?: { signal?: AbortSignal }) => AsyncIterable<unknown>;
+type InputSource<TInput extends RouteInputValue> = TInput | Accessor<TInput>;
+type QuerySource<TInput extends RouteInputValue> = { input: TInput };
 
 export type QueryResource<TData, TError> = ResourceReturn<TData> & {
   error: Accessor<TError | undefined>;
 };
 
-export interface MutationResource<TData, TError, TArgs> {
+export interface MutationResource<TData, TError, TVars extends RouteInputValue> {
   data: Accessor<TData | undefined>;
   error: Accessor<TError | undefined>;
   loading: Accessor<boolean>;
-  mutate: (args: TArgs) => Promise<TData>;
+  mutate: (vars: TVars, opts?: CallOptions) => Promise<TData>;
   reset: () => void;
 }
 
@@ -24,58 +33,99 @@ export interface SubscriptionResource<TError> {
   error: Accessor<TError | undefined>;
 }
 
-export interface CausewayResources<TApi> {
-  query: <K extends UnaryKeys<TApi>>(
-    method: K,
-    args: () => ArgsOf<TApi[K]>,
-  ) => QueryResource<DataOf<TApi[K]>, ErrorOf<TApi[K]>>;
+export interface CausewayResources {
+  query: {
+    <K extends RegisteredQueryRouteKey>(
+      routeKey: K,
+      input?: InputSource<RegisteredRouteInput<K>>,
+    ): QueryResource<RegisteredRouteData<K>, RegisteredRouteError<K>>;
+    <TData = unknown, TError = unknown, TInput extends RouteInputValue = RouteInputValue>(
+      routeKey: UnregisteredRouteKey,
+      input?: InputSource<TInput>,
+    ): QueryResource<TData, TError>;
+  };
 
-  mutation: <K extends UnaryKeys<TApi>>(
-    method: K,
-  ) => MutationResource<DataOf<TApi[K]>, ErrorOf<TApi[K]>, ArgsOf<TApi[K]>>;
+  mutation: {
+    <K extends RegisteredMutationRouteKey>(
+      routeKey: K,
+    ): MutationResource<RegisteredRouteData<K>, RegisteredRouteError<K>, RegisteredRouteInput<K>>;
+    <TVars extends RouteInputValue = Record<string, unknown>, TData = unknown, TError = unknown>(
+      routeKey: UnregisteredRouteKey,
+    ): MutationResource<TData, TError, TVars>;
+  };
 
-  subscription: <K extends StreamKeys<TApi>>(
-    method: K,
-    args: () => ArgsOf<TApi[K]>,
-    onEvent: (event: StreamItemOf<TApi[K]>) => void,
-  ) => SubscriptionResource<unknown>;
+  subscription: {
+    <K extends RegisteredQueryRouteKey>(
+      routeKey: K,
+      input: InputSource<RegisteredRouteInput<K>>,
+      onEvent: (event: RegisteredRouteData<K>) => void,
+    ): SubscriptionResource<RegisteredRouteError<K>>;
+    <TEvent = unknown, TError = unknown, TInput extends RouteInputValue = RouteInputValue>(
+      routeKey: UnregisteredRouteKey,
+      input: InputSource<TInput>,
+      onEvent: (event: TEvent) => void,
+    ): SubscriptionResource<TError>;
+  };
 }
 
-export function createCausewayResources<TApi extends object>(api: TApi): CausewayResources<TApi> {
-  function query<K extends UnaryKeys<TApi>>(method: K, args: () => ArgsOf<TApi[K]>) {
-    const [errorSignal, setError] = createSignal<ErrorOf<TApi[K]> | undefined>(undefined);
-    const resource = createResource<DataOf<TApi[K]>, ArgsOf<TApi[K]>>(args, async (a) => {
-      const fn = api[method] as unknown as Unary;
-      try {
-        const data = unwrapResult(await fn(a as unknown)) as DataOf<TApi[K]>;
-        setError(() => undefined);
-        return data;
-      } catch (error) {
-        setError(() => error as ErrorOf<TApi[K]>);
-        throw error;
-      }
-    });
-    return Object.assign(resource, { error: errorSignal }) as QueryResource<
-      DataOf<TApi[K]>,
-      ErrorOf<TApi[K]>
-    >;
+export function createCausewayResources(client: CausewayClient): CausewayResources {
+  function query<K extends RegisteredQueryRouteKey>(
+    routeKey: K,
+    input?: InputSource<RegisteredRouteInput<K>>,
+  ): QueryResource<RegisteredRouteData<K>, RegisteredRouteError<K>>;
+  function query<
+    TData = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(routeKey: UnregisteredRouteKey, input?: InputSource<TInput>): QueryResource<TData, TError>;
+  function query<
+    TData = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(routeKey: string, input?: InputSource<TInput>) {
+    const [errorSignal, setError] = createSignal<TError | undefined>(undefined);
+    const resource = createResource<TData, QuerySource<TInput>>(
+      () => ({ input: readInput(input) }),
+      async ({ input: vars }) => {
+        try {
+          const data = await client.query<TData>(routeKey, toInput(vars));
+          setError(() => undefined);
+          return data;
+        } catch (error) {
+          setError(() => error as TError);
+          throw error;
+        }
+      },
+    );
+    return Object.assign(resource, { error: errorSignal }) as QueryResource<TData, TError>;
   }
 
-  function mutation<K extends UnaryKeys<TApi>>(method: K) {
-    const [data, setData] = createSignal<DataOf<TApi[K]> | undefined>(undefined);
-    const [errorSignal, setError] = createSignal<ErrorOf<TApi[K]> | undefined>(undefined);
+  function mutation<K extends RegisteredMutationRouteKey>(
+    routeKey: K,
+  ): MutationResource<RegisteredRouteData<K>, RegisteredRouteError<K>, RegisteredRouteInput<K>>;
+  function mutation<
+    TVars extends RouteInputValue = Record<string, unknown>,
+    TData = unknown,
+    TError = unknown,
+  >(routeKey: UnregisteredRouteKey): MutationResource<TData, TError, TVars>;
+  function mutation<
+    TVars extends RouteInputValue = Record<string, unknown>,
+    TData = unknown,
+    TError = unknown,
+  >(routeKey: string) {
+    const [data, setData] = createSignal<TData | undefined>(undefined);
+    const [errorSignal, setError] = createSignal<TError | undefined>(undefined);
     const [loading, setLoading] = createSignal(false);
 
-    async function mutate(args: ArgsOf<TApi[K]>): Promise<DataOf<TApi[K]>> {
+    async function mutate(vars: TVars, opts: CallOptions = {}): Promise<TData> {
       setLoading(true);
       setError(() => undefined);
       try {
-        const fn = api[method] as unknown as Unary;
-        const result = unwrapResult(await fn(args as unknown)) as DataOf<TApi[K]>;
+        const result = await client.mutate<TData>(routeKey, toInput(vars), opts);
         setData(() => result);
         return result;
       } catch (error) {
-        setError(() => error as ErrorOf<TApi[K]>);
+        setError(() => error as TError);
         throw error;
       } finally {
         setLoading(false);
@@ -91,42 +141,50 @@ export function createCausewayResources<TApi extends object>(api: TApi): Causewa
     return { data, error: errorSignal, loading, mutate, reset };
   }
 
-  function subscription<K extends StreamKeys<TApi>>(
-    method: K,
-    args: () => ArgsOf<TApi[K]>,
-    onEvent: (event: StreamItemOf<TApi[K]>) => void,
-  ) {
+  function subscription<K extends RegisteredQueryRouteKey>(
+    routeKey: K,
+    input: InputSource<RegisteredRouteInput<K>>,
+    onEvent: (event: RegisteredRouteData<K>) => void,
+  ): SubscriptionResource<RegisteredRouteError<K>>;
+  function subscription<
+    TEvent = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(
+    routeKey: UnregisteredRouteKey,
+    input: InputSource<TInput>,
+    onEvent: (event: TEvent) => void,
+  ): SubscriptionResource<TError>;
+  function subscription<
+    TEvent = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(routeKey: string, input: InputSource<TInput>, onEvent: (event: TEvent) => void) {
     const [status, setStatus] = createSignal<"idle" | "connecting" | "open" | "closed" | "error">(
       "idle",
     );
-    const [errorSignal, setError] = createSignal<unknown>(undefined);
+    const [errorSignal, setError] = createSignal<TError | undefined>(undefined);
 
     createEffect(() => {
-      const a = args();
+      const vars = readInput(input);
       const controller = new AbortController();
       setStatus("connecting");
       setError(() => undefined);
 
       void (async () => {
         try {
-          const fn = api[method] as unknown as Stream;
-          const iter = fn(a as unknown, { signal: controller.signal });
           setStatus("open");
-          for await (const ev of iter) {
-            if (controller.signal.aborted) {
-              return;
-            }
-            onEvent(ev as StreamItemOf<TApi[K]>);
+          for await (const ev of client.stream<TEvent>(routeKey, toInput(vars), {
+            signal: controller.signal,
+          })) {
+            if (controller.signal.aborted) return;
+            onEvent(ev);
           }
-          if (controller.signal.aborted) {
-            return;
-          }
+          if (controller.signal.aborted) return;
           setStatus("closed");
         } catch (error) {
-          if (controller.signal.aborted) {
-            return;
-          }
-          setError(() => error);
+          if (controller.signal.aborted) return;
+          setError(() => error as TError);
           setStatus("error");
         }
       })();
@@ -138,4 +196,12 @@ export function createCausewayResources<TApi extends object>(api: TApi): Causewa
   }
 
   return { mutation, query, subscription };
+}
+
+function readInput<TInput extends RouteInputValue>(input: InputSource<TInput> | undefined): TInput {
+  return typeof input === "function" ? (input as Accessor<TInput>)() : (input as TInput);
+}
+
+function toInput(input: RouteInputValue): Record<string, unknown> | void {
+  return input;
 }

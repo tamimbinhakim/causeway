@@ -1,112 +1,107 @@
-# Causeway docs
+# Causeway Docs
 
-A lean backend framework for type-safe Python APIs. The folder tree is the route table; the typed TypeScript client falls out the other end for free.
+Causeway is a backend-first Python framework for type-safe APIs. The folder tree is the route table, the Python signature is the contract, and the generated TypeScript client calls the same route keys your backend exposes.
 
-If you're new here, [the story behind why this exists](./why-causeway.md) is the warmest place to start.
+```python
+# src/app/routes/customers/$id.py
+@get
+async def show(id: UUID) -> Customer: ...
+```
 
----
+```ts
+const customer = await client.query("GET /customers/$id", { id });
+```
 
-## Getting started
+The core convention is deliberately small: route files create route keys, handlers describe contracts, and `refreshes` is the explicit mutation-to-query bridge. There is no generated nested method tree, no resource-key layer, and no second cache naming system.
 
-The smallest possible loop from install to a typed handler responding to `curl`.
+## Start Here
 
-- **[Installation](./getting-started/installation.md)** — `uv add causeway`, scaffold a new app.
-- **[Project structure](./getting-started/project-structure.md)** — what `causeway new` creates and where things live.
-- **[Your first route](./getting-started/first-route.md)** — write a handler, run it, see the generated TS client.
+Read these in order if you are new. They take you from an empty app to a small product slice with a typed route, generated client call, mutation, and `refreshes`.
 
-## Building your application
+1. **[Installation](./start/installation.md)** — scaffold or add Causeway to a project.
+2. **[Project structure](./start/project-structure.md)** — where routes, config, plugins, and scopes live.
+3. **[Your first route](./start/first-route.md)** — one typed handler, `curl`, generated client.
+4. **[First product slice](./start/first-slice.md)** — a realistic detail route, mutation, `refreshes`, and React UI.
 
-Per-concept guides for everything you do day-to-day.
+The longer design story is [Why Causeway](./why-causeway.md).
 
-### Routing
+## Choose a Lane
 
-- **[Defining routes](./building/routing/defining-routes.md)** — file-based routing, folder style and dot-flat style.
-- **[Dynamic segments](./building/routing/dynamic-segments.md)** — `$id` type binding.
-- **[Route groups](./building/routing/route-groups.md)** — `(admin)/` for organization without changing URLs.
-- **[Middleware](./building/routing/middleware.md)** — per-subtree wrappers via `_middleware.py`.
-- **[Scopes](./building/routing/scopes.md)** — request-scoped DI and lifespan hooks via `_scope.py`.
+| Lane                                  | Read when you are working on...                                                                  |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **[Backend](./backend/index.md)**     | Route files, handlers, params, responses, errors, middleware, permissions, tenancy, idempotency. |
+| **[Client](./client/index.md)**       | Generated TypeScript, route keys, refreshes, React, Next.js, Svelte, Solid, App Graph.           |
+| **[Application](./app/index.md)**     | Config, plugins, tasks, events, webhooks, subscribers, testing, observability.                   |
+| **[Deploy](./deploy/index.md)**       | Docker, Fly.io, Modal, binary builds, production shape.                                          |
+| **[Reference](./reference/index.md)** | Public API, CLI, decorators, functions, classes, file conventions.                               |
 
-### Handlers
+## Common Tasks
 
-- **[HTTP methods](./building/handlers/methods.md)** — `@get`, `@post`, `@put`, `@patch`, `@delete`.
-- **[Params and body](./building/handlers/params-and-body.md)** — path params, query, body, headers, deps.
-- **[Responses](./building/handlers/responses.md)** — return types, status codes, custom headers.
-- **[Errors](./building/handlers/errors.md)** — `HttpError`, `@raises`, problem+json.
-- **[Streaming](./building/handlers/streaming.md)** — `stream[T]` for SSE.
-- **[Pagination](./building/handlers/pagination.md)** — `Paginated[T]`, `Cursor`.
-- **[Batch endpoints](./building/handlers/batch.md)** — `BatchResult[T, E]`, `@batch`, HTTP 207.
-- **[Idempotency keys](./building/handlers/idempotency.md)** — replaying responses for retried requests.
-- **[File uploads](./building/handlers/file-uploads.md)** — presigned PUTs to object storage.
-- **[Permissions](./building/handlers/permissions.md)** — `require_permission` and the default model.
-- **[Multi-tenant apps](./building/multi-tenant.md)** — workspace-scoped routes via `_scope.py`.
+| I want to...                      | Read this                                                                                                                         |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Define routes                     | [Defining routes](./backend/routing.md), [dynamic segments](./backend/dynamic-segments.md)                                        |
+| Add middleware or DI near routes  | [Middleware](./backend/middleware.md), [scopes](./backend/scopes.md)                                                              |
+| Read path params, query, body     | [Params and body](./backend/params-and-body.md)                                                                                   |
+| Return data and typed errors      | [Responses](./backend/responses.md), [errors](./backend/errors.md)                                                                |
+| Use the TypeScript client         | [Client runtime](./client/index.md)                                                                                               |
+| Use React, Next, Svelte, or Solid | [React](./client/react.md), [Next.js](./client/next.md), [Svelte](./client/svelte.md), [Solid](./client/solid.md)                 |
+| Refresh queries after a mutation  | [HTTP methods](./backend/methods.md#refresh-contracts), [client refreshes](./client/index.md#refreshes)                           |
+| Inspect what Causeway discovered  | [App Graph](./client/app-graph.md), [`causeway inspect`](./reference/cli/inspect.md)                                              |
+| Add auth, idempotency, or tenancy | [Permissions](./backend/permissions.md), [idempotency keys](./backend/idempotency.md), [multi-tenancy](./backend/multi-tenant.md) |
+| Add tasks, events, or webhooks    | [Background tasks](./app/tasks.md), [events](./app/events.md), [webhooks](./app/webhooks.md)                                      |
+| Test routes                       | [Testing](./app/testing.md), [inline scenarios](./app/inline-scenarios.md)                                                        |
+| Deploy                            | [Deploying overview](./deploy/index.md), [Docker](./deploy/docker.md), [Fly.io](./deploy/fly.md), [Modal](./deploy/modal.md)      |
 
-### Application primitives
+## Core Concepts
 
-- **[Configuration](./building/config/index.md)** — `Settings`, `causeway.toml`, secrets.
-- **[Plugins](./building/plugins/index.md)** — install adapters, write your own.
-- **[Background tasks](./building/tasks/index.md)** — `@task`, `@cron`, adapter swap.
-- **[Events](./building/events/index.md)** — typed `Event` classes, `@listen`, `.emit()`.
-- **[Webhooks (outgoing)](./building/webhooks/index.md)** — signing, delivery via `@task`, retry behavior.
-- **[Subscribers](./building/subscribers/index.md)** — static `Subscriber` + dynamic `WebhookStore`, `where` filters.
-- **[Verifying incoming webhooks](./building/webhooks/incoming.md)** — HMAC + timestamp checks for inbound calls.
-- **[Testing](./building/testing/index.md)** — `TestApp`, inline scenarios, snapshots, `captured()`/`captured_webhooks()`.
-- **[Observability](./building/observability/index.md)** — request IDs, structured logs, OTel.
-- **[Typed client](./building/typed-client/index.md)** — what's in the generated client and how to consume it.
+**Routing**
 
-## API Reference
+- [Backend overview](./backend/index.md)
+- [Defining routes](./backend/routing.md)
+- [Dynamic segments](./backend/dynamic-segments.md)
+- [Route groups](./backend/route-groups.md)
+- [Middleware](./backend/middleware.md)
+- [Scopes](./backend/scopes.md)
 
-Per-symbol pages.
+**Handlers**
 
-- **[Decorators](./api-reference/decorators/get.md)** — `@get`, `@post`, …, `@task`, `@cron`, `@provide`, `@guard`, `@raises`.
-- **[Functions](./api-reference/functions/create-app.md)** — `create_app`, `register`, `env`, `configure_logging`, `configure_otel`, `emit`, `tasks_eager`, `discover`.
-- **[Classes](./api-reference/classes/Middleware.md)** — `Middleware`, `Settings`, `Manifest`, `TestApp`, `RequestIdMiddleware`, `TaskRef`, `TaskState`, contracts, errors.
-- **[CLI](./api-reference/cli/index.md)** — `causeway new`, `dev`, `build` (with `--binary`), `freeze`, `plugins`, `plugin new`, `diff`, `deploy`, `version`.
-- **[File conventions](./api-reference/file-conventions/index.md)** — `index.py`, `$name`, `(group)/`, `_middleware.py`, `_scope.py`, `causeway.toml`.
+- [HTTP methods](./backend/methods.md)
+- [Params and body](./backend/params-and-body.md)
+- [Responses](./backend/responses.md)
+- [Errors](./backend/errors.md)
+- [Streaming](./backend/streaming.md)
+- [Pagination](./backend/pagination.md)
+- [Batch endpoints](./backend/batch.md)
+- [File uploads](./backend/file-uploads.md)
 
-Full index: **[API Reference](./api-reference/index.md)**.
+**Client Runtime**
 
-## Architecture
+- [Client runtime](./client/index.md)
+- [React](./client/react.md)
+- [Next.js](./client/next.md)
+- [Svelte](./client/svelte.md)
+- [Solid](./client/solid.md)
+- [App Graph](./client/app-graph.md)
 
-What happens under the hood.
+**Application Layer**
 
-- **[Boot pipeline](./architecture/boot-pipeline.md)** — what runs between `causeway dev` and your first request.
-- **[IR flow](./architecture/ir-flow.md)** — how a handler signature becomes a typed TS client.
-- **[Hot reload](./architecture/hot-reload.md)** — what's preserved across reloads, what isn't.
-- **[Runtime substrate](./architecture/runtime-substrate.md)** — `causeway._runtime`: what's in it, when to reach into it, and how to build your own opinionated framework on the same RPC engine.
+- [Application overview](./app/index.md)
+- [Configuration](./app/configuration.md)
+- [Plugins](./app/plugins.md)
+- [Background tasks](./app/tasks.md)
+- [Events](./app/events.md)
+- [Webhooks](./app/webhooks.md)
+- [Subscribers](./app/subscribers.md)
+- [Observability](./app/observability.md)
 
-## Deploying
+## Reference
 
-- **[Deploying overview](./deploying/index.md)** — health checks, env, the production checklist.
-- **[Docker](./deploying/docker.md)** · **[Fly.io](./deploying/fly.md)** · **[Modal](./deploying/modal.md)** · **[Binary export](./deploying/binary.md)**
+- [API Reference](./reference/index.md)
+- [CLI Reference](./reference/cli/index.md)
+- [File conventions](./reference/file-conventions/index.md)
+- [Architecture](./architecture/index.md)
+- [Stability](./stability/README.md)
+- [Upgrading](./upgrading/index.md)
+- [Internals](./internals/README.md)
 
-## Upgrading
-
-- **[Upgrading overview](./upgrading/index.md)** — version status, deprecation policy.
-- **[Alpha → 0.1.0](./upgrading/alpha-to-0-1-0.md)** — what to expect when the API freeze ships.
-
-## Stability
-
-- **[Versioning](./stability/semver.md)** — what counts as a breaking change.
-- **[IR stability](./stability/ir-stability.md)** — what flows into the IR, how it evolves.
-- **[LTS](./stability/lts.md)** — support windows, backport policy.
-
-## Internals
-
-For people working **on** Causeway rather than building **with** it.
-
-- **[Architecture](./internals/architecture.md)** — high-level source layout.
-- **[Code map](./internals/code-map.md)** — file-by-file tour of `packages/causeway/src/causeway/`.
-- **[Contributing (deep)](./internals/contributing.md)** — coding conventions beyond the top-level CONTRIBUTING.md.
-- **[Testing strategy](./internals/testing.md)** — what we test, what we don't.
-- **[Releases](./internals/releases.md)** — how release-please drives PyPI publishes.
-- **[Writing a new official plugin](./internals/plugin-authoring.md)** — the on-ramp for sibling `causeway-<role>-<impl>` packages.
-
----
-
-## Why Causeway
-
-The long version of the story behind the framework: **[Why Causeway](./why-causeway.md)**.
-
----
-
-Something wrong, confusing, or missing? Open a [doc issue](https://github.com/tamimbinhakim/causeway/issues/new?labels=docs). Meta-PRs (improving these very docs) count and are appreciated.
+Something confusing or missing? Open a [docs issue](https://github.com/tamimbinhakim/causeway/issues/new?labels=docs).

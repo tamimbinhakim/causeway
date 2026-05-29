@@ -14,7 +14,7 @@ How to upgrade Causeway across versions. Until 1.0, expect minor APIs to shift b
 
 ## Tools
 
-- **`causeway diff`** — flags breaking changes in your own app's API surface across builds. See [the CLI page](../api-reference/cli/diff.md).
+- **`causeway diff`** — flags breaking changes in your own app's API surface across builds. See [the CLI page](../reference/cli/diff.md).
 - **`causeway plugins`** — shows whether your installed plugin adapters still target a contract version Causeway supports.
 
 ## Deprecation policy

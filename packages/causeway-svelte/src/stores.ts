@@ -1,11 +1,17 @@
-import { unwrapResult } from "@causewayjs/ts";
 import { readable, writable } from "svelte/store";
 import type { Readable, Writable } from "svelte/store";
 
-import type { ArgsOf, DataOf, ErrorOf, StreamItemOf, StreamKeys, UnaryKeys } from "./types.js";
-
-type Unary = (args?: unknown, opts?: { signal?: AbortSignal }) => Promise<unknown>;
-type Stream = (args?: unknown, opts?: { signal?: AbortSignal }) => AsyncIterable<unknown>;
+import type {
+  CallOptions,
+  CausewayClient,
+  RegisteredMutationRouteKey,
+  RegisteredQueryRouteKey,
+  RegisteredRouteData,
+  RegisteredRouteError,
+  RegisteredRouteInput,
+  RouteInputValue,
+  UnregisteredRouteKey,
+} from "@causewayjs/client";
 
 export interface QueryStoreOptions {
   enabled?: boolean;
@@ -15,14 +21,14 @@ export interface QueryStoreValue<TData, TError> {
   status: "idle" | "loading" | "success" | "error";
   data: TData | undefined;
   error: TError | undefined;
-  refetch: () => void;
+  refetch: (opts?: CallOptions) => void;
 }
 
-export interface MutationStoreValue<TData, TError, TArgs> {
+export interface MutationStoreValue<TData, TError, TVars extends RouteInputValue> {
   status: "idle" | "loading" | "success" | "error";
   data: TData | undefined;
   error: TError | undefined;
-  mutate: (args: TArgs) => Promise<TData>;
+  mutate: (vars: TVars, opts?: CallOptions) => Promise<TData>;
   reset: () => void;
 }
 
@@ -31,86 +37,134 @@ export interface SubscriptionStoreValue<TError> {
   error: TError | undefined;
 }
 
-export interface CausewayStores<TApi> {
-  query: <K extends UnaryKeys<TApi>>(
-    method: K,
-    args: ArgsOf<TApi[K]>,
-    options?: QueryStoreOptions,
-  ) => Readable<QueryStoreValue<DataOf<TApi[K]>, ErrorOf<TApi[K]>>>;
+export interface CausewayStores {
+  query: {
+    <K extends RegisteredQueryRouteKey>(
+      routeKey: K,
+      ...args: QueryStoreArgs<K>
+    ): Readable<QueryStoreValue<RegisteredRouteData<K>, RegisteredRouteError<K>>>;
+    <TData = unknown, TError = unknown, TInput extends RouteInputValue = RouteInputValue>(
+      routeKey: UnregisteredRouteKey,
+      input?: TInput,
+      options?: QueryStoreOptions,
+    ): Readable<QueryStoreValue<TData, TError>>;
+  };
 
-  mutation: <K extends UnaryKeys<TApi>>(
-    method: K,
-  ) => Readable<MutationStoreValue<DataOf<TApi[K]>, ErrorOf<TApi[K]>, ArgsOf<TApi[K]>>>;
+  mutation: {
+    <K extends RegisteredMutationRouteKey>(
+      routeKey: K,
+    ): Readable<
+      MutationStoreValue<RegisteredRouteData<K>, RegisteredRouteError<K>, RegisteredRouteInput<K>>
+    >;
+    <TVars extends RouteInputValue = Record<string, unknown>, TData = unknown, TError = unknown>(
+      routeKey: UnregisteredRouteKey,
+    ): Readable<MutationStoreValue<TData, TError, TVars>>;
+  };
 
-  subscription: <K extends StreamKeys<TApi>>(
-    method: K,
-    args: ArgsOf<TApi[K]>,
-    onEvent: (event: StreamItemOf<TApi[K]>) => void,
-    options?: { enabled?: boolean },
-  ) => Readable<SubscriptionStoreValue<unknown>>;
+  subscription: {
+    <K extends RegisteredQueryRouteKey>(
+      routeKey: K,
+      input: RegisteredRouteInput<K>,
+      onEvent: (event: RegisteredRouteData<K>) => void,
+      options?: { enabled?: boolean },
+    ): Readable<SubscriptionStoreValue<RegisteredRouteError<K>>>;
+    <TEvent = unknown, TError = unknown, TInput extends RouteInputValue = RouteInputValue>(
+      routeKey: UnregisteredRouteKey,
+      input: TInput,
+      onEvent: (event: TEvent) => void,
+      options?: { enabled?: boolean },
+    ): Readable<SubscriptionStoreValue<TError>>;
+  };
 }
 
-export function createCausewayStores<TApi extends object>(api: TApi): CausewayStores<TApi> {
-  function query<K extends UnaryKeys<TApi>>(
-    method: K,
-    args: ArgsOf<TApi[K]>,
-    options: QueryStoreOptions = {},
-  ) {
+type QueryStoreArgs<K extends string> = [RegisteredRouteInput<K>] extends [void]
+  ? [input?: void, options?: QueryStoreOptions]
+  : [input: RegisteredRouteInput<K>, options?: QueryStoreOptions];
+
+export function createCausewayStores(client: CausewayClient): CausewayStores {
+  function query<K extends RegisteredQueryRouteKey>(
+    routeKey: K,
+    ...args: QueryStoreArgs<K>
+  ): Readable<QueryStoreValue<RegisteredRouteData<K>, RegisteredRouteError<K>>>;
+  function query<
+    TData = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(
+    routeKey: UnregisteredRouteKey,
+    input?: TInput,
+    options?: QueryStoreOptions,
+  ): Readable<QueryStoreValue<TData, TError>>;
+  function query<
+    TData = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(routeKey: string, input?: TInput, options: QueryStoreOptions = {}) {
     const enabled = options.enabled ?? true;
-    type V = QueryStoreValue<DataOf<TApi[K]>, ErrorOf<TApi[K]>>;
+    type V = QueryStoreValue<TData, TError>;
+    let controller: AbortController | null = null;
     const inner: Writable<V> = writable({
       data: undefined,
       error: undefined,
-      refetch: () => run(),
+      refetch: (opts?: CallOptions) => run(opts),
       status: enabled ? "loading" : "idle",
     });
 
-    let controller: AbortController | null = null;
-    function run() {
+    function run(opts: CallOptions = {}) {
       controller?.abort();
       controller = new AbortController();
       inner.update((s) => ({ ...s, error: undefined, status: "loading" }));
-      const fn = api[method] as unknown as Unary;
-      const { signal } = controller;
       void (async () => {
         try {
-          const data = unwrapResult(await fn(args as unknown, { signal })) as DataOf<TApi[K]>;
+          const data = await client.query<TData>(routeKey, toInput(input), {
+            ...opts,
+            signal: opts.signal ?? controller?.signal,
+          });
           inner.update((s) => ({ ...s, data, error: undefined, status: "success" }));
         } catch (error) {
-          if ((error as { name?: string })?.name === "AbortError") {
-            return;
-          }
+          if (isAbortError(error)) return;
           inner.update((s) => ({
             ...s,
-            error: error as ErrorOf<TApi[K]>,
+            error: error as TError,
             status: "error",
           }));
         }
       })();
     }
 
-    if (enabled) {
-      run();
-    }
+    if (enabled) run();
     return { subscribe: inner.subscribe };
   }
 
-  function mutation<K extends UnaryKeys<TApi>>(method: K) {
-    type V = MutationStoreValue<DataOf<TApi[K]>, ErrorOf<TApi[K]>, ArgsOf<TApi[K]>>;
+  function mutation<K extends RegisteredMutationRouteKey>(
+    routeKey: K,
+  ): Readable<
+    MutationStoreValue<RegisteredRouteData<K>, RegisteredRouteError<K>, RegisteredRouteInput<K>>
+  >;
+  function mutation<
+    TVars extends RouteInputValue = Record<string, unknown>,
+    TData = unknown,
+    TError = unknown,
+  >(routeKey: UnregisteredRouteKey): Readable<MutationStoreValue<TData, TError, TVars>>;
+  function mutation<
+    TVars extends RouteInputValue = Record<string, unknown>,
+    TData = unknown,
+    TError = unknown,
+  >(routeKey: string) {
+    type V = MutationStoreValue<TData, TError, TVars>;
     const inner: Writable<V> = writable({
       data: undefined,
       error: undefined,
-      mutate: async (vars: ArgsOf<TApi[K]>) => {
+      mutate: async (vars: TVars, opts: CallOptions = {}) => {
         inner.update((s) => ({ ...s, error: undefined, status: "loading" }));
-        const fn = api[method] as unknown as Unary;
         try {
-          const data = unwrapResult(await fn(vars as unknown)) as DataOf<TApi[K]>;
+          const data = await client.mutate<TData>(routeKey, toInput(vars), opts);
           inner.update((s) => ({ ...s, data, status: "success" }));
           return data;
         } catch (error) {
           inner.update((s) => ({
             ...s,
-            error: error as ErrorOf<TApi[K]>,
+            error: error as TError,
             status: "error",
           }));
           throw error;
@@ -121,13 +175,11 @@ export function createCausewayStores<TApi extends object>(api: TApi): CausewaySt
           status: "idle",
           data: undefined,
           error: undefined,
-          // Re-bind mutate / reset on reset
           mutate: getStore().mutate,
           reset: getStore().reset,
         }),
       status: "idle",
     });
-    // Captured for `.reset()` so the same callbacks survive
     let captured: V;
     inner.subscribe((v) => (captured = v));
     function getStore(): V {
@@ -136,41 +188,53 @@ export function createCausewayStores<TApi extends object>(api: TApi): CausewaySt
     return { subscribe: inner.subscribe };
   }
 
-  function subscription<K extends StreamKeys<TApi>>(
-    method: K,
-    args: ArgsOf<TApi[K]>,
-    onEvent: (event: StreamItemOf<TApi[K]>) => void,
+  function subscription<K extends RegisteredQueryRouteKey>(
+    routeKey: K,
+    input: RegisteredRouteInput<K>,
+    onEvent: (event: RegisteredRouteData<K>) => void,
+    options?: { enabled?: boolean },
+  ): Readable<SubscriptionStoreValue<RegisteredRouteError<K>>>;
+  function subscription<
+    TEvent = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(
+    routeKey: UnregisteredRouteKey,
+    input: TInput,
+    onEvent: (event: TEvent) => void,
+    options?: { enabled?: boolean },
+  ): Readable<SubscriptionStoreValue<TError>>;
+  function subscription<
+    TEvent = unknown,
+    TError = unknown,
+    TInput extends RouteInputValue = RouteInputValue,
+  >(
+    routeKey: string,
+    input: TInput,
+    onEvent: (event: TEvent) => void,
     options: { enabled?: boolean } = {},
   ) {
     const enabled = options.enabled ?? true;
-    return readable<SubscriptionStoreValue<unknown>>(
+    return readable<SubscriptionStoreValue<TError>>(
       { error: undefined, status: enabled ? "connecting" : "idle" },
       (set) => {
-        if (!enabled) {
-          return;
-        }
+        if (!enabled) return;
         const controller = new AbortController();
         set({ error: undefined, status: "connecting" });
         void (async () => {
           try {
-            const fn = api[method] as unknown as Stream;
-            const iter = fn(args as unknown, { signal: controller.signal });
             set({ error: undefined, status: "open" });
-            for await (const ev of iter) {
-              if (controller.signal.aborted) {
-                return;
-              }
-              onEvent(ev as StreamItemOf<TApi[K]>);
+            for await (const ev of client.stream<TEvent>(routeKey, toInput(input), {
+              signal: controller.signal,
+            })) {
+              if (controller.signal.aborted) return;
+              onEvent(ev);
             }
-            if (controller.signal.aborted) {
-              return;
-            }
+            if (controller.signal.aborted) return;
             set({ error: undefined, status: "closed" });
           } catch (error) {
-            if (controller.signal.aborted) {
-              return;
-            }
-            set({ error, status: "error" });
+            if (controller.signal.aborted) return;
+            set({ error: error as TError, status: "error" });
           }
         })();
         return () => controller.abort();
@@ -179,4 +243,12 @@ export function createCausewayStores<TApi extends object>(api: TApi): CausewaySt
   }
 
   return { mutation, query, subscription };
+}
+
+function toInput(input: RouteInputValue): Record<string, unknown> | void {
+  return input;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }

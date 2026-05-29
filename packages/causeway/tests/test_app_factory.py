@@ -46,6 +46,28 @@ async def test_create_app_includes_health_and_diagnostics(tmp_path: Path) -> Non
         assert (await client.get("/__causeway")).status_code == 200
 
 
+async def test_create_app_exposes_dev_graph(tmp_path: Path) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "(org)/customers/$id/screen.py",
+        "from causeway import post\n"
+        "@post(refreshes=('GET /customers/$id', 'GET /customers'))\n"
+        "async def screen(id: str) -> dict: return {'id': id}\n",
+    )
+    app = create_app(routes)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
+        resp = await client.get("/__causeway/graph")
+
+    assert resp.status_code == 200
+    route = resp.json()["routes"][0]
+    assert route["route_key"] == "POST /customers/$id/screen"
+    assert route["http_path"] == "/customers/{id}/screen"
+    assert route["scopes"] == ["org"]
+    assert route["refreshes"] == ["GET /customers/$id", "GET /customers"]
+
+
 def test_create_app_result_exposes_starlette_app_methods(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(

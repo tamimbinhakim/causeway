@@ -1,36 +1,33 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createLazyClient } from "../src/client.js";
-import type { RouteDescriptor, RouteMeta } from "../src/types.js";
+import { createRouteKeyClient } from "../src/client.js";
+import type { CausewayClient, RouteDescriptor, RouteMeta } from "../src/types.js";
 
-const routes: RouteDescriptor[] = [
-  {
+const routes: Record<string, RouteDescriptor> = {
+  chat: {
     method: "GET",
     path: "/chat",
-    name: "chat",
-    segments: ["chat"],
-    verb: "list",
+    routeKey: "GET /chat",
+    streams: true,
+  },
+};
+
+const routeMeta: RouteMeta[] = [
+  {
+    id: "chat",
+    routeKey: "GET /chat",
+    method: "GET",
+    path: "/chat",
     streams: true,
   },
 ];
 
-const routeMeta: RouteMeta[] = routes.map((route) => ({
-  id: route.name,
-  name: route.name,
-  segments: route.segments,
-  verb: route.verb,
-  ...((route.params?.length ?? 0) > 0 ? { hasArgs: true } : {}),
-  ...(route.streams ? { streams: true } : {}),
-}));
-
-function createTestClient<TApi extends object = Record<string, unknown>>(config: {
-  fetch?: typeof fetch;
-}): TApi {
-  return createLazyClient<TApi>({
+function createTestClient(config: { fetch?: typeof fetch }): CausewayClient {
+  return createRouteKeyClient({
     ...config,
     routeMeta,
     loadRoute: (id) => {
-      const route = routes.find((item) => item.name === id);
+      const route = routes[id];
       if (route === undefined) throw new Error(id);
       return route;
     },
@@ -64,12 +61,9 @@ describe("streaming client", () => {
         }),
     );
 
-    const api = createTestClient({ fetch: fetchMock }) as {
-      chat: { list: () => AsyncIterable<{ kind: string; text?: string }> };
-    };
-
+    const client = createTestClient({ fetch: fetchMock });
     const got: unknown[] = [];
-    for await (const ev of api.chat.list()) got.push(ev);
+    for await (const ev of client.stream("GET /chat")) got.push(ev);
 
     expect(got).toEqual([
       { kind: "token", text: "hi" },
@@ -88,12 +82,9 @@ describe("streaming client", () => {
         }),
     );
 
-    const api = createTestClient({ fetch: fetchMock }) as {
-      chat: { list: () => AsyncIterable<unknown> };
-    };
-
+    const client = createTestClient({ fetch: fetchMock });
     const run = async () => {
-      for await (const ev of api.chat.list()) {
+      for await (const ev of client.stream("GET /chat")) {
         void ev;
       }
     };
@@ -102,9 +93,6 @@ describe("streaming client", () => {
   });
 
   it("resumes with Last-Event-Id after a mid-stream disconnect", async () => {
-    // First connection: yields two events with ids 1 and 2, then drops.
-    // Second connection: must see Last-Event-Id: 2 in the request, yields
-    // event id 3 + done.
     const calls: { headers: Record<string, string> }[] = [];
     let attempt = 0;
 
@@ -116,7 +104,6 @@ describe("streaming client", () => {
       attempt += 1;
 
       if (attempt === 1) {
-        // Tell client retry=1ms so the test doesn't sit on a 1s default.
         const body = sseStream(['retry: 1\nid: 1\ndata: {"n":1}\n\n', 'id: 2\ndata: {"n":2}\n\n']);
         return new Response(body, {
           status: 200,
@@ -130,11 +117,9 @@ describe("streaming client", () => {
       });
     });
 
-    const api = createTestClient({ fetch: fetchMock }) as {
-      chat: { list: () => AsyncIterable<{ n: number }> };
-    };
+    const client = createTestClient({ fetch: fetchMock });
     const got: number[] = [];
-    for await (const ev of api.chat.list()) got.push(ev.n);
+    for await (const ev of client.stream<{ n: number }>("GET /chat")) got.push(ev.n);
 
     expect(got).toEqual([1, 2, 3]);
     expect(calls).toHaveLength(2);

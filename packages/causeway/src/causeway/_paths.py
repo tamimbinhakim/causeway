@@ -6,7 +6,7 @@ from pathlib import PurePosixPath
 _GROUP = re.compile(r"^\([^)]+\)$")
 _DYNAMIC = re.compile(r"^\$([A-Za-z_][A-Za-z0-9_]*)$")
 _CATCHALL = re.compile(r"^\$\$(.+)$")
-_LEAF_TOKEN = re.compile(r"\([^)]*\)|[^.]+")
+_PUBLIC_PARAM = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
 def url_for(rel_path: PurePosixPath) -> str:
@@ -18,26 +18,62 @@ def url_for(rel_path: PurePosixPath) -> str:
 
     segments: list[str] = []
     for part in parts:
+        _reject_dotted(part)
         if _GROUP.match(part):
             continue
-        segments.extend(_folder_segments(part))
+        segments.append(_leaf_segment(part))
 
-    leaf_pieces = _LEAF_TOKEN.findall(leaf)
-    if leaf_pieces and leaf_pieces[-1] == "index":
-        leaf_pieces.pop()
-    for piece in leaf_pieces:
-        if _GROUP.match(piece):
-            continue
-        segments.append(_leaf_segment(piece))
+    _reject_dotted(leaf)
+    if _GROUP.match(leaf):
+        msg = f"route groups must be folders, not leaf files: {leaf!r}"
+        raise ValueError(msg)
+    if leaf != "index":
+        segments.append(_leaf_segment(leaf))
 
     if not segments:
         return "/"
     return "/" + "/".join(segments)
 
 
-def _folder_segments(part: str) -> list[str]:
-    pieces = _LEAF_TOKEN.findall(part)
-    return [_leaf_segment(piece) for piece in pieces if not _GROUP.match(piece)]
+def public_path_for(rel_path: PurePosixPath) -> str:
+    """Return the client-facing route path, preserving ``$param`` syntax."""
+    return _PUBLIC_PARAM.sub(r"$\1", url_for(rel_path))
+
+
+def route_key_for(method: str, rel_path: PurePosixPath) -> str:
+    return f"{method.upper()} {public_path_for(rel_path)}"
+
+
+def route_key_from_url(method: str, path: str) -> str:
+    public_path = _PUBLIC_PARAM.sub(r"$\1", path)
+    return f"{method.upper()} {public_path}"
+
+
+def scope_groups_for(rel_path: PurePosixPath) -> tuple[str, ...]:
+    if rel_path.suffix != ".py":
+        msg = f"route file must end in .py: {rel_path}"
+        raise ValueError(msg)
+    groups: list[str] = []
+    parts = list(rel_path.with_suffix("").parts)
+    leaf = parts.pop()
+    for part in parts:
+        _reject_dotted(part)
+        groups.extend(_groups_in_piece(part))
+    _reject_dotted(leaf)
+    if _GROUP.match(leaf):
+        msg = f"route groups must be folders, not leaf files: {leaf!r}"
+        raise ValueError(msg)
+    return tuple(groups)
+
+
+def _groups_in_piece(piece: str) -> list[str]:
+    return [piece[1:-1]] if _GROUP.match(piece) and len(piece) > 2 else []
+
+
+def _reject_dotted(part: str) -> None:
+    if "." in part:
+        msg = f"dotted route files are not supported; use folders instead: {part!r}"
+        raise ValueError(msg)
 
 
 def _leaf_segment(piece: str) -> str:

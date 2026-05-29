@@ -13,7 +13,9 @@ This is the core Python package of [Causeway](https://github.com/tamimbinhakim/c
 - A **scoped DI container** driven by `_scope.py` providers.
 - A **`@task` contract** for background jobs with a Dramatiq reference adapter.
 - A **plugin registry** with Python-entry-point discovery and per-environment activation.
-- A **CLI** (`causeway new`, `causeway dev`, `causeway build`, `causeway deploy <target>`) that runs the whole loop.
+- A **route-key client generator** that emits typed TypeScript clients from the same route IR.
+- An **App Graph** that exposes routes, scopes, permissions, middleware, providers, tasks, plugins, events, and refresh contracts.
+- A **CLI** (`causeway new`, `causeway dev`, `causeway build`, `causeway inspect`, `causeway deploy <target>`) that runs the whole loop.
 
 For the full story, the design rationale, and a side-by-side vs. FastAPI / Django + Ninja / Encore.ts / NestJS, see the [repo README](https://github.com/tamimbinhakim/causeway).
 
@@ -59,7 +61,13 @@ Run it:
 causeway dev
 ```
 
-`causeway dev` discovers the routes, boots uvicorn once, hot-swaps route edits without restarting the process, and exposes `/__causeway` with the route tree, registered tasks, current config, and plugin list.
+`causeway dev` discovers the routes, boots uvicorn once, hot-swaps route edits without restarting the process, and exposes `/__causeway` with the route tree, registered tasks, current config, plugin list, and App Graph.
+
+The public client identity is the route key:
+
+```ts
+const user = await client.query("GET /users/$id", { id });
+```
 
 ## Primitives in this package
 
@@ -69,13 +77,15 @@ causeway dev
 | `_middleware.py` / `_scope.py`                   | Per-subtree middleware + scoped DI providers.                            |
 | `Settings` (wraps `pydantic-settings`)           | Typed config with allowlisted exposure to the generated client.          |
 | `@get` / `@post` / `@put` / `@patch` / `@delete` | HTTP method decorators.                                                  |
+| `@post(refreshes=...)`                           | Mutation refresh contract for the route-key client.                      |
 | `@task(...)`                                     | Background-job contract; adapter-agnostic.                               |
 | `@cron(...)`                                     | Scheduled tasks via the same adapter.                                    |
 | `register(...)`                                  | Plugin registration (`TaskAdapter`, `Storage`, `KV`, `AuthProvider`, …). |
+| `causeway inspect`                               | App Graph inspection.                                                    |
 | `TestApp`                                        | Test client with DI overrides and `tasks_eager()` mode.                  |
-| `causeway` CLI                                   | `new`, `dev`, `build`, `plugins`, `deploy <target>`.                     |
+| `causeway` CLI                                   | `new`, `dev`, `build`, `codegen`, `ir`, `inspect`, `openapi`, `deploy`.  |
 
-Full reference: <https://github.com/tamimbinhakim/causeway/tree/main/docs/api-reference>
+Full reference: <https://github.com/tamimbinhakim/causeway/tree/main/docs/reference>
 
 ## Optional extras
 

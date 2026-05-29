@@ -1,69 +1,294 @@
 import { parseSSE } from "./sse.js";
-import { buildError, CausewayError } from "./types.js";
-import type { CallOptions, LazyClientConfig, Result, RouteDescriptor, RouteMeta } from "./types.js";
+import { buildError, CausewayError, unwrapResult } from "./types.js";
+import type {
+  CallOptions,
+  CausewayClient,
+  ClientConfig,
+  DehydratedClient,
+  QueryState,
+  Result,
+  RouteDescriptor,
+  RouteMeta,
+} from "./types.js";
 
 type Args = Record<string, unknown>;
 type FetchImpl = typeof globalThis.fetch;
+const EMPTY_QUERY_STATE: QueryState = Object.freeze({ error: null, pending: false });
 
-export function createLazyClient<TApi extends object = Record<string, unknown>>(
-  config: LazyClientConfig,
-): TApi {
+interface QueryEntry {
+  routeKey: string;
+  input: unknown;
+  scope: unknown;
+  state: QueryState;
+}
+
+export function createRouteKeyClient(config: ClientConfig): CausewayClient {
   const baseUrl = (config.baseUrl ?? "").replace(/\/$/, "");
   const fetchImpl: FetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
-  const cache = new Map<string, Promise<RouteDescriptor>>();
-  const root: Record<string, unknown> = Object.create(null);
+  const descriptorCache = new Map<string, Promise<RouteDescriptor>>();
+  const metaByRouteKey = new Map<string, RouteMeta>();
+  const entries = new Map<string, QueryEntry>();
+  const inFlight = new Map<string, Promise<unknown>>();
+  const listeners = new Map<string, Set<() => void>>();
+  const scope = config.scope ?? null;
+
+  for (const route of config.routeMeta) {
+    metaByRouteKey.set(route.routeKey, route);
+  }
 
   const loadRoute = (id: string): Promise<RouteDescriptor> => {
-    let cached = cache.get(id);
+    let cached = descriptorCache.get(id);
     if (cached === undefined) {
       cached = Promise.resolve(config.loadRoute(id));
-      cache.set(id, cached);
+      descriptorCache.set(id, cached);
     }
     return cached;
   };
 
-  for (const route of config.routeMeta) {
-    const fn = (args?: Args, opts: CallOptions = {}) => {
-      if (route.streams) {
-        return streamCallLazy(
-          route,
-          args ?? {},
-          opts,
-          baseUrl,
-          config.headers,
-          fetchImpl,
-          loadRoute,
-        );
-      }
-      return loadRoute(route.id).then((loaded) => {
-        const { url, init } = buildRequest(loaded, args ?? {}, opts, baseUrl, config.headers);
-        return unaryCall(loaded, url, init, fetchImpl);
-      });
-    };
+  const fetchRoute = async (
+    routeKey: string,
+    input: Record<string, unknown> | void,
+    opts: CallOptions,
+    kind: "query" | "mutation",
+  ): Promise<unknown> => {
+    const meta = requireRouteMeta(metaByRouteKey, routeKey);
+    assertRouteKind(meta, kind);
+    const descriptor = await loadRoute(meta.id);
+    const { url, init } = buildRequest(
+      descriptor,
+      (input ?? {}) as Args,
+      opts,
+      baseUrl,
+      config.headers,
+    );
+    return unwrapResult(await unaryCall(descriptor, url, init, fetchImpl));
+  };
 
-    installRoute(root, route, fn);
+  const client: CausewayClient = {
+    async query<TData = unknown>(
+      routeKey: string,
+      input?: Record<string, unknown> | void,
+      opts: CallOptions = {},
+    ): Promise<TData> {
+      const key = cacheKey(routeKey, input, scope);
+      const cached = entries.get(key);
+      if (cached?.state.data !== undefined && !cached.state.pending) {
+        return cached.state.data as TData;
+      }
+      return (await runQuery(routeKey, input, opts, false)) as TData;
+    },
+    async refresh<TData = unknown>(
+      routeKey: string,
+      input?: Record<string, unknown> | void,
+      opts: CallOptions = {},
+    ): Promise<TData> {
+      return (await runQuery(routeKey, input, opts, true)) as TData;
+    },
+    async mutate<TData = unknown>(
+      routeKey: string,
+      input?: Record<string, unknown> | void,
+      opts: CallOptions = {},
+    ): Promise<TData> {
+      const data = await fetchRoute(routeKey, input, opts, "mutation");
+      const meta = metaByRouteKey.get(routeKey);
+      const descriptor = meta === undefined ? undefined : await loadRoute(meta.id);
+      const refreshes = descriptor?.refreshes ?? meta?.refreshes ?? [];
+      await Promise.all(refreshes.map((key) => client.refresh(key, input, opts)));
+      return data as TData;
+    },
+    stream<TEvent = unknown>(
+      routeKey: string,
+      input?: Record<string, unknown> | void,
+      opts: CallOptions = {},
+    ): AsyncIterable<TEvent> {
+      return streamRoute<TEvent>(routeKey, input, opts);
+    },
+    getData<TData = unknown>(routeKey: string, input?: Record<string, unknown> | void) {
+      return entries.get(cacheKey(routeKey, input, scope))?.state.data as TData | undefined;
+    },
+    setData(routeKey, input, data) {
+      const key = cacheKey(routeKey, input, scope);
+      entries.set(key, {
+        routeKey,
+        input: input ?? {},
+        scope,
+        state: { data, error: null, pending: false, updatedAt: Date.now() },
+      });
+      notify(listeners, key);
+    },
+    getQueryState<TData = unknown, TError = unknown>(
+      routeKey: string,
+      input?: Record<string, unknown> | void,
+    ) {
+      return (entries.get(cacheKey(routeKey, input, scope))?.state ??
+        EMPTY_QUERY_STATE) as QueryState<TData, TError>;
+    },
+    subscribe(routeKey, input, listener) {
+      const key = cacheKey(routeKey, input, scope);
+      const bucket = listeners.get(key) ?? new Set<() => void>();
+      bucket.add(listener);
+      listeners.set(key, bucket);
+      return () => {
+        bucket.delete(listener);
+        if (bucket.size === 0) listeners.delete(key);
+      };
+    },
+    queryKey(routeKey, input) {
+      return cacheKey(routeKey, input, scope);
+    },
+    dehydrate() {
+      return {
+        version: 1,
+        queries: [...entries.values()]
+          .filter((entry) => entry.state.data !== undefined)
+          .map((entry) => ({
+            routeKey: entry.routeKey,
+            input: entry.input,
+            scope: entry.scope,
+            data: entry.state.data,
+            updatedAt: entry.state.updatedAt ?? Date.now(),
+          })),
+      };
+    },
+    hydrate(snapshot: DehydratedClient) {
+      if (snapshot.version !== 1) return;
+      for (const query of snapshot.queries) {
+        const key = cacheKey(query.routeKey, query.input, query.scope);
+        entries.set(key, {
+          routeKey: query.routeKey,
+          input: query.input,
+          scope: query.scope,
+          state: {
+            data: query.data,
+            error: null,
+            pending: false,
+            updatedAt: query.updatedAt,
+          },
+        });
+        notify(listeners, key);
+      }
+    },
+  };
+
+  async function runQuery(
+    routeKey: string,
+    input: Record<string, unknown> | void,
+    opts: CallOptions,
+    force: boolean,
+  ): Promise<unknown> {
+    const key = cacheKey(routeKey, input, scope);
+    if (!force) {
+      const pending = inFlight.get(key);
+      if (pending !== undefined) return await pending;
+    }
+
+    const previous = entries.get(key);
+    entries.set(key, {
+      routeKey,
+      input: input ?? {},
+      scope,
+      state: {
+        data: previous?.state.data,
+        error: null,
+        pending: true,
+        updatedAt: previous?.state.updatedAt,
+      },
+    });
+    notify(listeners, key);
+
+    const request = fetchRoute(routeKey, input, opts, "query")
+      .then((data) => {
+        entries.set(key, {
+          routeKey,
+          input: input ?? {},
+          scope,
+          state: { data, error: null, pending: false, updatedAt: Date.now() },
+        });
+        notify(listeners, key);
+        return data;
+      })
+      .catch((error: unknown) => {
+        entries.set(key, {
+          routeKey,
+          input: input ?? {},
+          scope,
+          state: {
+            data: previous?.state.data,
+            error,
+            pending: false,
+            updatedAt: previous?.state.updatedAt,
+          },
+        });
+        notify(listeners, key);
+        throw error;
+      })
+      .finally(() => {
+        inFlight.delete(key);
+      });
+
+    inFlight.set(key, request);
+    return await request;
   }
 
-  return root as TApi;
+  async function* streamRoute<TEvent>(
+    routeKey: string,
+    input: Record<string, unknown> | void,
+    opts: CallOptions,
+  ): AsyncIterableIterator<TEvent> {
+    const meta = requireRouteMeta(metaByRouteKey, routeKey);
+    const descriptor = await loadRoute(meta.id);
+    if (!meta.streams && !descriptor.streams) {
+      throw new Error(`Causeway route is not a stream: ${routeKey}`);
+    }
+    yield* streamCall(
+      descriptor,
+      (input ?? {}) as Args,
+      opts,
+      baseUrl,
+      config.headers,
+      fetchImpl,
+    ) as AsyncIterableIterator<TEvent>;
+  }
+
+  return client;
 }
 
-function installRoute(
-  root: Record<string, unknown>,
-  route: Pick<RouteDescriptor, "segments" | "verb">,
-  fn: (args?: Args, opts?: CallOptions) => unknown,
-): void {
-  let cursor = root;
-  for (const segment of route.segments) {
-    const existing = cursor[segment];
-    if (existing && typeof existing === "object") {
-      cursor = existing as Record<string, unknown>;
-    } else {
-      const child: Record<string, unknown> = Object.create(null);
-      cursor[segment] = child;
-      cursor = child;
-    }
+function requireRouteMeta(routes: Map<string, RouteMeta>, routeKey: string): RouteMeta {
+  const meta = routes.get(routeKey);
+  if (meta === undefined) throw new Error(`Unknown causeway route key: ${routeKey}`);
+  return meta;
+}
+
+function assertRouteKind(route: RouteMeta, kind: "query" | "mutation"): void {
+  const isQuery = route.method === "GET";
+  if (kind === "query" && !isQuery) {
+    throw new Error(`Causeway query routes must be GET: ${route.routeKey}`);
   }
-  cursor[route.verb] = fn;
+  if (kind === "mutation" && isQuery) {
+    throw new Error(`Causeway mutation routes must not be GET: ${route.routeKey}`);
+  }
+}
+
+function cacheKey(routeKey: string, input: unknown, scope: unknown): string {
+  return stableStringify([routeKey, input ?? {}, scope ?? null]);
+}
+
+function notify(listeners: Map<string, Set<() => void>>, key: string): void {
+  const bucket = listeners.get(key);
+  if (bucket === undefined) return;
+  for (const listener of bucket) listener();
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(canonicalize(value));
+}
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (!isPlainObject(value)) return value;
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(value).sort()) out[key] = canonicalize(value[key]);
+  return out;
 }
 
 function buildRequest(
@@ -155,7 +380,10 @@ function buildRequest(
   } else if (bodyMode === "form") {
     headers["content-type"] ??= "application/x-www-form-urlencoded";
     const form = new URLSearchParams();
-    const payload = camelToSnakeDeepGuarded(bodyWhole, requestOpaque) as Record<string, unknown>;
+    const payload = camelToSnakeDeepGuarded(bodyWhole, requestOpaque);
+    if (!isPlainObject(payload)) {
+      throw new TypeError("Causeway form body must be an object.");
+    }
     for (const [k, val] of Object.entries(payload)) {
       if (val === undefined || val === null) continue;
       if (Array.isArray(val)) for (const item of val) form.append(k, String(item));
@@ -169,19 +397,6 @@ function buildRequest(
     url: `${baseUrl}${path}${qs ? `?${qs}` : ""}`,
     init: { method: route.method, headers, body, signal: opts.signal },
   };
-}
-
-async function* streamCallLazy(
-  route: RouteMeta,
-  args: Args,
-  opts: CallOptions,
-  baseUrl: string,
-  defaultHeaders: Record<string, string> | undefined,
-  fetchImpl: FetchImpl,
-  loadRoute: (id: string) => Promise<RouteDescriptor>,
-): AsyncIterableIterator<unknown> {
-  const loaded = await loadRoute(route.id);
-  yield* streamCall(loaded, args, opts, baseUrl, defaultHeaders, fetchImpl);
 }
 
 async function unaryCall(
@@ -206,12 +421,12 @@ async function unaryCall(
   // we recognize that shape and surface it as `Result.error` instead of a
   // generic `HTTP NNN: …` so consumers can branch on `error.kind`.
   if (ct.includes("application/json")) {
-    const raw = (await res.json()) as unknown;
+    const raw: unknown = await res.json();
     const responseOpaque = buildOpaqueTree(route.opaqueResponsePaths);
-    const value = snakeToCamelDeepGuarded(raw, responseOpaque) as unknown;
+    const value = snakeToCamelDeepGuarded(raw, responseOpaque);
     if (isTypedErrorEnvelope(value)) {
       if (route.result) return value as Result<unknown, unknown>;
-      const errPayload = (value as { error: Record<string, unknown> }).error;
+      const errPayload = value.error;
       // Carry the HTTP status onto the thrown error so consumers don't need
       // to inspect the response separately.
       throw buildError({ ...errPayload, status: errPayload.status ?? res.status });
@@ -227,17 +442,17 @@ async function unaryCall(
   return await res.text();
 }
 
-function isTypedErrorEnvelope(value: unknown): value is { ok: false; error: { kind: string } } {
-  if (!value || typeof value !== "object") return false;
-  const v = value as { ok?: unknown; error?: unknown };
-  if (v.ok !== false) return false;
-  const err = v.error as { kind?: unknown } | undefined;
-  return Boolean(err) && typeof err?.kind === "string";
+function isTypedErrorEnvelope(
+  value: unknown,
+): value is { ok: false; error: Record<string, unknown> & { kind: string } } {
+  if (!isPlainObject(value) || value.ok !== false) return false;
+  const { error } = value;
+  return isPlainObject(error) && typeof error.kind === "string";
 }
 
 function httpErrorFromJson(status: number, raw: unknown): CausewayError {
-  if (raw && typeof raw === "object") {
-    return buildError({ ...(raw as Record<string, unknown>), status });
+  if (isPlainObject(raw)) {
+    return buildError({ ...raw, status });
   }
   return new CausewayError({
     kind: "HttpError",
@@ -305,7 +520,7 @@ async function* streamCall(
       }
     } catch (error) {
       if (opts.signal?.aborted) return;
-      if ((error as { causewayTerminal?: boolean })?.causewayTerminal) throw error;
+      if (isTerminalStreamError(error)) throw error;
       if (Date.now() - startedAt > maxResumeWindowMs) throw error;
       await sleep(retryMs, opts.signal);
       continue;
@@ -342,8 +557,8 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 async function httpError(res: Response): Promise<CausewayError> {
   const body = await res.text();
   const parsed = safeJsonParse(body);
-  if (parsed && typeof parsed === "object" && "kind" in (parsed as Record<string, unknown>)) {
-    return buildError({ ...(parsed as Record<string, unknown>), status: res.status });
+  if (isPlainObject(parsed) && "kind" in parsed) {
+    return buildError({ ...parsed, status: res.status });
   }
   return new CausewayError({
     kind: "HttpError",
@@ -351,6 +566,14 @@ async function httpError(res: Response): Promise<CausewayError> {
     message: `HTTP ${res.status}`,
     data: body,
   });
+}
+
+function isTerminalStreamError(error: unknown): boolean {
+  return (
+    (typeof error === "object" || typeof error === "function") &&
+    error !== null &&
+    Reflect.get(error, "causewayTerminal") === true
+  );
 }
 
 function safeJsonParse(s: string): unknown {

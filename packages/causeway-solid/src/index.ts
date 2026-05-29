@@ -5,4 +5,3 @@ export type {
   MutationResource,
   SubscriptionResource,
 } from "./resources.js";
-export type { ArgsOf, DataOf, ErrorOf, StreamItemOf, StreamKeys, UnaryKeys } from "./types.js";

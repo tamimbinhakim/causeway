@@ -74,20 +74,20 @@ public IR — your renderer joins the same line.
 
 Everything you'd touch:
 
-| Symbol                            | What                                                                |
-| --------------------------------- | ------------------------------------------------------------------- |
-| `App`                             | The ASGI app + route registry. `app.get(...)` / `post` / etc.       |
-| `Context`                         | Per-request handle: status, headers, cookies, after-callbacks.      |
-| `Depends`                         | DI marker for handler parameters.                                   |
-| `after`                           | Register a callback to run after the response is sent.              |
-| `stream[T]`                       | Return annotation for SSE-streaming handlers.                       |
-| `raises(*excs)`                   | Declare typed errors; flow to the TS client's `Result<T, E>` union. |
-| `bidi`, `BidiChannel[S, R]`       | Bidirectional WebSocket channels.                                   |
-| `Form`, `Bytes`, `SsePayload`     | Body markers + raw-bytes sentinel + SSE payload helper.             |
-| `causeway._runtime.params.*`      | `Body`, `Header`, `Path`, `Query`, `Cookie`, `File` markers.        |
-| `causeway._runtime.ir.build_ir`   | Walk an `App` into an `AppIR`.                                      |
-| `causeway._runtime.codegen.write` | Emit the TypeScript client folder.                                  |
-| `causeway._runtime.diff.diff_ir`  | Diff two IR snapshots; flags breaking changes.                      |
+| Symbol                            | What                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| `App`                             | The ASGI app + route registry. `app.get(...)` / `post` / etc.            |
+| `Context`                         | Per-request handle: status, headers, cookies, after-callbacks.           |
+| `Depends`                         | DI marker for handler parameters.                                        |
+| `after`                           | Register a callback to run after the response is sent.                   |
+| `stream[T]`                       | Return annotation for SSE-streaming handlers.                            |
+| `raises(*excs)`                   | Declare typed errors; flow to route metadata and client `RouteError<K>`. |
+| `bidi`, `BidiChannel[S, R]`       | Bidirectional WebSocket channels.                                        |
+| `Form`, `Bytes`, `SsePayload`     | Body markers + raw-bytes sentinel + SSE payload helper.                  |
+| `causeway._runtime.params.*`      | `Body`, `Header`, `Path`, `Query`, `Cookie`, `File` markers.             |
+| `causeway._runtime.ir.build_ir`   | Walk an `App` into an `AppIR`.                                           |
+| `causeway._runtime.codegen.write` | Emit the TypeScript client folder.                                       |
+| `causeway._runtime.diff.diff_ir`  | Diff two IR snapshots; flags breaking changes.                           |
 
 All of these are re-exported at the top of the `causeway` package, so
 the application-author path stays:
@@ -112,7 +112,7 @@ The runtime substrate follows the same semver as the rest of Causeway:
   non-breaking; renames or removals bump the major.
 - Codegen output shape — stable enough to bundle into your build, but
   the renderer can change format details (whitespace, comment banners,
-  internal type names like `_ApiArgs<T>`) within a minor release.
+  helper type names) within a minor release.
 
 What's _not_ stable:
 
@@ -123,26 +123,18 @@ What's _not_ stable:
 
 ## Why the layering stays internal
 
-Earlier in Causeway's life, the substrate shipped as a separate package
-called `dyadpy`. That worked architecturally but added cost for users:
-two install lines, two CHANGELOGs, two PyPI versions to keep in sync,
-two namespaces in every traceback. The capability — typed RPC, IR,
-codegen, streaming, bidi — was the actually-valuable thing, not the
-brand. So it folded into Causeway as `causeway._runtime`.
+Earlier in Causeway's life, the substrate lived behind its own package
+boundary. That worked architecturally but added cost for users: two
+install lines, two changelogs, two versions to keep in sync, two
+namespaces in every traceback. The capability — typed RPC, IR, codegen,
+streaming, bidi — was the actually-valuable thing, not the brand. So it
+folded into Causeway as `causeway._runtime`.
 
 The boundary survives as architecture: you can use the substrate
 standalone (case 1 above), you can build a different framework on it
 (case 2), and you can read it as one focused module (everything in
 `causeway/_runtime/`) without scrolling through the convention layer.
 Only the brand boundary went away.
-
-## The compatibility shim
-
-The PyPI `dyadpy` package still exists at version `0.2.x` as a thin
-re-export of `causeway._runtime` with a `DeprecationWarning` on import.
-Same for the npm packages (`@dyadpy/ts`, `@dyadpy/react`, …). They give
-existing installs one upgrade cycle to migrate. They will be removed in
-Causeway 0.6.
 
 ## See also
 

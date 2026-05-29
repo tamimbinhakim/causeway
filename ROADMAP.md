@@ -81,9 +81,9 @@ When we tag 1.0:
 - [ ] **Plugin contracts frozen.** Backwards-compatible additions only.
 - [ ] **Public API frozen for one minor release before breaking.**
       Removals and signature changes go through a deprecation cycle —
-      see [`docs/semver.md`](docs/semver.md).
+      see [`docs/stability/semver.md`](docs/stability/semver.md).
 - [ ] **Documented LTS line.** Support windows + backport policy in
-      [`docs/lts.md`](docs/lts.md).
+      [`docs/stability/lts.md`](docs/stability/lts.md).
 
 Until 1.0: pre-release. Pin exact versions.
 
@@ -256,7 +256,7 @@ counts as a vote, not a commitment.
   smoke `curl` against the typed routes.
 - **Plugin contracts.** Any plugin authored against `causeway 1.x` keeps
   working through every `1.y`. Contract evolution follows the
-  deprecation cycle in [`docs/semver.md`](docs/semver.md).
+  deprecation cycle in [`docs/stability/semver.md`](docs/stability/semver.md).
 
 ## Explicit non-goals (poster on the wall)
 

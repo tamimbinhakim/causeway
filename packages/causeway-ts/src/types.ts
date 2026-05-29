@@ -13,13 +13,11 @@ export interface ParamDescriptor {
 export interface RouteDescriptor {
   method: HttpMethod;
   path: string;
-  /** Stable operation name, used for query keys and route metadata. */
-  name: string;
-  /** Generated nested API namespace segments, e.g. ["customers", "holds"]. */
-  segments: ReadonlyArray<string>;
-  /** Generated nested API leaf key, e.g. "list", "byId", "release". */
-  verb: string;
+  /** Public route-key identity, e.g. "GET /customers/$id". */
+  routeKey: string;
   params?: ReadonlyArray<ParamDescriptor>;
+  refreshes?: ReadonlyArray<string>;
+  scopes?: ReadonlyArray<string>;
   streams?: boolean;
   result?: boolean;
   /** Body is raw bytes (Blob / Uint8Array / ArrayBuffer) — skip JSON envelope. */
@@ -46,25 +44,90 @@ export interface RouteDescriptor {
 }
 
 export interface RouteMeta {
-  /** Stable generated route id, usually the route namespace name. */
+  /** Stable generated route id used to lazy-load the full route descriptor. */
   id: string;
-  /** Stable operation name, used for query keys and route metadata. */
-  name: string;
-  /** Generated nested API namespace segments, e.g. ["customers", "holds"]. */
-  segments: ReadonlyArray<string>;
-  /** Generated nested API leaf key, e.g. "list", "byId", "release". */
-  verb: string;
+  /** Public route-key identity, e.g. "GET /customers/$id". */
+  routeKey: string;
+  method: HttpMethod;
+  path: string;
+  refreshes?: ReadonlyArray<string>;
+  scopes?: ReadonlyArray<string>;
   /** Whether generated route functions expect an args object before options. */
   hasArgs?: boolean;
   streams?: boolean;
 }
 
-export interface LazyClientConfig {
+export interface ClientConfig {
   baseUrl?: string;
   routeMeta: ReadonlyArray<RouteMeta>;
   loadRoute: (id: string) => RouteDescriptor | Promise<RouteDescriptor>;
   fetch?: typeof globalThis.fetch;
   headers?: Record<string, string>;
+  scope?: unknown;
+}
+
+export interface QueryState<TData = unknown, TError = unknown> {
+  data?: TData;
+  error: TError | null;
+  pending: boolean;
+  updatedAt?: number;
+}
+
+export interface DehydratedQuery {
+  routeKey: string;
+  input: unknown;
+  scope: unknown;
+  data: unknown;
+  updatedAt: number;
+}
+
+export interface DehydratedClient {
+  version: 1;
+  queries: DehydratedQuery[];
+}
+
+export interface CausewayClient {
+  query<TData = unknown>(
+    routeKey: string,
+    input?: Record<string, unknown> | void,
+    opts?: CallOptions,
+  ): Promise<TData>;
+  mutate<TData = unknown>(
+    routeKey: string,
+    input?: Record<string, unknown> | void,
+    opts?: CallOptions,
+  ): Promise<TData>;
+  refresh<TData = unknown>(
+    routeKey: string,
+    input?: Record<string, unknown> | void,
+    opts?: CallOptions,
+  ): Promise<TData>;
+  stream<TEvent = unknown>(
+    routeKey: string,
+    input?: Record<string, unknown> | void,
+    opts?: CallOptions,
+  ): AsyncIterable<TEvent>;
+  getData<TData = unknown>(
+    routeKey: string,
+    input?: Record<string, unknown> | void,
+  ): TData | undefined;
+  setData<TData = unknown>(
+    routeKey: string,
+    input: Record<string, unknown> | void,
+    data: TData,
+  ): void;
+  getQueryState<TData = unknown, TError = unknown>(
+    routeKey: string,
+    input?: Record<string, unknown> | void,
+  ): QueryState<TData, TError>;
+  subscribe(
+    routeKey: string,
+    input: Record<string, unknown> | void,
+    listener: () => void,
+  ): () => void;
+  queryKey(routeKey: string, input?: Record<string, unknown> | void): string;
+  dehydrate(): DehydratedClient;
+  hydrate(snapshot: DehydratedClient): void;
 }
 
 export interface CallOptions {
@@ -108,7 +171,13 @@ export class CausewayError extends Error {
     if (init.data !== undefined) this.data = init.data;
     if (init.extras) {
       for (const [k, v] of Object.entries(init.extras)) {
-        if (!(k in this)) (this as Record<string, unknown>)[k] = v;
+        if (!(k in this)) {
+          Object.defineProperty(this, k, {
+            configurable: true,
+            enumerable: true,
+            value: v,
+          });
+        }
       }
     }
   }
@@ -118,8 +187,8 @@ const KNOWN_ERROR_KEYS = new Set(["kind", "message", "status", "code"]);
 
 function toCausewayError(raw: unknown): CausewayError {
   if (raw instanceof CausewayError) return raw;
-  if (raw && typeof raw === "object") {
-    const r = raw as Record<string, unknown>;
+  if (isRecord(raw)) {
+    const r = raw;
     const kind = typeof r.kind === "string" ? r.kind : "Error";
     const message = typeof r.message === "string" ? r.message : undefined;
     const status = typeof r.status === "number" ? r.status : undefined;
@@ -131,6 +200,10 @@ function toCausewayError(raw: unknown): CausewayError {
     return new CausewayError({ kind, message, status, code, data: raw, extras });
   }
   return new CausewayError({ kind: "Error", message: String(raw), data: raw });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 /**

@@ -1,54 +1,27 @@
 # @causewayjs/ts
 
-> The tiny TypeScript runtime imported by causeway-generated clients.
+Low-level TypeScript transport primitives used by Causeway-generated clients.
 
 ```bash
 pnpm add @causewayjs/ts
 ```
 
-You shouldn't have to think about this package much. The
-[`causeway`](https://pypi.org/project/causeway/) Python CLI writes a generated
-`client/` directory into your frontend that imports from `@causewayjs/ts`. That's it.
+Most apps should install `@causewayjs/client` and use the generated
+`createClient()` helper. This package is the small shared transport layer:
+request building, snake/camel conversion, SSE parsing, forwarded headers, typed
+Causeway errors, and the route descriptor types consumed by generated route
+chunks.
 
-> **Why `@causewayjs/ts` and not `@causewayjs/react`?**
-> Because this package is intentionally framework-agnostic. It's the
-> tiny TypeScript runtime that the generated client imports
-> regardless of where it ends up — Next.js, Vite + React, SvelteKit,
-> SolidStart, Astro, plain HTML, a Node script. The name `@causewayjs/ts`
-> reflects the language (TypeScript), not a framework. Framework-specific
-> bindings live in their own packages:
->
-> | Package              | What it adds                                                          | Status                  |
-> | -------------------- | --------------------------------------------------------------------- | ----------------------- |
-> | `@causewayjs/ts`     | The core TypeScript runtime. Required.                                | **v0.1 (this package)** |
-> | `@causewayjs/react`  | `useQuery`, `useSubscription`, `useMutation` hooks via TanStack Query | v0.1                    |
-> | `@causewayjs/svelte` | Svelte 5 store bindings                                               | v0.1                    |
-> | `@causewayjs/solid`  | SolidJS `createResource` / signal bindings                            | v0.1                    |
->
-> If you only need React, you'll still install `@causewayjs/ts` (the
-> generated client imports it) _plus_ `@causewayjs/react` for the hooks.
+## Exports
 
-Hard rules I've held this package to:
-
-- **Zero runtime dependencies.** Anything we need (SSE parsing, nested
-  dispatch) ships inline.
-- **Tree-shakable.** ESM-first, side-effect-free.
-- **Tiny.** Target is under ~3 KB min+gz. We check it in CI.
-
-## What's in it
-
-| Export                                                                           | What it does                                                                                                            |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `createLazyClient<ApiRoutes>({ routeMeta, loadRoute, baseUrl, headers, fetch })` | Returns the nested object your generated `api.*` calls dispatch through while loading full route descriptors on demand. |
-| `forwardHeaders(request)`                                                        | Copies cookies/auth/tracing headers into SSR calls.                                                                     |
-| `parseSSE(stream)`                                                               | Streams a `ReadableStream<Uint8Array>` into typed SSE frames.                                                           |
-| `unwrapResult(value)`                                                            | Unwrap a `Result<T, E>` envelope onto `data` / `throw error`. Used by the binding packages.                             |
-| `Result<T, E>` (type)                                                            | `\{ ok: true; data: T \} \| \{ ok: false; error: E \}` — output of `@raises` routes.                                    |
-| `Ok<R>` / `Err<R>` (types)                                                       | Extract success / error type from a route's `Return`.                                                                   |
-
-If you find yourself reaching for something else, that's probably a bug
-in the codegen — open an
-[issue](https://github.com/tamimbinhakim/causeway/issues).
+| Export                      | What it does                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| `createRouteKeyClient(...)` | Builds the owned route-key runtime used by `@causewayjs/client`.                |
+| `forwardHeaders(request)`   | Copies cookies, auth, locale, and tracing headers into server-side calls.       |
+| `parseSSE(stream)`          | Parses `ReadableStream<Uint8Array>` into SSE frames.                            |
+| `CausewayError`             | Error subclass for typed `@raises` failures and plain HTTP failures.            |
+| `unwrapResult(value)`       | Converts a `{ ok, data/error }` envelope into data or a thrown `CausewayError`. |
+| `Ok<R>` / `Err<R>`          | Type helpers for extracting success and error branches from `Result`.           |
 
 ## License
 

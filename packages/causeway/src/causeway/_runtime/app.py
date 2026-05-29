@@ -24,6 +24,7 @@ from starlette.responses import Response
 from starlette.routing import Route as StarletteRoute
 from starlette.routing import WebSocketRoute as StarletteWebSocketRoute
 
+from causeway._paths import route_key_from_url
 from causeway._runtime.runtime import ExceptionHandler, HandlerPlan, RouteRunner, build_plan
 from causeway.errors import HttpErrorFormatter
 
@@ -50,6 +51,14 @@ class Route:
     path: str
     handler: Handler
     name: str | None = None
+    route_key: str | None = None
+    source: str | None = None
+    scopes: tuple[str, ...] = ()
+    refreshes: tuple[str, ...] = ()
+    middleware: tuple[str, ...] = ()
+    providers: tuple[str, ...] = ()
+    requires: tuple[str, ...] = ()
+    idempotency: dict[str, Any] | None = None
     plan: HandlerPlan | None = None
 
 
@@ -78,6 +87,7 @@ class App:
     websocket_routes: list[WebSocketRoute] = field(default_factory=_new_ws_routes)
     exception_handler: ExceptionHandler | None = None
     error_formatter: HttpErrorFormatter | None = None
+    graph: Any | None = None
     _starlette: Starlette | None = None
 
     def _register(self, method: HttpMethod, path: str) -> Callable[[Handler], Handler]:
@@ -88,7 +98,32 @@ class App:
             # ``get_type_hints`` can't evaluate.
             with contextlib.suppress(AttributeError, ValueError):
                 handler.__causeway_localns__ = dict(sys._getframe(1).f_locals)  # type: ignore[attr-defined]
-            self.routes.append(Route(method=method, path=path, handler=handler))
+            contract = getattr(handler, "__causeway_contract__", {}) or {}
+            route_key = getattr(handler, "__causeway_route_key__", None)
+            self.routes.append(
+                Route(
+                    method=method,
+                    path=path,
+                    handler=handler,
+                    route_key=route_key
+                    if isinstance(route_key, str)
+                    else route_key_from_url(method, path),
+                    source=getattr(handler, "__causeway_route_source__", None),
+                    scopes=tuple(getattr(handler, "__causeway_route_scopes__", ()) or ()),
+                    refreshes=tuple(
+                        getattr(
+                            handler,
+                            "__causeway_route_refreshes__",
+                            contract.get("refreshes", ()),
+                        )
+                        or (),
+                    ),
+                    middleware=tuple(getattr(handler, "__causeway_route_middleware__", ()) or ()),
+                    providers=tuple(getattr(handler, "__causeway_route_providers__", ()) or ()),
+                    requires=tuple(getattr(handler, "__causeway_route_requires__", ()) or ()),
+                    idempotency=getattr(handler, "__causeway_route_idempotency__", None),
+                ),
+            )
             self.invalidate()
             return handler
 

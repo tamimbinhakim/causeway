@@ -47,6 +47,7 @@ __pycache__/
 .Python
 .python-version-local
 .venv/
+.venv-audit/
 venv/
 env/
 ENV/

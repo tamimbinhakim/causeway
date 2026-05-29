@@ -341,12 +341,12 @@ def test_codegen_for_smoke_app_renders_every_section(app: App) -> None:
 
     assert "AUTO-GENERATED" in out
     assert 'from "@causewayjs/ts"' in out
-    assert "Result" in files["types.d.ts"]
 
-    assert "export interface ApiRoutes" in out
+    assert "export interface RouteContracts" in out
+    assert "export type QueryRouteKey" in out
+    assert "export type MutationRouteKey" in out
     assert "export const routeMeta: ReadonlyArray<RouteMeta>" in out
     assert "export async function loadRoute" in out
-    assert "export namespace Routes" in out
 
     for name in ("User", "CreatePost", "Post", "Session", "LoginForm", "Tick", "Done"):
         assert f"export type {name}" in out, f"missing domain type {name}"
@@ -355,25 +355,16 @@ def test_codegen_for_smoke_app_renders_every_section(app: App) -> None:
     assert "export type PostNotFound" in out
 
     for route_shape in (
-        "login: {",
-        "me: {",
-        "posts: {",
-        "create(",
-        "byId(",
-        "list(",
-        "avatar: {",
-        "feed: {",
-        "health: {",
-        "preferences: {",
+        '"POST /login": {',
+        '"GET /me": {',
+        '"GET /posts": {',
+        '"POST /posts": {',
+        '"POST /avatar": {',
+        '"GET /feed": {',
+        '"GET /health": {',
+        '"GET /preferences": {',
     ):
         assert route_shape in out, f"missing route shape {route_shape}"
-
-    for ns in (
-        "export namespace login",
-        "export namespace getPost",
-        "export namespace feed",
-    ):
-        assert ns in out
 
     assert "streams: true" in out
     assert "result: true" in out

@@ -18,6 +18,7 @@ causeway.App registers the route
        ▼
 IR entry:
   {
+    route_key: "GET /users/$id",
     method: "GET",
     path: "/users/{id}",
     params: { id: { type: "UUID" } },
@@ -28,12 +29,13 @@ IR entry:
        │ (causeway codegen)
        ▼
 client/:
-  api.users.byId: (args: { id: string }) => Promise<Result<User, NotFound>>
+  client.query("GET /users/$id", { id }) => Promise<User>
+  RouteError<"GET /users/$id"> => NotFound
 ```
 
 ## What lives in the IR
 
-- **One entry per route.** Method, path template, params (path + query), body, response type, declared errors.
+- **One entry per route.** Route key, method, path template, params (path + query), body, response type, declared errors.
 - **Named type definitions** referenced by routes. `User`, `NotFound`, `UserPatch`, etc.
 - **Settings exposed to the client** (from `causeway.toml`'s `expose_settings`).
 
@@ -75,14 +77,14 @@ Each change is classified per [IR stability](../stability/ir-stability.md):
 
 ## Why an IR layer at all
 
-So one source of truth feeds many clients. Today: TypeScript (`causeway codegen`), OpenAPI 3.1 (`causeway openapi`), Swift (`causeway swift`), Kotlin (`causeway kotlin`). Tomorrow: Go, gRPC, anything else. Each generator consumes the same IR.
+So one source of truth feeds more than one tool. Today the primary generator is the TypeScript route-key client. The same IR also feeds compatibility/export surfaces such as OpenAPI 3.1, Swift, and Kotlin. Each generator consumes the same contract instead of re-parsing Python.
 
 It also makes contract-stability tooling tractable. `causeway diff` walks the IR rather than parsing Python — that's the only way you get fast, reliable breaking-change detection in CI.
 
 ## See also
 
-- [Typed client](../building/typed-client/index.md)
-- [`build`](../api-reference/cli/build.md)
-- [`diff`](../api-reference/cli/diff.md)
+- [Client runtime](../client/index.md)
+- [`build`](../reference/cli/build.md)
+- [`diff`](../reference/cli/diff.md)
 - [IR stability](../stability/ir-stability.md)
 - [Runtime substrate](./runtime-substrate.md) — the substrate that owns the IR (`causeway._runtime`).

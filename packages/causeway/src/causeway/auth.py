@@ -78,6 +78,7 @@ def require_permission(perm: str) -> GuardFn:
         if not await auth.has_permission(user, perm):
             raise Forbidden(f"requires {perm}")
 
+    _check.__causeway_requires__ = (perm,)  # type: ignore[attr-defined]
     return _check
 
 

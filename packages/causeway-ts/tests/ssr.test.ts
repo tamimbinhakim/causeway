@@ -88,9 +88,8 @@ describe("forwardHeaders", () => {
   it("reports unawaited async header sources clearly", () => {
     const source = Promise.resolve(new Headers({ cookie: "k=v" }));
 
-    expect(() => forwardHeaders(source as unknown as Parameters<typeof forwardHeaders>[0])).toThrow(
-      /await headers/,
-    );
+    // @ts-expect-error Exercising the runtime error for a common server misuse.
+    expect(() => forwardHeaders(source)).toThrow(/await headers/);
   });
 
   it("exports the default forwarded names", () => {

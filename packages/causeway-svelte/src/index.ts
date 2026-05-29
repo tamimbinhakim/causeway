@@ -6,4 +6,3 @@ export type {
   MutationStoreValue,
   SubscriptionStoreValue,
 } from "./stores.js";
-export type { ArgsOf, DataOf, ErrorOf, StreamItemOf, StreamKeys, UnaryKeys } from "./types.js";

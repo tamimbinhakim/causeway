@@ -35,7 +35,12 @@ causeway/                                     # monorepo root (pnpm workspace)
 │   ├── causeway-observe-sentry/              # Sentry observer plugin
 │   ├── causeway-deploy-docker/               # Dockerfile / Compose deploy target
 │   ├── causeway-deploy-fly/                  # Fly.io deploy target
-│   └── causeway-deploy-modal/                # Modal deploy target
+│   ├── causeway-deploy-modal/                # Modal deploy target
+│   ├── causeway-client/                      # owned route-key client runtime
+│   ├── causeway-react/                       # React provider + hooks
+│   ├── causeway-next/                        # Next.js server helpers
+│   ├── causeway-solid/                       # Solid route-key resources
+│   └── causeway-svelte/                      # Svelte route-key stores
 ├── examples/                             # runnable starter projects, not published
 ├── docs/                                 # what you're reading
 ├── pyrightconfig.json                    # root pyright config — points venv at packages/causeway/.venv
@@ -51,6 +56,7 @@ causeway/                                     # monorepo root (pnpm workspace)
 | URL pattern translation                         | `packages/causeway/src/causeway/_paths.py`        |
 | Handler decorators                              | `packages/causeway/src/causeway/_methods.py`      |
 | App factory                                     | `packages/causeway/src/causeway/app.py`           |
+| App Graph                                       | `packages/causeway/src/causeway/graph.py`         |
 | Config (`Settings`)                             | `packages/causeway/src/causeway/config.py`        |
 | Scoped DI                                       | `packages/causeway/src/causeway/scope.py`         |
 | Plugin registry                                 | `packages/causeway/src/causeway/plugins.py`       |

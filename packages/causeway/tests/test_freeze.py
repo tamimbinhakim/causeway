@@ -60,7 +60,6 @@ def _route_key(method: str, path: str, handler) -> tuple[str, str, str]:
         ("index", "index"),
         ("$id", "_x24id"),
         ("(admin)", "_x28admin_x29"),
-        ("users.$id", "users_x2e_x24id"),
         ("$slug", "_x24slug"),
         ("a-b", "a_x2db"),
     ],
@@ -73,7 +72,6 @@ def test_mangle_is_valid_identifier(raw: str, expected: str) -> None:
 
 def test_mangle_filename_preserves_py_extension() -> None:
     assert mangle_filename("$id.py") == "_x24id.py"
-    assert mangle_filename("users.$id.py") == "users_x2e_x24id.py"
     assert mangle_filename("plain.py") == "plain.py"
 
 

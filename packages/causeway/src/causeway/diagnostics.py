@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from causeway.config import Manifest, expose_for_client
+from causeway.graph import build_graph
 from causeway.plugins import registered
 from causeway.tasks import cron_jobs, registered_tasks
 
@@ -82,12 +83,23 @@ def attach(
     async def handler() -> dict[str, Any]:
         data = snapshot(settings=settings, manifest=manifest)
         data["routes"] = [
-            {"method": r.method, "path": r.path, "name": r.name or r.handler.__name__}
+            {
+                "method": r.method,
+                "path": r.path,
+                "route_key": r.route_key or f"{r.method} {r.path}",
+                "name": r.name or r.handler.__name__,
+            }
             for r in app.routes
         ]
         return data
 
     app.get(path)(handler)
+
+    async def graph_handler() -> dict[str, Any]:
+        graph = app.graph or build_graph(app)
+        return graph.to_dict()
+
+    app.get(f"{path}/graph")(graph_handler)
 
 
 __all__ = ["attach", "snapshot"]

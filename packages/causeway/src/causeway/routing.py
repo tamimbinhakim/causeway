@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from causeway._loader import import_path
 from causeway._loader import reset_module_cache as _reset_module_cache
 from causeway._methods import HttpMethod, method_of
-from causeway._paths import url_for
+from causeway._paths import route_key_for, scope_groups_for, url_for
 from causeway.middleware import Middleware, is_guard
 from causeway.scope import is_dependency
 
@@ -39,10 +39,15 @@ class _ScopeFrame:
 class DiscoveredRoute:
     method: HttpMethod
     path: str
+    route_key: str
     handler: Handler
     middleware: list[Any]
     providers: dict[str, Provider]
     source: Path
+    scopes: tuple[str, ...] = ()
+    refreshes: tuple[str, ...] = ()
+    requires: tuple[str, ...] = ()
+    idempotency: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -81,6 +86,7 @@ def _specificity_key(path: str) -> tuple[tuple[int, str], ...]:
 
 def register(app: App, found: Discovered) -> None:
     for r in found.routes:
+        _attach_route_metadata(r)
         decorator = _decorator_for(app, r.method)
         decorator(r.path)(r.handler)
 
@@ -152,6 +158,7 @@ def _load_route_file(
 ) -> None:
     rel = PurePosixPath(file.relative_to(routes_root).as_posix())
     url = url_for(rel)
+    scopes = scope_groups_for(rel)
     mod = _import_path(file)
     for name in dir(mod):
         obj = getattr(mod, name)
@@ -159,14 +166,21 @@ def _load_route_file(
         if method is None:
             continue
         per_handler = list(getattr(obj, "__causeway_use__", ()))
+        middleware = [*scope.middleware, *per_handler]
+        contract = getattr(obj, "__causeway_contract__", {}) or {}
         out.routes.append(
             DiscoveredRoute(
                 method=method,
                 path=url,
+                route_key=route_key_for(method, rel),
                 handler=obj,
-                middleware=[*scope.middleware, *per_handler],
+                middleware=middleware,
                 providers=dict(scope.providers),
                 source=file,
+                scopes=scopes,
+                refreshes=tuple(contract.get("refreshes") or ()),
+                requires=_collect_requires(middleware),
+                idempotency=_collect_idempotency(middleware, method),
             ),
         )
 
@@ -192,6 +206,48 @@ def reset_module_cache() -> None:
 
 def _decorator_for(app: App, method: HttpMethod) -> Callable[[str], Callable[[Handler], Handler]]:
     return getattr(app, method.lower())  # type: ignore[no-any-return]
+
+
+def _attach_route_metadata(route: DiscoveredRoute) -> None:
+    handler = route.handler
+    handler.__causeway_route_source__ = str(route.source)  # type: ignore[attr-defined]
+    handler.__causeway_route_key__ = route.route_key  # type: ignore[attr-defined]
+    handler.__causeway_route_scopes__ = route.scopes  # type: ignore[attr-defined]
+    handler.__causeway_route_refreshes__ = route.refreshes  # type: ignore[attr-defined]
+    handler.__causeway_route_requires__ = route.requires  # type: ignore[attr-defined]
+    handler.__causeway_route_idempotency__ = route.idempotency  # type: ignore[attr-defined]
+    handler.__causeway_route_middleware__ = tuple(_middleware_label(m) for m in route.middleware)  # type: ignore[attr-defined]
+    handler.__causeway_route_providers__ = tuple(route.providers)  # type: ignore[attr-defined]
+
+
+def _middleware_label(item: Any) -> str:
+    cls = item if isinstance(item, type) else type(item)
+    if is_guard(item):
+        return f"{getattr(item, '__module__', '?')}.{getattr(item, '__qualname__', getattr(item, '__name__', '?'))}"
+    return f"{getattr(cls, '__module__', '?')}.{getattr(cls, '__qualname__', getattr(cls, '__name__', '?'))}"
+
+
+def _collect_requires(middleware: list[Any]) -> tuple[str, ...]:
+    out: list[str] = []
+    for item in middleware:
+        requires = getattr(item, "__causeway_requires__", ())
+        if isinstance(requires, str):
+            out.append(requires)
+        else:
+            out.extend(str(value) for value in requires)
+    return tuple(dict.fromkeys(out))
+
+
+def _collect_idempotency(middleware: list[Any], method: HttpMethod) -> dict[str, Any] | None:
+    for item in middleware:
+        meta = getattr(item, "__causeway_idempotency__", None)
+        if not isinstance(meta, dict):
+            continue
+        methods = tuple(str(m).upper() for m in meta.get("methods", ()))
+        if methods and method.upper() not in methods:
+            continue
+        return dict(meta)
+    return None
 
 
 def _bind_providers(handler: Handler, providers: dict[str, Provider]) -> Handler:

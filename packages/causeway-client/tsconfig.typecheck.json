@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "rootDir": "../..",
+    "paths": {
+      "@causewayjs/ts": ["packages/causeway-ts/src/index.ts"]
+    }
+  }
+}

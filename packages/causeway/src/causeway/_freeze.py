@@ -11,7 +11,7 @@ from importlib.metadata import entry_points
 from pathlib import Path, PurePosixPath
 
 from causeway._methods import method_of
-from causeway._paths import url_for
+from causeway._paths import route_key_for, scope_groups_for, url_for
 from causeway.routing import _import_path
 
 MIRROR_PACKAGE = "_causeway_build"
@@ -28,8 +28,6 @@ def mangle(name: str) -> str:
     '_x24id'
     >>> mangle("(admin)")
     '_x28admin_x29'
-    >>> mangle("users.$id")
-    'users_x2e_x24id'
     >>> mangle("index")
     'index'
     """
@@ -50,11 +48,14 @@ def mangle_filename(filename: str) -> str:
 class RouteSpec:
     method: str
     url: str
+    route_key: str
     source_rel: str
     mirror_module: str
     handler_attr: str
     scope_chain: tuple[str, ...]
     mw_chain: tuple[str, ...]
+    scopes: tuple[str, ...]
+    refreshes: tuple[str, ...]
 
 
 @dataclass(slots=True)
@@ -203,7 +204,9 @@ def _collect_routes(
     plan: FreezePlan,
 ) -> None:
     rel = file.relative_to(routes_root)
-    url = url_for(PurePosixPath(rel.as_posix()))
+    rel_posix = PurePosixPath(rel.as_posix())
+    url = url_for(rel_posix)
+    scopes = scope_groups_for(rel_posix)
     mod = _import_path(file)
     mirror_module = _dotted_for(routes_root, file)
     handlers: list[tuple[str, str]] = []
@@ -214,15 +217,20 @@ def _collect_routes(
         handlers.append((name, method))
     handlers.sort()
     for handler_attr, handler_method in handlers:
+        handler = getattr(mod, handler_attr)
+        contract = getattr(handler, "__causeway_contract__", {}) or {}
         plan.routes.append(
             RouteSpec(
                 method=handler_method,
                 url=url,
+                route_key=route_key_for(handler_method, rel_posix),
                 source_rel=str(rel),
                 mirror_module=mirror_module,
                 handler_attr=handler_attr,
                 scope_chain=scope_chain,
                 mw_chain=mw_chain,
+                scopes=scopes,
+                refreshes=tuple(contract.get("refreshes") or ()),
             ),
         )
 
@@ -253,7 +261,8 @@ def emit_frozen_routes(plan: FreezePlan) -> str:
     lines.append("from pathlib import Path")
     lines.append(
         "from causeway.routing import "
-        "Discovered, DiscoveredRoute, _bind_providers, _compose_guards",
+        "Discovered, DiscoveredRoute, _bind_providers, _collect_idempotency, "
+        "_collect_requires, _compose_guards",
     )
     lines.append("")
 
@@ -316,9 +325,11 @@ def _emit_route_block(spec: RouteSpec) -> list[str]:
     lines.append(f"    _h = _compose_guards(_bind_providers({handler_ref}, _p), _mw)")
     lines.append(
         f"    routes.append(DiscoveredRoute("
-        f"method={spec.method!r}, path={spec.url!r}, handler=_h, "
+        f"method={spec.method!r}, path={spec.url!r}, route_key={spec.route_key!r}, handler=_h, "
         f"middleware=_mw, providers=_p, "
-        f"source=Path({spec.source_rel!r})))",
+        f"source=Path({spec.source_rel!r}), scopes={spec.scopes!r}, "
+        f"refreshes={spec.refreshes!r}, requires=_collect_requires(_mw), "
+        f"idempotency=_collect_idempotency(_mw, {spec.method!r})))",
     )
     return lines
 

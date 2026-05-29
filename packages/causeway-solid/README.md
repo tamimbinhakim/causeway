@@ -1,40 +1,37 @@
 # @causewayjs/solid
 
-SolidJS resource bindings for [Causeway](https://github.com/tamimbinhakim/causeway)-generated
-clients. Three factory functions on top of the typed `api`:
-
-| Resource       | What it does                                                               |
-| -------------- | -------------------------------------------------------------------------- |
-| `query`        | `createResource`-backed unary call; reactive on the args accessor.         |
-| `mutation`     | Imperative `mutate(args)` with `data`/`error`/`loading` signals.           |
-| `subscription` | Subscribes to a `stream[T]` endpoint; events forwarded to an `onEvent` cb. |
-
-## Install
+SolidJS resources for the Causeway route-key client.
 
 ```bash
-pnpm add @causewayjs/solid @causewayjs/ts solid-js
+pnpm add @causewayjs/solid @causewayjs/client solid-js
 ```
-
-## Use
 
 ```tsx
 import { createCausewayResources } from "@causewayjs/solid";
-import { api } from "./lib/dyadpy/client";
+import { createClient } from "./client";
 
-const resources = createCausewayResources(api);
-const [issue] = resources.query("getIssue", () => ({ issueId: 1 }));
+const resources = createCausewayResources(createClient({ baseUrl: "/api" }));
+const [issue] = resources.query("GET /issues/$issue_id", () => ({
+  issueId: 1,
+}));
 
 export default function Issue() {
   return (
-    <Show when={issue()} fallback={<p>Loading…</p>}>
+    <Show when={issue()} fallback={<p>Loading...</p>}>
       <h1>{issue()!.title}</h1>
     </Show>
   );
 }
 ```
 
-For a `@raises(...)` route the `error` accessor on the query carries the
-typed discriminated union.
+Import the generated client once and `query`, `mutation`, and `subscription`
+infer `input`, `data`, and `error` from the route key. The shared owned client
+runtime keeps refreshes and typed `CausewayError` behavior aligned with React
+and Svelte.
+
+## Docs
+
+See the full Solid guide in the Causeway docs: <https://github.com/tamimbinhakim/causeway/blob/main/docs/client/solid.md>.
 
 ## License
 

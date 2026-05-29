@@ -9,7 +9,7 @@
 [![PyPI](https://img.shields.io/pypi/v/causeway.svg)](https://pypi.org/project/causeway/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-[**Quickstart**](./docs/getting-started/installation.md) · [**Why Causeway**](./docs/why-causeway.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
+[**Quickstart**](./docs/start/installation.md) · [**Why Causeway**](./docs/why-causeway.md) · [**Docs**](./docs) · [**Roadmap**](./ROADMAP.md)
 
 </div>
 
@@ -21,25 +21,27 @@ But I'm a React person at heart. I wanted the frontend story to feel as good as 
 
 It mostly worked. But "mostly" is exactly where you start losing whole afternoons — the OpenAPI generators drift, the request/response shapes don't quite match what your handlers actually return, you end up writing the same `interface User` in three places. The seam between the Python types I'd just written and the TypeScript types my React app needed was always a little broken.
 
-So I built **[dyadpy](https://github.com/tamimbinhakim/dyadpy)** — a typed-RPC primitive that walks your Python signatures into an IR and emits a TypeScript client that's exactly what the server returns. No OpenAPI middle-man, no generator drift, no manual sync.
+So I built the typed-RPC substrate that now lives inside Causeway: it walks Python signatures into an IR and emits a TypeScript client that matches what the server actually returns. No OpenAPI middle-man, no generator drift, no manual sync.
 
-dyadpy is the right primitive but it's deliberately low-level — it knows nothing about routing, config, DI, background jobs, middleware, or plugins. I needed a layer on top that would let me ship a real backend without writing the same scaffolding for the tenth time.
+That substrate was the right primitive, but a primitive is not an application framework. It knew nothing about routing, config, DI, background jobs, middleware, or plugins. I needed the layer above it too: the thing that gives a backend a shape.
 
 That layer is **Causeway.**
 
 ## What Causeway is
 
-A backend-only, Python-native framework that contributes exactly five things to your application surface:
+A backend-first, Python-native framework that contributes a small set of firm opinions to your application surface:
 
-1. **File-based routing** — `$id.py`, `$id/`, and dotted `$id` dynamic segments, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition. See [`docs/building/routing/`](./docs/building/routing/defining-routes.md).
+1. **File-based routing** — `$id.py`, `$id/`, `(group)/` route groups, `_middleware.py` / `_scope.py` per-tree composition. See [Backend routing](./docs/backend/routing.md).
 2. **Typed config & DI** — a `pydantic-settings` wrapper with request-scoped providers. No DI container boilerplate.
 3. **Middleware & scope composition** — one file at the root of a subtree wraps every route below it.
 4. **Background-task contract** — `@task` decorator + adapter protocol. Dramatiq ships as the reference; swap to Celery / Arq / TaskIQ with one line.
 5. **Plugin registry** — entry-point discovery so `causeway-auth-jwt`, `causeway-storage-s3`, `causeway-db-sqlmodel`, etc. install cleanly.
+6. **Route-key client runtime** — generated TypeScript types plus one tiny client API: `query`, `mutate`, `refresh`, `stream`.
+7. **App Graph** — an inspectable, agent-readable map of routes, scopes, permissions, middleware, tasks, plugins, events, and refresh contracts.
 
-Underneath, the typed-RPC layer (IR + TS codegen + streaming) is provided by [`dyadpy`](https://github.com/tamimbinhakim/dyadpy). From an application author's perspective it's all just Causeway — you write Python handlers; Causeway registers them, validates them, and can emit a TypeScript client from the same route IR.
+Underneath, the typed-RPC layer (IR + TS codegen + streaming) is `causeway._runtime`. From an application author's perspective it's all just Causeway: you write Python handlers; Causeway registers them, validates them, builds the App Graph, and emits a TypeScript client from the same route IR.
 
-Everything outside those five things (ORM, auth, mailer, storage, cache, search, …) is a **plugin contract with reference adapters** — not in core.
+Everything outside that surface (ORM, auth implementation, mailer, storage, cache, search, …) is a **plugin contract with reference adapters** — not in core.
 
 ## What Causeway is not
 
@@ -90,6 +92,15 @@ async def show(id: UUID, db: Annotated[Session, get_session]) -> User:
     return user
 ```
 
+```python
+# src/app/routes/users/$id/screen.py
+from causeway import post
+
+@post(refreshes=("GET /users/$id", "GET /users"))
+async def screen(id: UUID, db: Annotated[Session, get_session]) -> User:
+    return await db.users.screen(id)
+```
+
 ```bash
 causeway dev
 ```
@@ -101,20 +112,20 @@ What that does:
 3. Serves `/__causeway` — route tree, registered tasks, current config (secrets redacted), plugin list.
 4. Hot-swaps route edits in-process; bad reloads keep the previous app serving.
 
-Prefer the TanStack-Router-style flat layout? Same routes, dot-flat:
+Route files use folders for URL structure. Dotted route filenames are rejected so backend routes, middleware scopes, App Graph metadata, and frontend route keys all describe the same thing.
 
-```
-src/app/routes/
-├── index.py
-├── users.index.py            # /users
-└── users.$id.py              # /users/{id}
+```ts
+const user = await client.query("GET /users/$id", { id });
+await client.mutate("POST /users/$id/screen", { id });
 ```
 
-You can mix the two freely in the same tree. Details: [`docs/building/routing/`](./docs/building/routing/defining-routes.md).
+That string is not an operation name invented by a generator. It is the public route key Causeway derives from the file tree.
 
 ## Why you'd use it
 
 - **Signature-as-contract.** Your handler's Python signature _is_ the wire schema. No `class CreatePostRequest(BaseModel)` mirrored in three files.
+- **Route keys, not generated folklore.** The client calls the route you wrote: `"GET /users/$id"`, `"POST /users/$id/screen"`.
+- **Refreshes belong near the mutation.** A backend mutation can declare `refreshes=...`; the client runtime handles the cache update after success.
 - **Project shape for free.** File-based routing, scoped DI, middleware, plugin registry — all there the moment you scaffold.
 - **Plugins, not batteries.** Core ships contracts and one reference adapter each. Pick a real backend with one line in `plugins.py`.
 - **Cloud-agnostic.** No provisioner, no platform lock-in. Runs anywhere ASGI runs.
@@ -154,9 +165,15 @@ Details in [`docs/stability/`](./docs/stability) — semver, IR stability, LTS.
 
 ## Packages
 
-| Package                                  | What it is                                                   | Status |
-| ---------------------------------------- | ------------------------------------------------------------ | ------ |
-| [`causeway`](./packages/causeway) (PyPI) | Core framework: routing, config, DI, tasks, plugin registry. | v0.1 α |
+| Package                                            | What it is                                                   | Status |
+| -------------------------------------------------- | ------------------------------------------------------------ | ------ |
+| [`causeway`](./packages/causeway) (PyPI)           | Core framework: routing, config, DI, tasks, plugin registry. | v0.1 α |
+| [`@causewayjs/client`](./packages/causeway-client) | Owned route-key client runtime.                              | v0.1 α |
+| [`@causewayjs/react`](./packages/causeway-react)   | React provider, `useQuery`, and `useMutation`.               | v0.1 α |
+| [`@causewayjs/next`](./packages/causeway-next)     | Next.js server client, prefetch, hydrate helpers.            | v0.1 α |
+| [`@causewayjs/solid`](./packages/causeway-solid)   | Solid resources over the same route-key runtime.             | v0.1 α |
+| [`@causewayjs/svelte`](./packages/causeway-svelte) | Svelte stores over the same route-key runtime.               | v0.1 α |
+| [`@causewayjs/ts`](./packages/causeway-ts)         | Low-level transport and shared runtime primitives.           | v0.1 α |
 
 The official plugin set (`causeway-tasks-dramatiq`, `causeway-storage-s3`, `causeway-auth-jwt`, `causeway-db-sqlmodel`, etc.) lives under [`packages/`](./packages). Full inventory and roadmap in [`ROADMAP.md`](./ROADMAP.md#plugin-ecosystem).
 

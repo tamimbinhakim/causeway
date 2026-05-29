@@ -92,4 +92,4 @@ Access logs are short too:
 ## See also
 
 - [Boot pipeline](./boot-pipeline.md)
-- [`dev`](../api-reference/cli/dev.md)
+- [`dev`](../reference/cli/dev.md)

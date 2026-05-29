@@ -14,7 +14,7 @@ packages/causeway/tests/
 ├── test_errors.py               # HttpError hierarchy + handler
 ├── test_health.py               # /healthz, /readyz
 ├── test_observability.py        # RequestIdMiddleware, structlog setup
-├── test_paths.py                # url_for — folder, dot-flat, mixed
+├── test_paths.py                # url_for — folder routes + rejected old forms
 ├── test_plugin_features.py      # settings_fragment, requires, env()
 ├── test_plugins.py              # register / startup_all / shutdown_all
 ├── test_provider_binding.py     # @provide + Annotated[T, fn]
@@ -54,17 +54,17 @@ Each public module has a matching test file. New module → new test file.
 
 ```python
 # tests/test_paths.py
-"""URL translation rules from docs/building/routing/."""
+"""URL translation rules from docs/backend/routing.md."""
 
 @pytest.mark.parametrize(
     ("rel", "expected"),
     [
         ("index.py", "/"),
-        ("users.$id.index.py", "/users/{id}"),
+        ("users/$id.py", "/users/{id}"),
         # …
     ],
 )
-def test_url_for_dot_flat_style(rel: str, expected: str) -> None:
+def test_url_for_folder_style(rel: str, expected: str) -> None:
     assert url_for(PurePosixPath(rel)) == expected
 ```
 

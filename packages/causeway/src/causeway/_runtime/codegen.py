@@ -9,7 +9,7 @@ import shutil
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 from causeway._runtime._idents import to_camel as _to_camel
 from causeway._runtime.ir import AppIR, ParamIR, RouteIR
@@ -33,10 +33,7 @@ _INLINE_UNION_TERMS = 3
 
 
 def _render_types_header(ir: AppIR) -> str:
-    type_imports = ["CallOptions"]
-    if any(route.raises and not route.streams for route in ir.routes):
-        type_imports.append("Result")
-    return HEADER_BANNER + f'import type {{ {", ".join(type_imports)} }} from "@causewayjs/ts";\n'
+    return HEADER_BANNER
 
 
 def _section() -> str:
@@ -48,7 +45,6 @@ class _RenderState:
     ir: AppIR
     name_map: dict[str, str]
     route_names: dict[int, str]
-    route_tree: _NamespaceNode
     domain_keys: list[str]
     error_keys: list[str]
 
@@ -57,7 +53,6 @@ def _build_state(ir: AppIR) -> _RenderState:
     _check_route_name_collisions(ir)
     name_map = _disambiguate(ir.components.keys())
     route_names = _route_ts_names(ir)
-    route_tree = _route_namespace_tree(ir, route_names)
     error_names = {e.name for r in ir.routes for e in r.raises}
     domain_keys = sorted(k for k in ir.components if name_map[k] not in error_names)
     error_keys = sorted(k for k in ir.components if name_map[k] in error_names)
@@ -65,7 +60,6 @@ def _build_state(ir: AppIR) -> _RenderState:
         ir=ir,
         name_map=name_map,
         route_names=route_names,
-        route_tree=route_tree,
         domain_keys=domain_keys,
         error_keys=error_keys,
     )
@@ -105,36 +99,49 @@ def _render_types_file(state: _RenderState) -> str:
         parts.append(_section())
         parts.append(JSON_TYPE_ALIASES)
 
-    parts.append(_section())
-    parts.append(_render_api_interface(ir, name_map, state.route_tree))
-
-    namespace = _render_routes_namespace(ir, name_map, state.route_names)
-    if namespace:
+    contracts = _render_route_contracts(ir, name_map)
+    if contracts:
         parts.append(_section())
-        parts.append(namespace)
+        parts.append(contracts)
     return "".join(parts)
 
 
 def _render_index(state: _RenderState) -> str:
     return (
         HEADER_BANNER
-        + 'import { createLazyClient } from "@causewayjs/ts";\n'
-        + 'import type { LazyClientConfig } from "@causewayjs/ts";\n'
+        + 'import { createClient as createRouteClient } from "@causewayjs/client";\n'
+        + 'import type { CallOptions, CausewayClient, ClientConfig } from "@causewayjs/client";\n'
+        + "import type {\n"
+        + "  MutationRouteKey,\n"
+        + "  QueryRouteKey,\n"
+        + "  RouteData,\n"
+        + "  RouteInput,\n"
+        + "  RouteKey,\n"
+        + '} from "./types";\n'
         + 'import { routeMeta } from "./meta";\n'
         + 'import { loadRoute } from "./routes";\n'
-        + 'import type { ApiRoutes } from "./types";\n\n'
+        + "\n"
         + 'export type * from "./types";\n'
         + 'export { routeMeta } from "./meta";\n\n'
-        + 'export type ApiClientOptions = Omit<LazyClientConfig, "routeMeta" | "loadRoute">;\n\n'
-        + "export function createApi(options: ApiClientOptions = {}): ApiRoutes {\n"
-        + "  return createLazyClient<ApiRoutes>({ ...options, routeMeta, loadRoute });\n"
+        + 'export { loadRoute } from "./routes";\n\n'
+        + 'export type RouteClientOptions = Omit<ClientConfig, "routeMeta" | "loadRoute">;\n\n'
+        + "type RouteArgs<K extends RouteKey> = RouteInput<K> extends void\n"
+        + "  ? [input?: void, opts?: CallOptions]\n"
+        + "  : [input: RouteInput<K>, opts?: CallOptions];\n\n"
+        + "export interface Client extends CausewayClient {\n"
+        + "  query<K extends QueryRouteKey>(routeKey: K, ...args: RouteArgs<K>): Promise<RouteData<K>>;\n"
+        + "  refresh<K extends QueryRouteKey>(routeKey: K, ...args: RouteArgs<K>): Promise<RouteData<K>>;\n"
+        + "  mutate<K extends MutationRouteKey>(routeKey: K, ...args: RouteArgs<K>): Promise<RouteData<K>>;\n"
+        + "  stream<K extends QueryRouteKey>(routeKey: K, ...args: RouteArgs<K>): AsyncIterable<RouteData<K>>;\n"
         + "}\n\n"
-        + "export const api = createApi();\n"
+        + "export function createClient(options: RouteClientOptions = {}): Client {\n"
+        + "  return createRouteClient({ ...options, routeMeta, loadRoute }) as Client;\n"
+        + "}\n\n"
+        + "export const client = createClient();\n"
     )
 
 
 def _render_meta_file(state: _RenderState) -> str:
-    entries_by_index = _flatten_namespace_entries(state.route_tree)
     lines = [
         HEADER_BANNER,
         'import type { RouteMeta } from "@causewayjs/ts";\n\n',
@@ -142,16 +149,14 @@ def _render_meta_file(state: _RenderState) -> str:
     ]
     for i, route in enumerate(state.ir.routes):
         lines.append(
-            _render_route_meta(route, state.route_names[i], entries_by_index[i], indent="  ")
-            + ",\n",
+            _render_route_meta(route, state.route_names[i], indent="  ") + ",\n",
         )
     lines.append("];\n")
     return "".join(lines)
 
 
 def _render_route_files(state: _RenderState) -> dict[str, str]:
-    entries_by_index = _flatten_namespace_entries(state.route_tree)
-    chunk_names = _route_chunk_names(entries_by_index)
+    chunk_names = _route_chunk_names(state.ir)
     routes_by_chunk: dict[str, list[int]] = {}
     for i in range(len(state.ir.routes)):
         routes_by_chunk.setdefault(chunk_names[i], []).append(i)
@@ -203,12 +208,11 @@ def _render_route_files(state: _RenderState) -> dict[str, str]:
         ]
         for i in indexes:
             route = state.ir.routes[i]
-            entry = entries_by_index[i]
             route_name = state.route_names[i]
             lines.append("\n")
             lines.append(
                 f"export const {route_name}: RouteDescriptor = "
-                f"{_render_route_descriptor(route, route_name, entry, indent='', components=state.ir.components)};\n",
+                f"{_render_route_descriptor(route, indent='', components=state.ir.components)};\n",
             )
         files[f"routes/{chunk_name}.ts"] = "".join(lines)
     return files
@@ -224,64 +228,22 @@ def _render_components(keys: list[str], ir: AppIR, name_map: dict[str, str]) -> 
     return "\n".join(chunks)
 
 
-class _NamespaceEntry(TypedDict):
-    route_index: int
-    segments: list[str]
-    verb: str
-    operation_name: str
-
-
-class _NamespaceNode(TypedDict):
-    children: dict[str, _NamespaceNode]
-    leaves: dict[str, _NamespaceEntry]
-
-
-def _new_namespace_node() -> _NamespaceNode:
-    return {"children": {}, "leaves": {}}
-
-
-def _render_api_interface(
-    ir: AppIR,
-    name_map: dict[str, str],
-    route_tree: _NamespaceNode,
-) -> str:
-    lines = ["export interface ApiRoutes {\n"]
-    lines.extend(_render_api_node(route_tree, ir, name_map, indent="  "))
-    lines.append("}\n")
-    return "".join(lines)
-
-
-def _render_api_node(
-    node: _NamespaceNode,
-    ir: AppIR,
-    name_map: dict[str, str],
-    *,
-    indent: str,
-) -> list[str]:
-    lines: list[str] = []
-    for key, child in node["children"].items():
-        lines.append(f"{indent}{_safe_key(key)}: {{\n")
-        lines.extend(_render_api_node(child, ir, name_map, indent=indent + "  "))
-        lines.append(f"{indent}}};\n")
-    for key, entry in node["leaves"].items():
-        route = ir.routes[entry["route_index"]]
-        lines.append(f"{indent}{_render_method_signature(route, name_map, key, indent=indent)}\n")
-    return lines
-
-
 def _render_route_meta(
     route: RouteIR,
     route_name: str,
-    namespace: _NamespaceEntry,
     *,
     indent: str,
 ) -> str:
     parts = [
         f"id: {json.dumps(route_name)}",
-        f"name: {json.dumps(route_name)}",
-        "segments: " + json.dumps(namespace["segments"]),
-        f"verb: {json.dumps(namespace['verb'])}",
+        f"routeKey: {json.dumps(route.route_key)}",
+        f"method: {json.dumps(route.method)}",
+        f"path: {json.dumps(route.path)}",
     ]
+    if route.refreshes:
+        parts.append(f"refreshes: {json.dumps(list(route.refreshes))}")
+    if route.scopes:
+        parts.append(f"scopes: {json.dumps(list(route.scopes))}")
     if route.params:
         parts.append("hasArgs: true")
     if route.streams:
@@ -297,54 +259,74 @@ def _render_route_meta(
     return "\n".join(lines)
 
 
-def _route_chunk_names(entries_by_index: dict[int, _NamespaceEntry]) -> dict[int, str]:
+def _route_chunk_names(ir: AppIR) -> dict[int, str]:
     out: dict[int, str] = {}
-    for i, entry in entries_by_index.items():
-        raw = entry["segments"][0] if entry["segments"] else "root"
+    for i, route in enumerate(ir.routes):
+        segments = _literal_route_segments(route.path)
+        raw = segments[0] if segments else "root"
         out[i] = _safe_ident(raw.lower())
     return out
 
 
-def _render_routes_namespace(
-    ir: AppIR,
-    name_map: dict[str, str],
-    route_names: dict[int, str],
-) -> str:
+def _render_route_contracts(ir: AppIR, name_map: dict[str, str]) -> str:
     if not ir.routes:
         return ""
-    out = ["export namespace Routes {\n"]
-    for i, route in enumerate(ir.routes):
-        if i > 0:
-            out.append("\n")
-        out.append(f"  export namespace {route_names[i]} {{\n")
-
-        args_type, _ = _render_args_type(route.params, name_map, indent="    ")
-        if args_type:
-            out.append(f"    export type Args = {args_type};\n")
-
-        if route.streams:
-            event = (
-                _render_type(route.event_schema, name_map, indent="    ")
-                if route.event_schema
-                else "unknown"
-            )
-            out.append(f"    export type Event = {event};\n")
-            out.append("    export type Return = AsyncIterable<Event>;\n")
-        else:
-            data = (
-                _render_type(route.response, name_map, indent="    ") if route.response else "void"
-            )
-            out.append(f"    export type Data = {data};\n")
-            if route.raises:
-                err = _render_error_union(route.raises, name_map, indent="    ")
-                out.append(f"    export type Error = {err};\n")
-                out.append("    export type Return = Promise<Result<Data, Error>>;\n")
-            else:
-                out.append("    export type Return = Promise<Data>;\n")
-
-        out.append("  }\n")
-    out.append("}\n")
+    out = ["export interface RouteContracts {\n"]
+    for route in ir.routes:
+        input_type, _ = _render_args_type(route.params, name_map, indent="    ")
+        data_type = (
+            _render_type(route.event_schema, name_map, indent="    ")
+            if route.streams and route.event_schema
+            else "unknown"
+            if route.streams
+            else _render_type(route.response, name_map, indent="    ")
+            if route.response
+            else "void"
+        )
+        error_type = (
+            _render_error_union(route.raises, name_map, indent="    ")
+            if route.raises and not route.streams
+            else "Error"
+        )
+        out.append(f"  {json.dumps(route.route_key)}: {{\n")
+        out.append(f"    input: {input_type or 'void'};\n")
+        out.append(f"    data: {data_type};\n")
+        out.append(f"    error: {error_type};\n")
+        out.append("  };\n")
+    out.append("}\n\n")
+    out.append(_render_route_key_types(ir))
     return "".join(out)
+
+
+def _render_route_key_types(ir: AppIR) -> str:
+    query_keys = [route.route_key for route in ir.routes if route.method.upper() == "GET"]
+    mutation_keys = [route.route_key for route in ir.routes if route.method.upper() != "GET"]
+    lines = [
+        "export type QueryRouteKey = " + _render_literal_union(query_keys) + ";\n",
+        "export type MutationRouteKey = " + _render_literal_union(mutation_keys) + ";\n",
+        "export type RouteKey = QueryRouteKey | MutationRouteKey;\n\n",
+        'export type RouteInput<K extends RouteKey> = RouteContracts[K]["input"];\n',
+        'export type RouteData<K extends RouteKey> = RouteContracts[K]["data"];\n',
+        'export type RouteError<K extends RouteKey> = RouteContracts[K]["error"];\n',
+        "\n",
+        'declare module "@causewayjs/client" {\n',
+        "  interface Register {\n",
+        "    routeKey: RouteKey;\n",
+        "    queryRouteKey: QueryRouteKey;\n",
+        "    mutationRouteKey: MutationRouteKey;\n",
+        "    routeInput: { [K in RouteKey]: RouteInput<K> };\n",
+        "    routeData: { [K in RouteKey]: RouteData<K> };\n",
+        "    routeError: { [K in RouteKey]: RouteError<K> };\n",
+        "  }\n",
+        "}\n",
+    ]
+    return "".join(lines)
+
+
+def _render_literal_union(values: list[str]) -> str:
+    if not values:
+        return "never"
+    return " | ".join(json.dumps(value) for value in values)
 
 
 # Names that must not appear as top-level type aliases or generated route symbols.
@@ -412,10 +394,15 @@ _TS_RESERVED_TYPE_NAMES = frozenset(
         "Math",
         "Result",
         "CallOptions",
-        "LazyClientConfig",
+        "MutationRouteKey",
+        "QueryRouteKey",
+        "RouteContracts",
+        "RouteData",
         "RouteDescriptor",
+        "RouteError",
+        "RouteInput",
+        "RouteKey",
         "RouteMeta",
-        "Routes",
         "JsonPrimitive",
         "JsonValue",
         "JsonObject",
@@ -505,10 +492,6 @@ def _route_path_parts(path: str) -> list[str]:
 _PARAM_TOKEN_RE = re.compile(r"\{[^}]+\}|\$[A-Za-z_][A-Za-z0-9_]*")
 
 
-def _has_param_token(segment: str) -> bool:
-    return _PARAM_TOKEN_RE.search(segment) is not None
-
-
 def _literal_route_segments(path: str) -> list[str]:
     segments: list[str] = []
     for part in path.split("/"):
@@ -519,126 +502,6 @@ def _literal_route_segments(path: str) -> list[str]:
             if token:
                 segments.append(_safe_ident(_to_camel(token)))
     return segments
-
-
-def _route_ends_with_param(path: str) -> bool:
-    parts = [part for part in path.split("/") if part]
-    return bool(parts) and _has_param_token(parts[-1])
-
-
-def _method_verb(method: str, ends_with_param: bool) -> str | None:
-    m = method.upper()
-    if m == "GET":
-        return "byId" if ends_with_param else "list"
-    if m == "POST":
-        return None if ends_with_param else "create"
-    if m in {"PATCH", "PUT"}:
-        return "update"
-    if m == "DELETE":
-        return "delete"
-    return None
-
-
-def _split_camel(value: str) -> list[str]:
-    spaced = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", value)
-    return [part for part in spaced.lower().split(" ") if part]
-
-
-def _lower_first(value: str) -> str:
-    return value[:1].lower() + value[1:] if value else value
-
-
-def _camel_case(parts: list[str]) -> str:
-    return "".join(part if i == 0 else part[:1].upper() + part[1:] for i, part in enumerate(parts))
-
-
-def _derive_verb(
-    operation_name: str,
-    namespace_tail: str | None,
-    method: str,
-    ends_with_param: bool,
-) -> str:
-    fallback = _method_verb(method, ends_with_param)
-    if not namespace_tail:
-        return fallback or operation_name
-
-    parts = _split_camel(operation_name)
-    if not parts:
-        return fallback or operation_name
-
-    tail = namespace_tail.lower()
-    singular = tail[:-1] if tail.endswith("s") else tail
-    last = parts[-1]
-    if last in {tail, singular}:
-        stripped = "".join(parts[:-1])
-        if stripped:
-            return _lower_first(stripped)
-        return fallback or operation_name
-    if len(parts) == 1:
-        return parts[0]
-    return fallback or operation_name
-
-
-def _namespace_entry(route: RouteIR, operation_name: str, route_index: int) -> _NamespaceEntry:
-    segments = _literal_route_segments(route.path)
-    ends_with_param = _route_ends_with_param(route.path)
-    namespace_tail = segments[-1] if segments else None
-    heuristic = _method_verb(route.method, ends_with_param)
-    verb = heuristic or _derive_verb(operation_name, namespace_tail, route.method, ends_with_param)
-
-    if route.method.upper() == "POST" and len(segments) > 1 and not ends_with_param:
-        handler_verb = _derive_verb(operation_name, namespace_tail, route.method, ends_with_param)
-        if handler_verb != "create" and handler_verb != operation_name:
-            verb = handler_verb
-
-    return {
-        "route_index": route_index,
-        "segments": segments,
-        "verb": _safe_ident(verb),
-        "operation_name": operation_name,
-    }
-
-
-def _route_namespace_tree(ir: AppIR, route_names: dict[int, str]) -> _NamespaceNode:
-    root = _new_namespace_node()
-    for i, route in enumerate(ir.routes):
-        entry = _namespace_entry(route, route_names[i], i)
-        cursor = root
-        for segment in entry["segments"]:
-            cursor = cursor["children"].setdefault(segment, _new_namespace_node())
-
-        key = entry["verb"]
-        if key in cursor["leaves"] or key in cursor["children"]:
-            key = _safe_ident(_camel_case(_split_camel(entry["operation_name"])))
-        key = _unique_namespace_key(key, set(cursor["leaves"]) | set(cursor["children"]))
-        entry["verb"] = key
-        cursor["leaves"][key] = entry
-    return root
-
-
-def _unique_namespace_key(candidate: str, used: set[str]) -> str:
-    if candidate not in used and not _is_reserved(candidate):
-        return candidate
-    base = candidate if not _is_reserved(candidate) else f"{candidate}_"
-    i = 2
-    while True:
-        suffixed = f"{base}_{i}"
-        if suffixed not in used:
-            return suffixed
-        i += 1
-
-
-def _flatten_namespace_entries(root: _NamespaceNode) -> dict[int, _NamespaceEntry]:
-    out: dict[int, _NamespaceEntry] = {}
-
-    def visit(node: _NamespaceNode) -> None:
-        for child in node["children"].values():
-            visit(child)
-        for entry in node["leaves"].values():
-            out[entry["route_index"]] = entry
-
-    visit(root)
-    return out
 
 
 def _unique_route_name(candidate: str, used: set[str]) -> str:
@@ -863,36 +726,6 @@ def _render_union(terms: list[str], *, indent: str) -> str:
     return "\n" + "\n".join(f"{inner}| {t}" for t in terms)
 
 
-def _render_method_signature(
-    route: RouteIR,
-    name_map: dict[str, str],
-    route_name: str,
-    *,
-    indent: str = "  ",
-) -> str:
-    args_type, args_optional = _render_args_type(route.params, name_map, indent=indent)
-    return_type = _render_return_type(route, name_map)
-    if args_type is None:
-        return f"{route_name}(opts?: CallOptions): {return_type};"
-
-    inline = (
-        f"{route_name}(args{'?' if args_optional else ''}: {args_type}, opts?: CallOptions): "
-        f"{return_type};"
-    )
-    if "\n" not in inline and len(inline) <= _INLINE_LINE_BUDGET:
-        return inline
-
-    continuation = indent + "  "
-    wrapped_args_type, _ = _render_args_type(route.params, name_map, indent=continuation)
-    assert wrapped_args_type is not None
-    return (
-        f"{route_name}(\n"
-        f"{continuation}args{'?' if args_optional else ''}: {wrapped_args_type},\n"
-        f"{continuation}opts?: CallOptions,\n"
-        f"{indent}): {return_type};"
-    )
-
-
 def _render_args_type(
     params: list[ParamIR],
     name_map: dict[str, str],
@@ -914,21 +747,6 @@ def _render_args_type(
     return _render_object(props, required, name_map, indent=indent), all_optional
 
 
-def _render_return_type(route: RouteIR, name_map: dict[str, str]) -> str:
-    if route.streams:
-        event = (
-            _render_type(route.event_schema, name_map, indent="  ")
-            if route.event_schema
-            else "unknown"
-        )
-        return f"AsyncIterable<{event}>"
-    data = _render_type(route.response, name_map, indent="  ") if route.response else "void"
-    if route.raises:
-        err = _render_error_union(route.raises, name_map, indent="  ")
-        return f"Promise<Result<{data}, {err}>>"
-    return f"Promise<{data}>"
-
-
 def _render_error_union(raises: list[Any], name_map: dict[str, str], *, indent: str) -> str:
     return _render_union(
         [name_map.get(e.name, _safe_ident(e.name)) for e in raises],
@@ -938,8 +756,6 @@ def _render_error_union(raises: list[Any], name_map: dict[str, str], *, indent: 
 
 def _render_route_descriptor(
     route: RouteIR,
-    route_name: str,
-    namespace: _NamespaceEntry,
     *,
     indent: str,
     components: dict[str, dict[str, Any]],
@@ -947,10 +763,12 @@ def _render_route_descriptor(
     parts = [
         f"method: {json.dumps(route.method)}",
         f"path: {json.dumps(route.path)}",
-        f"name: {json.dumps(route_name)}",
-        "segments: " + json.dumps(namespace["segments"]),
-        f"verb: {json.dumps(namespace['verb'])}",
+        f"routeKey: {json.dumps(route.route_key)}",
     ]
+    if route.refreshes:
+        parts.append(f"refreshes: {json.dumps(list(route.refreshes))}")
+    if route.scopes:
+        parts.append(f"scopes: {json.dumps(list(route.scopes))}")
     if route.params:
         parts.append(_render_param_descriptor_list(route.params, indent=indent))
     if route.streams:

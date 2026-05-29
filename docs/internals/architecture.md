@@ -28,8 +28,9 @@ src/app/routes/**/*.py
   _middleware.py          causeway.toml manifest
   _scope.py                    │
         │                      ▼
-        ▼                  Generated client/
-   Scoped DI graph
+        ├──────────────► Generated route-key client/
+        ▼
+     App Graph
 ```
 
 Two flows: **server start** walks the `routes/` tree and registers
@@ -43,8 +44,10 @@ middleware + scopes + handler from the precomputed graph.
 The router walks `src/app/routes/**/*.py`, ignoring underscore-prefixed
 files (those are private). For each file:
 
-1. Translate the filename + path into a URL pattern. `$id.py` becomes
-   `{id}`, `(group)/` is stripped, `index.py` is the folder URL.
+1. Translate the filename + path into a URL pattern and a public route key.
+   `$id.py` becomes `{id}` in the HTTP path and `$id` in the client key;
+   `(group)/` is stripped from both and preserved as scope metadata;
+   `index.py` is the folder URL.
 2. Load the module via `importlib.util.spec_from_file_location()` — this
    is how `$` filenames work without breaking Python's import system.
 3. Find handler exports decorated with `@get` / `@post` / etc., and
@@ -87,7 +90,7 @@ A plugin implements one or more **contracts**: `TaskAdapter`,
 `DBSession`, … Each contract ships with a reference adapter in core (or
 in a sibling repo for plugins that need a real dependency). Picking a
 real backend is a one-line swap. Full mechanics in
-[`plugins.md`](./plugins.md).
+[`plugins.md`](../app/plugins.md).
 
 ### 4. Background tasks (`causeway.tasks`)
 
@@ -123,8 +126,7 @@ class TaskAdapter(Protocol):
 4. Rich terminal logging for route diffs, reload failures, restart-required
    files, and short request lines.
 
-`causeway build` produces the release artifacts: the IR snapshot, the generated
-`client/` directory, and a deployable Python wheel.
+`causeway build` produces the release artifacts: the IR snapshot, the generated route-key `client/` directory, and a deployable Python wheel.
 
 ## Why this shape
 
@@ -132,11 +134,11 @@ A few decisions worth calling out explicitly.
 
 **Why `$` in filenames?**
 The cost is import semantics — `$id.py` can't be imported with
-`from app.routes.users.$id import ...`, so Causeway loads it via
+normal Python import statements, so Causeway loads it via
 `importlib.util.spec_from_file_location()`. Cross-imports between route
 files are rare in practice; when needed, Causeway provides an explicit alias
-mechanism. The benefit is one dynamic-route convention that works in both
-folder style (`users/$id.py`) and dotted leaves (`users.$id.posts.py`).
+mechanism. The benefit is one dynamic-route convention that works for routes,
+scopes, refresh contracts, graph metadata, and generated client keys.
 
 **Why no built-in ORM / auth / mailer / admin?**
 Every shipped opinion is a future pain point for the 60% of users who
@@ -155,12 +157,12 @@ RPC engine, you can — see
 
 ## Where to read the code
 
-- [`packages/causeway/src/causeway/routing/`](../packages/causeway/src/causeway/routing)
-- [`packages/causeway/src/causeway/config.py`](../packages/causeway/src/causeway/config.py)
-- [`packages/causeway/src/causeway/di.py`](../packages/causeway/src/causeway/di.py)
-- [`packages/causeway/src/causeway/tasks.py`](../packages/causeway/src/causeway/tasks.py)
-- [`packages/causeway/src/causeway/plugins.py`](../packages/causeway/src/causeway/plugins.py)
-- [`packages/causeway/src/causeway/cli.py`](../packages/causeway/src/causeway/cli.py)
+- [`packages/causeway/src/causeway/routing.py`](../../packages/causeway/src/causeway/routing.py)
+- [`packages/causeway/src/causeway/config.py`](../../packages/causeway/src/causeway/config.py)
+- [`packages/causeway/src/causeway/scope.py`](../../packages/causeway/src/causeway/scope.py)
+- [`packages/causeway/src/causeway/tasks.py`](../../packages/causeway/src/causeway/tasks.py)
+- [`packages/causeway/src/causeway/plugins.py`](../../packages/causeway/src/causeway/plugins.py)
+- [`packages/causeway/src/causeway/cli.py`](../../packages/causeway/src/causeway/cli.py)
 
 If you read all of those and still have a "wait, how does X work?"
 question, that's a docs bug. Please file it.

@@ -102,7 +102,7 @@ def test_streaming_endpoint_emits_asynciterable() -> None:
         yield Token(text="hi")
 
     out = _render_text(app)
-    assert "AsyncIterable<Token>" in out
+    assert "data: Token" in out
     assert "streams: true" in out
 
 
@@ -119,14 +119,16 @@ def test_raises_emits_result_envelope() -> None:
         return {"id": post_id}
 
     out = _render_text(app)
-    assert "Promise<Result<" in out
+    assert '"GET /posts/$post_id": {' in out
+    assert "data: Record<string, number>" in out
+    assert "error: PostNotFound" in out
     assert "PostNotFound" in out
     assert "requestId?: string | null" in out
     assert "result: true" in out
 
 
 def test_result_import_omitted_when_no_route_raises() -> None:
-    """No `@raises(...)` anywhere → no `Result` in the type import, no unused import."""
+    """No `@raises(...)` anywhere → no `Result` helper noise in the generated types."""
     app = App()
 
     @app.get("/ping")
@@ -134,7 +136,7 @@ def test_result_import_omitted_when_no_route_raises() -> None:
         return "pong"
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions } from "@causewayjs/ts";' in files["types.d.ts"]
+    assert "@causewayjs/ts" not in files["types.d.ts"]
     assert "Result" not in files["types.d.ts"]
 
 
@@ -156,11 +158,11 @@ def test_result_import_omitted_for_streaming_only_raises() -> None:
         yield Tick(n=1)
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions } from "@causewayjs/ts";' in files["types.d.ts"]
+    assert "@causewayjs/ts" not in files["types.d.ts"]
     assert "Result<" not in files["types.d.ts"]
 
 
-def test_result_import_present_when_any_route_raises() -> None:
+def test_route_contract_includes_error_union_when_any_route_raises() -> None:
     @dataclass
     class NotFound(Exception):
         thing_id: int
@@ -177,7 +179,8 @@ def test_result_import_present_when_any_route_raises() -> None:
         return {"id": thing_id}
 
     files = render(build_ir(app))
-    assert 'import type { CallOptions, Result } from "@causewayjs/ts";' in files["types.d.ts"]
+    assert "error: NotFound" in files["types.d.ts"]
+    assert "Result<" not in files["types.d.ts"]
 
 
 def test_render_emits_configurable_api_factory_for_ssr() -> None:
@@ -192,17 +195,43 @@ def test_render_emits_configurable_api_factory_for_ssr() -> None:
     assert files["index.ts"].startswith(
         "// @ts-nocheck\n/* eslint-disable */\n// biome-ignore-all lint: generated causeway client\n"
     )
-    assert 'export type ApiClientOptions = Omit<LazyClientConfig, "routeMeta" | "loadRoute">' in out
-    assert "export interface ApiRoutes" in files["types.d.ts"]
-    assert "users: {" in out
-    assert "byId(args: { userId: number }, opts?: CallOptions)" in out
-    assert "export function createApi(options: ApiClientOptions = {}): ApiRoutes" in out
-    assert "return createLazyClient<ApiRoutes>({ ...options, routeMeta, loadRoute })" in out
-    assert "export const api = createApi()" in out
+    assert "export function createClient(options: RouteClientOptions = {})" in files["index.ts"]
+    assert "return createRouteClient({ ...options, routeMeta, loadRoute })" in files["index.ts"]
+    assert "export const client = createClient()" in files["index.ts"]
     assert "export const routeMeta: ReadonlyArray<RouteMeta>" in out
     assert "export async function loadRoute" in out
-    assert 'segments: ["users"]' in out
-    assert 'verb: "byId"' in out
+    assert 'routeKey: "GET /users/$user_id"' in out
+    assert 'path: "/users/{user_id}"' in out
+    assert "segments:" not in out
+    assert "verb:" not in out
+
+
+def test_render_emits_route_key_types_and_metadata() -> None:
+    app = App()
+
+    @app.get("/customers/{id}")
+    async def get_customer(id: str) -> dict[str, str]:
+        return {"id": id}
+
+    @app.post("/customers/{id}/screen")
+    async def screen_customer(id: str) -> dict[str, str]:
+        return {"id": id}
+
+    app.routes[1].refreshes = ("GET /customers/$id", "GET /customers")
+
+    files = render(build_ir(app))
+    types = files["types.d.ts"]
+    meta = files["meta.ts"]
+    assert 'export type QueryRouteKey = "GET /customers/$id";' in types
+    assert 'export type MutationRouteKey = "POST /customers/$id/screen";' in types
+    assert '"GET /customers/$id": {' in types
+    assert "input: { id: string }" in types
+    assert 'export type RouteInput<K extends RouteKey> = RouteContracts[K]["input"];' in types
+    assert 'declare module "@causewayjs/client"' in types
+    assert "queryRouteKey: QueryRouteKey" in types
+    assert "routeData: { [K in RouteKey]: RouteData<K> }" in types
+    assert 'routeKey: "POST /customers/$id/screen"' in meta
+    assert 'refreshes: ["GET /customers/$id", "GET /customers"]' in meta
 
 
 def test_load_route_emits_one_import_per_chunk_not_per_route() -> None:
@@ -273,7 +302,7 @@ def test_embedded_body_params_marked_embed() -> None:
     assert out.count("embed: true") == 2
 
 
-def test_route_namespace_emitted_for_unary_with_raises() -> None:
+def test_route_contract_emitted_for_unary_with_raises() -> None:
     @dataclass
     class NotFound(Exception):
         post_id: int
@@ -286,15 +315,14 @@ def test_route_namespace_emitted_for_unary_with_raises() -> None:
         return {"id": post_id}
 
     out = _render_text(app)
-    assert "export namespace Routes" in out
-    assert "export namespace getPost" in out
-    assert "export type Args = { postId: number }" in out
-    assert "export type Data = " in out
-    assert "export type Error = NotFound" in out
-    assert "export type Return = Promise<Result<Data, Error>>" in out
+    assert "export interface RouteContracts" in out
+    assert '"GET /posts/$post_id": {' in out
+    assert "input: { postId: number }" in out
+    assert "data: Record<string, number>" in out
+    assert "error: NotFound" in out
 
 
-def test_route_namespace_for_streaming_endpoint() -> None:
+def test_route_contract_for_streaming_endpoint() -> None:
     class Token(msgspec.Struct, tag_field="kind", tag="token"):
         text: str
 
@@ -305,12 +333,12 @@ def test_route_namespace_for_streaming_endpoint() -> None:
         yield Token(text="hi")
 
     out = _render_text(app)
-    assert "export namespace chat" in out
-    assert "export type Event = Token" in out
-    assert "export type Return = AsyncIterable<Event>" in out
+    assert '"GET /chat": {' in out
+    assert "data: Token" in out
+    assert "streams: true" in out
 
 
-def test_mixed_param_path_segments_preserve_literal_namespace() -> None:
+def test_mixed_param_path_emits_route_key_contract() -> None:
     app = App()
 
     @app.get("/exports/{id}.csv")
@@ -318,11 +346,11 @@ def test_mixed_param_path_segments_preserve_literal_namespace() -> None:
         return {"id": id}
 
     out = _render_text(app)
-    assert "exports: {" in out
-    assert "csv: {" in out
-    assert "byId(args: { id: string }, opts?: CallOptions)" in out
-    assert 'segments: ["exports", "csv"]' in out
-    assert 'verb: "byId"' in out
+    assert '"GET /exports/$id.csv": {' in out
+    assert "input: { id: string }" in out
+    assert 'path: "/exports/{id}.csv"' in out
+    assert "segments:" not in out
+    assert "verb:" not in out
 
 
 def test_enum_field_stays_type_only() -> None:
@@ -414,7 +442,8 @@ def test_handler_docstring_not_emitted_as_jsdoc() -> None:
 
     out = _render_text(app)
     assert "Health probe" not in out
-    assert "list(opts?: CallOptions): Promise<string>;" in out
+    assert '"GET /ping": {' in out
+    assert "data: string" in out
 
 
 def test_multi_line_docstring_not_emitted_as_jsdoc() -> None:
@@ -431,7 +460,8 @@ def test_multi_line_docstring_not_emitted_as_jsdoc() -> None:
     out = _render_text(app)
     assert "First line." not in out
     assert "Second paragraph with extra detail." not in out
-    assert "list(opts?: CallOptions): Promise<number>;" in out
+    assert '"GET /x": {' in out
+    assert "data: number" in out
 
 
 def test_msgspec_auto_title_not_emitted_as_jsdoc() -> None:
@@ -666,8 +696,8 @@ def test_route_descriptor_wraps_when_long() -> None:
     assert "  ],\n};" in out
 
 
-def test_long_method_signature_wraps_args() -> None:
-    """When the inline method signature exceeds the line budget, args break out."""
+def test_long_route_contract_wraps_input_object() -> None:
+    """Long input contracts stay readable without emitting generated method overloads."""
     app = App()
 
     @app.get("/search")
@@ -681,10 +711,13 @@ def test_long_method_signature_wraps_args() -> None:
     ) -> list[dict[str, str]]:
         return []
 
-    out = _render_text(app)
-    # Args + opts wrap to their own lines once the inline form exceeds 100 cols.
-    assert "list(\n      args:" in out
-    assert "opts?: CallOptions,\n    )" in out
+    files = render(build_ir(app))
+    types = files["types.d.ts"]
+    assert '"GET /search": {' in types
+    assert "input: {" in types
+    assert "query: string;" in types
+    assert "cursor?: string | null;" in types
+    assert "CallOptions" not in types
 
 
 def test_struct_named_array_gets_renamed_to_avoid_shadowing_builtin() -> None:
@@ -754,17 +787,13 @@ def test_duplicate_route_names_are_path_qualified() -> None:
     show_customer.__name__ = "show"
 
     out = _render_text(app)
-    assert "accounts: {" in out
-    assert "customers: {" in out
-    assert "byId(args: { id: string }, opts?: CallOptions): Promise<Record<string, string>>;" in out
-    assert 'name: "accountsIdShow"' in out
-    assert 'name: "customersIdShow"' in out
-    assert 'segments: ["accounts"]' in out
-    assert 'segments: ["customers"]' in out
-    assert 'verb: "byId"' in out
-    assert "export namespace accountsIdShow" in out
-    assert "export namespace customersIdShow" in out
-    assert 'name: "show"' not in out
+    assert '"GET /accounts/$id": {' in out
+    assert '"GET /customers/$id": {' in out
+    assert 'id: "accountsIdShow"' in out
+    assert 'id: "customersIdShow"' in out
+    assert "segments:" not in out
+    assert "verb:" not in out
+    assert 'id: "show"' not in out
 
 
 def test_enum_literals_do_not_emit_runtime_values() -> None:

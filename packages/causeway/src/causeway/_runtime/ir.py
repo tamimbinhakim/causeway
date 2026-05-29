@@ -53,12 +53,18 @@ class ErrorIR:
 class RouteIR:
     method: str
     path: str
+    route_key: str
     name: str
+    source: str | None
+    scopes: tuple[str, ...]
     params: list[ParamIR]
     response: dict[str, Any] | None
     streams: bool
     event_schema: dict[str, Any] | None
     raises: list[ErrorIR]
+    refreshes: tuple[str, ...] = ()
+    requires: tuple[str, ...] = ()
+    idempotency: dict[str, Any] | None = None
     binary_body: bool = False  # body is raw bytes (skip JSON envelope)
     binary_response: bool = False  # response is raw bytes (decode as Blob on TS side)
     form_body: bool = False  # body is application/x-www-form-urlencoded / multipart
@@ -226,12 +232,18 @@ def build_ir(app: App) -> AppIR:
             RouteIR(
                 method=route.method,
                 path=route.path,
+                route_key=route.route_key or f"{route.method} {route.path}",
                 name=route.name or route.handler.__name__,
+                source=route.source,
+                scopes=route.scopes,
                 params=params_ir,
                 response=response_schema,
                 streams=plan.streams,
                 event_schema=event_schema,
                 raises=raises_ir,
+                refreshes=route.refreshes,
+                requires=route.requires,
+                idempotency=route.idempotency,
                 binary_body=binary_body,
                 binary_response=binary_response,
                 form_body=form_body,

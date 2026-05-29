@@ -31,8 +31,11 @@ What happens between `causeway dev` and your first request.
        ├─ register(inner_app, discovered)
        │     └─ wires each route onto the inner causeway.App
        │
+       ├─ build App Graph
+       │     └─ routes, route keys, scopes, middleware, providers, plugins, tasks, events
+       │
        ├─ attach health endpoints (/healthz, /readyz)
-       ├─ attach diagnostics (/__causeway) if enabled
+       ├─ attach diagnostics (/__causeway and dev-only /__causeway/graph) if enabled
        ├─ install RequestIdMiddleware at the boundary
        ├─ install each class Middleware collected from _middleware.py files
        └─ install the problem+json error renderer
@@ -62,9 +65,11 @@ For each directory under `routes_root`:
 3. Merge with the inherited frame (parent scope) — providers compose, inner-most wins.
 4. For each `.py` file that isn't underscore-prefixed:
    - Compute the URL via `url_for(rel_path)`.
+   - Compute the route key via `route_key_for(method, rel_path)`.
+   - Collect route-group scopes via `scope_groups_for(rel_path)`.
    - Import the file.
    - Find every `@get`/`@post`/...-decorated handler.
-   - Append a `DiscoveredRoute` with its method, path, handler, middleware list, providers, and source path.
+   - Append a `DiscoveredRoute` with its method, path, route key, handler, middleware list, providers, refreshes, metadata, and source path.
 5. Recurse into non-underscore subdirectories.
 
 After the walk:

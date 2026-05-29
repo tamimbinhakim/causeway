@@ -4,7 +4,7 @@ export default defineConfig({
   clean: true,
   dts: true,
   entry: ["src/index.ts", "src/server.ts"],
-  external: ["svelte", "svelte/store", "@causewayjs/ts"],
+  external: ["svelte", "svelte/store", "@causewayjs/client"],
   format: ["esm", "cjs"],
   minify: false,
   sourcemap: true,

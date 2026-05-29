@@ -18,7 +18,7 @@ At some point I stopped trying to patch the gap and started thinking about what 
 
 That primitive lives inside Causeway as `causeway._runtime` — a small, focused substrate that does one thing: typed-RPC from Python to TypeScript, with streaming primitives for SSE and bidirectional async iterators. It knows nothing about routing, config, dependency injection, background jobs, middleware, or plugins. That layering is intentional — if you ever want to build a different framework on the same RPC engine, [the substrate is documented and reachable](./architecture/runtime-substrate.md). But on its own it's not enough to ship a product.
 
-**Causeway** is what you actually use: the substrate plus the layer that turns it into something you can build on. File-based routing, scoped DI, middleware composition, a plugin registry, a background-task contract, observability, and the CLI that ties it all together. You write Python handlers; Causeway walks them into the IR, the codegen emits the TypeScript client, and your frontend gets exactly the types your server produces.
+**Causeway** is what you actually use: the substrate plus the layer that turns it into something you can build on. File-based routing, route-key client generation, scoped DI, middleware composition, a plugin registry, a background-task contract, observability, an App Graph, and the CLI that ties it all together. You write Python handlers; Causeway walks them into the IR, the codegen emits the TypeScript client, and your frontend gets exactly the types your server produces.
 
 That's the whole shape: one install (`causeway`), one brand, but two layers under the hood — the runtime substrate and the convention layer on top of it.
 
@@ -29,6 +29,10 @@ These weren't bullet points I wrote down up front. They're the things I kept hit
 **A signature that is the contract.** Not a signature plus a Pydantic model plus an OpenAPI spec plus a generated TypeScript interface. One source of truth, traced from Python to the wire to the client.
 
 **File-based routing for the backend.** Next.js and TanStack Start taught me that the folder tree is a great route table. I missed that on the Python side. `app.route("/users/{id}", ...)` in a giant `urls.py` is fine but it's not what I want anymore.
+
+**A client that doesn't invent a second naming system.** If the backend route is `routes/users/$id/screen.py`, the public client identity should be `"POST /users/$id/screen"`. Not `screenCustomer`, not `customers.screening.run`, not whatever an OpenAPI operation-name heuristic guesses today. The route key is boring, and boring is a feature.
+
+**Cache refreshes as backend contract, not frontend folklore.** A mutation often knows which queries it makes stale. Causeway lets that live beside the mutation with `@post(refreshes=(...))`, then the client runtime does the simple thing after success. The frontend can still be clever, but it should not have to remember every invalidation edge by hand.
 
 **A place to put middleware and DI providers that's _near_ the routes they apply to.** Not a single `main.py` that grows forever. Not a decorator stack on every handler. A `_middleware.py` or `_scope.py` at the root of a subtree, and everything under it inherits.
 
@@ -48,17 +52,17 @@ If you boil the above into principles you can argue with, you get these. Each is
 
 Every choice has one obvious place; surprising behavior is a bug. There is one place to register a route (the routes directory), one place to declare config (`config.py`), one place to install plugins (`plugins.py`). If two ways to do the same thing emerge, one of them is wrong and we kill it.
 
-### 2. Backend-only
+### 2. Backend-first, client-aware
 
-No SSR, no template engine, no asset pipeline. Causeway emits a typed TypeScript client alongside the running app; what your frontend does with it is your concern. Causeway produces an ASGI app and a manifest; you produce a product.
+No template engine, no asset pipeline, no page router. Causeway owns the backend contract and the client runtime that speaks to it; your frontend framework remains yours. React, Next, Solid, and Svelte get small adapters over the same route-key client instead of each one inventing its own cache/invalidation story.
 
 ### 3. Plugins, not batteries
 
 Core ships **contracts** (`TaskAdapter`, `Storage`, `KV`, `AuthProvider`, …) and **one reference adapter each**. Picking a real implementation is a one-line plugin install. We deliberately reject the Rails / Laravel / AdonisJS "framework owns everything" model — its productivity peak is greenfield, its mismatch with reality six months in is painful.
 
-### 4. Type-driven, IR-grounded
+### 4. Type-driven, graph-grounded
 
-Everything Causeway knows about your app — routes, jobs, config — lives in the IR so it can flow to clients, dashboards, tests, and deployment artifacts. There is no second source of truth. If Causeway knows it, the IR knows it.
+Everything Causeway knows about your contract lives in the IR; everything Causeway knows about the application shape lives in the App Graph. Routes, route keys, scopes, permissions, middleware, tasks, plugins, events, and refresh contracts have one inspectable shape. There is no second source of truth.
 
 ### 5. General-purpose, narrow scope
 
@@ -91,7 +95,7 @@ Causeway is the second model. We opinionate on **structure, lifecycle, naming, a
 
 In one sentence:
 
-> _Encore-style conventions, Litestar-style scope, Next.js / TanStack-style routing, cloud-agnostic, ORM-agnostic, auth-agnostic by design._
+> _Encore-style conventions, Litestar-style scope, Next.js / TanStack-style routing, route-key client ergonomics, cloud-agnostic, ORM-agnostic, auth-agnostic by design._
 
 ## Explicitly out of scope, ever
 
@@ -101,7 +105,7 @@ These aren't "we haven't gotten to them yet." They're "we have decided not to do
 2. **No admin panel in core.** Recommend `sqladmin` / `Dashibase` / `retool` / `RowZero`. Maybe a `causeway-admin-*` plugin family someday.
 3. **No HTML rendering / template engine in core.** The output is a JSON API + a typed TypeScript client. If you want HTMX, build it yourself; the framework won't fight you, but it also won't help.
 4. **No infrastructure provisioning.** That's Terraform / Pulumi / Modal. `causeway deploy` shells out to provider CLIs; it does not manage your infrastructure.
-5. **No frontend.** Causeway emits a typed TypeScript client; what you do with it is your concern.
+5. **No owned frontend framework.** Causeway ships client runtimes and framework adapters. It does not own your pages, components, design system, or rendering strategy.
 
 ## Decision-forcing changes
 
@@ -118,9 +122,9 @@ If the world shifts, the plan shifts. Here are the specific shifts I've thought 
 
 ## Where to go from here
 
-- **[Get started](./getting-started/installation.md)** — install, scaffold, see the route tree and a typed handler in five minutes.
-- **[Routing](./building/routing/defining-routes.md)** — file-based routing conventions, both folder-style and dot-flat.
-- **[Plugins](./building/plugins/index.md)** — the plugin contract: discovery, registration, manifest.
-- **[Tasks](./building/tasks/index.md)** — `@task` contract and the adapter ecosystem.
+- **[Get started](./start/installation.md)** — install, scaffold, see the route tree and a typed handler in five minutes.
+- **[Routing](./backend/routing.md)** — file-based routing with folders, route groups, middleware, and scopes.
+- **[Plugins](./app/plugins.md)** — the plugin contract: discovery, registration, manifest.
+- **[Tasks](./app/tasks.md)** — `@task` contract and the adapter ecosystem.
 - **[Runtime substrate](./architecture/runtime-substrate.md)** — what lives inside `causeway._runtime`, when to reach into it, and how to build your own opinionated framework on the same RPC engine.
 - **[Internals](./internals/README.md)** — contributor's tour of the codebase.

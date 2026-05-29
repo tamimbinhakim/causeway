@@ -1,42 +1,37 @@
 # @causewayjs/svelte
 
-Svelte 5 store bindings for [Causeway](https://github.com/tamimbinhakim/causeway)-generated
-clients. Three factory functions on top of the typed `api`:
-
-| Store          | What it does                                                               |
-| -------------- | -------------------------------------------------------------------------- |
-| `query`        | Fires a unary call when subscribed; tracks `status`/`data`/`error`.        |
-| `mutation`     | Returns a `mutate(args)` you call imperatively.                            |
-| `subscription` | Subscribes to a `stream[T]` endpoint; events forwarded to an `onEvent` cb. |
-
-## Install
+Svelte stores for the Causeway route-key client.
 
 ```bash
-pnpm add @causewayjs/svelte @causewayjs/ts svelte
+pnpm add @causewayjs/svelte @causewayjs/client svelte
 ```
-
-## Use
 
 ```svelte
 <script lang="ts">
   import { createCausewayStores } from "@causewayjs/svelte";
-  import { api } from "$lib/dyadpy/client";
+  import { createClient } from "$lib/causeway/client";
 
-  const stores = createCausewayStores(api);
-  const issue = stores.query("getIssue", { issueId: 1 });
+  const stores = createCausewayStores(createClient({ baseUrl: "/api" }));
+  const issue = stores.query("GET /issues/$issue_id", { issueId: 1 });
 </script>
 
 {#if $issue.status === "loading"}
-  Loading…
+  Loading...
 {:else if $issue.status === "success"}
   {$issue.data.title}
 {:else if $issue.status === "error"}
-  Failed: {$issue.error.kind}
+  Failed: {$issue.error.message}
 {/if}
 ```
 
-For a `@raises(...)` route the `error` slot is the typed discriminated union
-from Python; for a route without `@raises`, it's a thrown `Error`.
+Import the generated client once and `query`, `mutation`, and `subscription`
+infer `input`, `data`, and `error` from the route key. The shared owned client
+runtime keeps refreshes and typed `CausewayError` behavior aligned with React
+and Solid.
+
+## Docs
+
+See the full Svelte guide in the Causeway docs: <https://github.com/tamimbinhakim/causeway/blob/main/docs/client/svelte.md>.
 
 ## License
 

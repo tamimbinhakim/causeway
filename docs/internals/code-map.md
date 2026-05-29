@@ -8,12 +8,13 @@ Underscore-prefixed modules are internal (`_paths.py`, `_methods.py`, etc.) — 
 
 ## The public surface
 
-### `__init__.py` — 86 lines
+### `__init__.py` — 124 lines
 
 The public API re-export wall. Everything an application author types `from causeway import ...` for lives here:
 
 - HTTP method decorators (`get`, `post`, `put`, `patch`, `delete`) — re-exported from `_methods.py`.
 - `Middleware`, `guard` — from `middleware.py`.
+- `use`, `IdempotencyMiddleware`, `require_permission` — route-local middleware helpers.
 - `provide` — from `scope.py`.
 - `task`, `cron`, `tasks_eager` — from `tasks.py`.
 - `Event` (base class), `Subscriber`, `verify`, `IncomingWebhook`, `WebhookDeliveryFailed` — from `events.py` / `webhooks.py`.
@@ -24,9 +25,9 @@ The public API re-export wall. Everything an application author types `from caus
 
 When you add a new public symbol, **add it here too**. That's the contract.
 
-### `app.py` — 171 lines
+### `app.py` — 254 lines
 
-`create_app(routes_root, *, events_root="app/events", listeners_root="app/listeners", subscribers_root="app/subscribers", settings=None, ...)` — the factory. Walks the routes tree plus (when present) the three event-related trees: `events_root` imports each `.py` so every `Event` subclass registers itself via `__init_subclass__`; `listeners_root` imports each `.py` so `@<Event>.listen` decorators run at module scope; `subscribers_root` imports each `.py` so module-level `Subscriber(...)` instances register against their event classes. Then registers handlers, wires lifespan hooks, attaches health endpoints, and returns a Starlette app wrapping the inner `causeway.App`. The `create_app_frozen` sibling takes a pre-built `Discovered` for the binary build path.
+`create_app(routes_root, *, events_root="app/events", listeners_root="app/listeners", subscribers_root="app/subscribers", settings=None, ...)` — the factory. Walks the routes tree plus (when present) the three event-related trees: `events_root` imports each `.py` so every `Event` subclass registers itself via `__init_subclass__`; `listeners_root` imports each `.py` so `@<Event>.listen` decorators run at module scope; `subscribers_root` imports each `.py` so module-level `Subscriber(...)` instances register against their event classes. Then registers handlers, builds the App Graph, wires lifespan hooks, attaches health endpoints, and returns a Starlette app wrapping the inner `causeway.App`. The `create_app_frozen` sibling takes a pre-built `Discovered` for the binary build path.
 
 ### `config.py` — 107 lines
 
@@ -36,27 +37,25 @@ When you add a new public symbol, **add it here too**. That's the contract.
 
 ## Routing
 
-### `_paths.py` — 116 lines
+### `_paths.py` — 92 lines
 
 URL-pattern translation. Pure functions, no I/O.
 
-`url_for(rel_path)` takes a route file's relative path (`users/$id/posts.py`) and returns the URL pattern (`/users/{id}/posts`). Handles both **folder style** (`$id`, `(group)`, `index.py`) and **dot-flat style** (`users.$id.index.py`, `(admin).stats.py`) — and mixed (`api/v1.$version.posts.py`).
+`url_for(rel_path)` takes a route file's relative path (`users/$id/posts.py`) and returns the URL pattern (`/users/{id}/posts`). `route_key_for(method, rel_path)` returns the public client key (`GET /users/$id/posts`). `scope_groups_for(rel_path)` returns route-group metadata such as `("org",)`. The helpers reject dotted route filenames so the file tree stays the only URL convention.
 
-The leaf tokenizer is a regex (`_LEAF_TOKEN`) that splits on `.` but keeps `(...)` group segments intact while splitting dotted leaves.
-
-### `routing.py` — 340 lines
+### `routing.py` — 377 lines
 
 The walker, the loader, the binder. The biggest module in core, and the one most worth reading first.
 
 Three phases:
 
-1. **`discover(routes_root)`** — recursive walk, builds `Discovered` (routes + middleware + lifespan hooks). Skips underscore-prefixed files. Handles `_middleware.py` and `_scope.py` as per-subtree composition. Detects method conflicts.
+1. **`discover(routes_root)`** — recursive walk, builds `Discovered` (routes + middleware + lifespan hooks). Skips underscore-prefixed files. Handles `_middleware.py` and `_scope.py` as per-subtree composition. Derives route keys, scopes, refresh contracts, permission metadata, and idempotency metadata. Detects method conflicts.
 2. **`register(app, found)`** — binds the discovered handlers onto a `causeway.App` via `@get` / `@post` decorators on the right paths.
 3. **`_bind_providers` / `_compose_guards`** — wraps each handler with its provider chain (`Annotated[T, get_session]`) and guard chain (lightweight middleware functions).
 
 Three subtleties worth knowing if you're touching this file:
 
-- Modules are loaded via the shared `causeway._loader.import_path` helper (see below) so dotted / `$` filenames don't confuse Python's import system, and so `routing.py` and `events.py` share one module cache.
+- Modules are loaded via the shared `causeway._loader.import_path` helper (see below) so `$` filenames don't confuse Python's import system, and so `routing.py` and `events.py` share one module cache.
 - Provider matching is by `(source_location, name)` — `$id` files can be reloaded without losing provider identity.
 - The handler wrapper preserves the runtime's view of the original signature (`__wrapped__`, `__annotations__`, `__globals__`) so string forward-refs resolve correctly when `causeway._runtime.runtime.build_plan` inspects the wrapper.
 
@@ -64,9 +63,13 @@ Three subtleties worth knowing if you're touching this file:
 
 Path-keyed module cache and the `importlib.util.spec_from_file_location` loader. Shared between `routing.py` and `events.py` so a file imported through one walker is the same module instance as the file imported through the other — provider-identity comparisons in `_bind_providers` rely on it.
 
-### `_methods.py` — 42 lines
+### `_methods.py` — 134 lines
 
-Tiny shim that exposes the HTTP method decorators in a way that's friendly to both `@get` (no path arg — path comes from file location) and `@get("/explicit")` (legacy / escape hatch).
+Tiny shim that exposes the bare HTTP method decorators (`@get`, `@post`, etc.) plus metadata kwargs such as `@post(refreshes=(...))`. The file location supplies the path.
+
+### `graph.py` — 199 lines
+
+Builds the App Graph from the runtime app: routes, route keys, HTTP paths, source files, scopes, params, responses, errors, streams, refreshes, middleware, providers, permission metadata, idempotency metadata, plugins, tasks, and events. The graph is metadata-only; it does not participate in request execution.
 
 ### `scope.py` — 41 lines
 
@@ -149,15 +152,15 @@ Signing helpers (`sign_payload`, `verify_signature`, `new_secret`) are unchanged
 
 ### `errors.py` — 135 lines
 
-`HttpError` hierarchy (`NotFound`, `BadRequest`, `Unauthorized`, `Forbidden`, …) and the global handler for undeclared exceptions. Declared `@raises(...)` errors flow through the runtime's typed `Result` envelope; undeclared exceptions render as RFC 7807 `application/problem+json`. The handler **never** leaks internal exception messages — the body for an uncaught exception is the generic `internal server error`. Subclass `HttpError` to opt into a custom message.
+`HttpError` hierarchy (`NotFound`, `BadRequest`, `Unauthorized`, `Forbidden`, …) and the global handler for undeclared exceptions. Declared `@raises(...)` errors flow through typed wire envelopes that the route-key client unwraps into `CausewayError`; undeclared exceptions render as RFC 7807 `application/problem+json`. The handler **never** leaks internal exception messages — the body for an uncaught exception is the generic `internal server error`. Subclass `HttpError` to opt into a custom message.
 
 ### `health.py` — 54 lines
 
 `/healthz` (process up) and `/readyz` (every plugin's `ready()` returns true). `attach(app)` wires them; the dev loop and `create_app` both call it.
 
-### `diagnostics.py` — 93 lines
+### `diagnostics.py` — 105 lines
 
-The `/__causeway` endpoint. Builds a JSON snapshot — route tree, registered tasks, cron jobs, plugins, non-secret config — for the dev panel.
+The `/__causeway` endpoint and dev-only `/__causeway/graph` endpoint. Builds JSON snapshots for the dev panel: route tree, registered tasks, cron jobs, plugins, non-secret config, and the App Graph.
 
 ### `testing.py`
 
@@ -181,9 +184,9 @@ The inline-scenario runtime. Lives in a private subpackage so the implementation
 
 Registered via the `pytest11` entry point. Adds `--causeway-routes`, `--update-snapshots`, `--causeway-no-inline`; matches route files via `pytest_collect_file`; yields one `ScenarioItem` per `scenario(...)` block; applies snapshot rewrites in `pytest_sessionfinish`.
 
-### `cli.py` — 227 lines
+### `cli.py` — 543 lines
 
-The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (owned uvicorn server + smart route hot-swap), `build` (codegen + wheel), `plugins` (list registered adapters), `diff` (IR breaking-change detection via `causeway diff`), `deploy <target>` (dispatch to a registered `DeployTarget`), `plugin new <name>` (scaffold a new plugin package).
+The `causeway` CLI built on Typer. Commands: `new` (scaffold via `_scaffold.py`), `dev` (owned uvicorn server + smart route hot-swap), `build` (codegen + wheel), `codegen`, `ir`, `inspect` (App Graph), `freeze`, auxiliary generators (`openapi`, `swift`, `kotlin`), `plugins` (list registered adapters), `diff` (IR breaking-change detection), `deploy <target>` (dispatch to a registered `DeployTarget`), and `plugin new <name>` (scaffold a new plugin package).
 
 ### `_scaffold.py` — 290 lines
 

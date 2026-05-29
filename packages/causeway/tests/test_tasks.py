@@ -246,17 +246,17 @@ async def test_optional_arg_passes_none_through(adapter: InMemoryAdapter) -> Non
 
 
 async def test_string_arg_still_coerces_to_uuid(adapter: InMemoryAdapter) -> None:
-    """Callers that pass ``str(uuid)`` (legacy code, queue replays) still work."""
+    """Callers that pass ``str(uuid)`` (queue replays, logs, CLIs) still work."""
 
     received: list[Any] = []
 
     @task()
-    async def legacy(id: UUID) -> None:
+    async def replayed(id: UUID) -> None:
         received.append(id)
 
     cid = uuid4()
     async with tasks_eager():
-        await legacy.enqueue(str(cid))
+        await replayed.enqueue(str(cid))
 
     assert received == [cid]
     assert isinstance(received[0], UUID)

@@ -4,7 +4,7 @@ export default defineConfig({
   clean: true,
   dts: true,
   entry: ["src/index.ts", "src/server.ts"],
-  external: ["solid-js", "@causewayjs/ts"],
+  external: ["solid-js", "@causewayjs/client"],
   format: ["esm", "cjs"],
   minify: false,
   sourcemap: true,

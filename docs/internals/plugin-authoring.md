@@ -1,6 +1,6 @@
 # Writing a new official plugin
 
-The on-ramp for adding a sibling `causeway-<role>-<impl>` package to the monorepo. Aimed at maintainers, not external authors — external plugin authors should read [`docs/building/plugins/`](../building/plugins/index.md).
+The on-ramp for adding a sibling `causeway-<role>-<impl>` package to the monorepo. Aimed at maintainers, not external authors — external plugin authors should read [Plugins](../app/plugins.md).
 
 ## Decide on the name
 
@@ -126,7 +126,7 @@ If your adapter has noteworthy contract behavior (cron not supported, eager mode
 
 If the plugin is meant to be official:
 
-1. Add it to the "Naming convention" / "shipping set" list in [`docs/building/plugins/`](../building/plugins/index.md).
+1. Add it to the "Naming convention" / "shipping set" list in [Plugins](../app/plugins.md).
 2. Add it to the package table in the root [`README.md`](../../README.md) when it's stable.
 3. Update [`ROADMAP.md`](../../ROADMAP.md) — move the package from "planned" to "shipped".
 

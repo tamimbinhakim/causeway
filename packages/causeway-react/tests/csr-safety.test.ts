@@ -7,15 +7,7 @@ describe("CSR safety", () => {
     expect(typeof globalThis.document).toBe("undefined");
 
     const mod = await import("../src/index.js");
-    expect(typeof mod.createReactClient).toBe("function");
-  });
-
-  it("loads `@causewayjs/react/server` without DOM globals", async () => {
-    expect(typeof globalThis.window).toBe("undefined");
-    expect(typeof globalThis.document).toBe("undefined");
-
-    const mod = await import("../src/server.js");
-    expect(typeof mod.prefetchQuery).toBe("function");
-    expect(typeof mod.prefetchQueries).toBe("function");
+    expect(typeof mod.CausewayProvider).toBe("function");
+    expect(typeof mod.useQuery).toBe("function");
   });
 });

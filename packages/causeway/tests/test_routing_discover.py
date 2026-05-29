@@ -54,6 +54,34 @@ def test_strips_route_groups(tmp_path: Path) -> None:
     assert [(r.method, r.path) for r in found.routes] == [("GET", "/stats")]
 
 
+def test_route_keys_scopes_and_refreshes(tmp_path: Path) -> None:
+    routes = tmp_path / "routes"
+    _write(
+        routes,
+        "(org)/customers/$id/screen.py",
+        "from causeway import post\n"
+        "@post(refreshes=('GET /customers/$id', 'GET /customers'))\n"
+        "async def screen(id: str) -> dict: return {'id': id}\n",
+    )
+    found = discover(routes)
+    route = found.routes[0]
+    assert route.path == "/customers/{id}/screen"
+    assert route.route_key == "POST /customers/$id/screen"
+    assert route.scopes == ("org",)
+    assert route.refreshes == ("GET /customers/$id", "GET /customers")
+
+
+def test_method_decorator_contract_metadata() -> None:
+    @causeway.post(refreshes="GET /customers/$id")
+    async def screen() -> dict:
+        return {}
+
+    assert screen.__causeway_method__ == "POST"  # type: ignore[attr-defined]
+    assert screen.__causeway_contract__ == {  # type: ignore[attr-defined]
+        "refreshes": ("GET /customers/$id",),
+    }
+
+
 def test_private_files_skipped(tmp_path: Path) -> None:
     routes = tmp_path / "routes"
     _write(routes, "index.py", "from causeway import get\n@get\nasync def r() -> dict: return {}\n")

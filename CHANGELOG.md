@@ -20,9 +20,9 @@ the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - Initial repository scaffold.
 - Governance: the v1.0 stability commitments are written down rather
   than just promised. Four documents cover the corners that matter —
-  [`docs/semver.md`](./docs/semver.md) (public API + deprecation cycle),
-  [`docs/ir-stability.md`](./docs/ir-stability.md) (route / task
+  [`docs/stability/semver.md`](./docs/stability/semver.md) (public API + deprecation cycle),
+  [`docs/stability/ir-stability.md`](./docs/stability/ir-stability.md) (route / task
   registration invariants surfaced into the IR),
-  [`docs/lts.md`](./docs/lts.md) (support windows + EOL), and the
+  [`docs/stability/lts.md`](./docs/stability/lts.md) (support windows + EOL), and the
   plugin-contract-is-part-of-the-surface clause spelled out in the
   README.

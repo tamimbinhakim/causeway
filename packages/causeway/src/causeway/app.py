@@ -22,6 +22,7 @@ from causeway._runtime import App
 from causeway._traceback import ExceptionShield
 from causeway.diagnostics import attach as attach_diagnostics
 from causeway.errors import HttpErrorFormatter, make_error_renderer
+from causeway.graph import build_graph
 from causeway.health import attach as attach_health
 from causeway.middleware import Middleware as CausewayMiddleware
 from causeway.observability import RequestIdMiddleware
@@ -94,6 +95,7 @@ def _assemble(
     renderer = make_error_renderer(error_formatter) if error_renderer_ else None
     inner = App(exception_handler=renderer, error_formatter=error_formatter)
     register(inner, found)
+    inner.graph = build_graph(inner, events=events)
     attach_health(inner)
     if diagnostics:
         attach_diagnostics(inner, settings=settings)

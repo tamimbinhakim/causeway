@@ -1,22 +1,71 @@
 import { createRoot } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { CausewayError } from "@causewayjs/ts";
+import { createClient, CausewayError } from "@causewayjs/client";
 
 import { createCausewayResources } from "../src/index.js";
+import type { RouteDescriptor, RouteMeta } from "@causewayjs/client";
 
-type Result<T, E> = { ok: true; data: T } | { ok: false; error: E };
 interface Issue {
   id: number;
   title: string;
 }
-interface IssueNotFound {
-  kind: "IssueNotFound";
-  issueId: number;
+
+declare module "@causewayjs/client" {
+  interface Register {
+    routeKey: "GET /issues/$issue_id" | "POST /issues";
+    queryRouteKey: "GET /issues/$issue_id";
+    mutationRouteKey: "POST /issues";
+    routeInput: {
+      "GET /issues/$issue_id": { issueId: number };
+      "POST /issues": { data: { title: string } };
+    };
+    routeData: {
+      "GET /issues/$issue_id": Issue;
+      "POST /issues": Issue;
+    };
+    routeError: {
+      "GET /issues/$issue_id": CausewayError;
+      "POST /issues": CausewayError;
+    };
+  }
 }
-interface TestApi {
-  getIssue(args: { issueId: number }): Promise<Result<Issue, IssueNotFound>>;
-  createIssue(args: { title: string }): Promise<Result<Issue, IssueNotFound>>;
+
+const routes: Record<string, RouteDescriptor> = {
+  getIssue: {
+    method: "GET",
+    path: "/issues/{issue_id}",
+    routeKey: "GET /issues/$issue_id",
+    params: [{ name: "issueId", alias: "issue_id", in: "path" }],
+    result: true,
+  },
+  createIssue: {
+    method: "POST",
+    path: "/issues",
+    routeKey: "POST /issues",
+    params: [{ name: "data", alias: "data", in: "body" }],
+    result: true,
+  },
+};
+
+const routeMeta: RouteMeta[] = Object.entries(routes).map(([id, route]) => ({
+  id,
+  routeKey: route.routeKey,
+  method: route.method,
+  path: route.path,
+  hasArgs: true,
+}));
+
+function createTestClient(fetch: typeof globalThis.fetch) {
+  return createClient({
+    fetch,
+    routeMeta,
+    loadRoute: (id) => {
+      const route = routes[id];
+      if (route === undefined) throw new Error(id);
+      return route;
+    },
+  });
 }
 
 function wait(): Promise<void> {
@@ -24,12 +73,40 @@ function wait(): Promise<void> {
 }
 
 describe("query resource", () => {
-  it("unwraps Result.ok onto resource data", async () => {
-    const getIssue = vi.fn(async () => ({ data: { id: 1, title: "hi" }, ok: true as const }));
+  function TypeProbe() {
+    const resources = createCausewayResources(createTestClient(fetch));
+    const [issue] = resources.query("GET /issues/$issue_id", () => ({ issueId: 1 }));
+    issue()?.title.toUpperCase();
+
+    const create = resources.mutation("POST /issues");
+    void create.mutate({ data: { title: "new" } }).then((data) => data.id.toFixed());
+
+    // @ts-expect-error input is inferred from the route key
+    resources.query("GET /issues/$issue_id", () => ({ id: 1 }));
+    // @ts-expect-error query resources only accept GET route keys
+    resources.query("POST /issues", { data: { title: "new" } });
+    // @ts-expect-error mutation input is inferred from the route key
+    void create.mutate({ title: "new" });
+    // @ts-expect-error mutation resources only accept non-GET route keys
+    resources.mutation("GET /issues/$issue_id");
+
+    return null;
+  }
+  void TypeProbe;
+
+  it("loads route-key query data", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () =>
+        new Response(JSON.stringify({ ok: true, data: { id: 1, title: "hi" } }), {
+          headers: { "content-type": "application/json" },
+        }),
+    );
     await createRoot(async (dispose) => {
-      const resources = createCausewayResources({ getIssue } as unknown as TestApi);
-      const [data, { refetch }] = resources.query("getIssue", () => ({ issueId: 1 }));
-      // Resource fires asynchronously; await a microtask cycle
+      const resources = createCausewayResources(createTestClient(fetch));
+      const [data, { refetch }] = resources.query("GET /issues/$issue_id", () => ({
+        issueId: 1,
+      }));
+
       await wait();
       await wait();
       await refetch();
@@ -38,22 +115,27 @@ describe("query resource", () => {
     });
   });
 
-  it("surfaces Result.error via the error signal", async () => {
-    const getIssue = vi.fn(async () => ({
-      error: { issueId: 99, kind: "IssueNotFound" as const },
-      ok: false as const,
-    }));
+  it("surfaces typed errors via the error signal", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: { issue_id: 99, kind: "IssueNotFound" },
+          }),
+          { headers: { "content-type": "application/json" } },
+        ),
+    );
     await createRoot(async (dispose) => {
-      const resources = createCausewayResources({ getIssue } as unknown as TestApi);
-      const r = resources.query("getIssue", () => ({ issueId: 99 }));
+      const resources = createCausewayResources(createTestClient(fetch));
+      const r = resources.query("GET /issues/$issue_id", () => ({
+        issueId: 99,
+      }));
       const [, { refetch }] = r;
-      // Refetch throws but the error signal captures the typed shape on a real Error.
-      try {
-        await refetch();
-      } catch {
-        // Expected
-      }
-      expect(r.error()).toBeInstanceOf(CausewayError);
+
+      refetch();
+      await wait();
+      await wait();
       expect(r.error()).toMatchObject({ issueId: 99, kind: "IssueNotFound" });
       dispose();
     });
@@ -62,14 +144,17 @@ describe("query resource", () => {
 
 describe("mutation resource", () => {
   it("calls mutate and tracks state", async () => {
-    const createIssue = vi.fn(async () => ({
-      data: { id: 7, title: "new" },
-      ok: true as const,
-    }));
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () =>
+        new Response(JSON.stringify({ ok: true, data: { id: 7, title: "new" } }), {
+          headers: { "content-type": "application/json" },
+        }),
+    );
     await createRoot(async (dispose) => {
-      const resources = createCausewayResources({ createIssue } as unknown as TestApi);
-      const m = resources.mutation("createIssue");
-      const result = await m.mutate({ title: "new" });
+      const resources = createCausewayResources(createTestClient(fetch));
+      const m = resources.mutation("POST /issues");
+      const result = await m.mutate({ data: { title: "new" } });
+
       expect(result).toEqual({ id: 7, title: "new" });
       expect(m.data()).toEqual({ id: 7, title: "new" });
       expect(m.loading()).toBe(false);
