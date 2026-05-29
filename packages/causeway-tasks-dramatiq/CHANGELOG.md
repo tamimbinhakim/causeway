@@ -7,6 +7,25 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0](https://github.com/tamimbinhakim/causeway/compare/causeway-tasks-dramatiq-v0.13.0...causeway-tasks-dramatiq-v0.14.0) (2026-05-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* drops the 0.1.0a0 pre-release line. The first published versions on PyPI will be 0.1.0.
+* the framework is now distributed as `causeway` (and `causeway-<role>-<impl>` for plugins). Every public surface moves:
+
+### Features
+
+* **causeway:** add file-based events and cooperative task cancellation ([8891920](https://github.com/tamimbinhakim/causeway/commit/88919202b90776f6c2b111dc3dbf7a9bec39335b))
+* **causeway:** reshape events/webhooks around subscribers and a typed Event ([#21](https://github.com/tamimbinhakim/causeway/issues/21)) ([646564f](https://github.com/tamimbinhakim/causeway/commit/646564f66973aba67dd13fc4904ceb924b73c694))
+
+
+### Chores
+
+* prep first 0.1.0 release across all 13 packages ([11ef338](https://github.com/tamimbinhakim/causeway/commit/11ef3382a6263cbe541455dd169a28cf162ebb3d))
+* rename quay → causeway across the repo ([83f1213](https://github.com/tamimbinhakim/causeway/commit/83f1213a2176e8338305f8b30f43379d6a614238))
+
 ## [0.13.0](https://github.com/tamimbinhakim/causeway/compare/causeway-tasks-dramatiq-v0.12.0...causeway-tasks-dramatiq-v0.13.0) (2026-05-27)
 
 

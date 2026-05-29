@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.6.1...causeway-v0.6.2) (2026-05-29)
+
+
+### Features
+
+* add route-key client runtime ([ad5ce1b](https://github.com/tamimbinhakim/causeway/commit/ad5ce1bfecee98fc441c7d8d013fbd865e8937ad))
+
 ## [0.6.1](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.6.0...causeway-v0.6.1) (2026-05-27)
 
 
