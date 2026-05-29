@@ -1,5 +1,5 @@
 {
-  "packages/causeway": "0.6.1",
+  "packages/causeway": "0.6.2",
   "packages/causeway-auth-jwt": "0.3.1",
   "packages/causeway-cache-redis": "0.4.1",
   "packages/causeway-db-sqlmodel": "0.7.0",
@@ -11,5 +11,5 @@
   "packages/causeway-observe-sentry": "0.11.0",
   "packages/causeway-storage-fs": "0.12.0",
   "packages/causeway-storage-s3": "0.13.0",
-  "packages/causeway-tasks-dramatiq": "0.13.0"
+  "packages/causeway-tasks-dramatiq": "0.14.0"
 }
