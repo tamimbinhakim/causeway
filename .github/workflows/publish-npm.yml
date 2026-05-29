@@ -4,14 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Which npm package to publish (or 'all' for all four)"
+        description: "Which npm package to publish (or 'all' for all six)"
         required: true
         default: "all"
         type: choice
         options:
           - all
           - "@causewayjs/ts"
+          - "@causewayjs/client"
           - "@causewayjs/react"
+          - "@causewayjs/next"
           - "@causewayjs/solid"
           - "@causewayjs/svelte"
 
@@ -30,10 +32,12 @@ jobs:
       matrix:
         include:
           - { pkg: "@causewayjs/ts", dir: causeway-ts }
+          - { pkg: "@causewayjs/client", dir: causeway-client }
           - { pkg: "@causewayjs/react", dir: causeway-react }
+          - { pkg: "@causewayjs/next", dir: causeway-next }
           - { pkg: "@causewayjs/solid", dir: causeway-solid }
           - { pkg: "@causewayjs/svelte", dir: causeway-svelte }
-        # The matrix above always includes all four; the step-level `if` below
+        # The matrix above always includes all packages; the step-level `if` below
         # filters to the requested package when the input isn't `all`. (GitHub
         # Actions doesn't support a clean way to filter the matrix itself off
         # workflow_dispatch input.)
@@ -51,9 +55,7 @@ jobs:
       - if: inputs.package == 'all' || inputs.package == matrix.pkg
         run: pnpm install --frozen-lockfile
       - if: inputs.package == 'all' || inputs.package == matrix.pkg
-        run: pnpm --filter @causewayjs/ts build
-      - if: (inputs.package == 'all' || inputs.package == matrix.pkg) && matrix.pkg != '@causewayjs/ts'
-        run: pnpm --filter ${{ matrix.pkg }} build
+        run: pnpm --filter "${{ matrix.pkg }}..." build
       - if: inputs.package == 'all' || inputs.package == matrix.pkg
         name: Publish ${{ matrix.pkg }} to npm
         working-directory: packages/${{ matrix.dir }}
