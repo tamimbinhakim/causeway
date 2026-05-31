@@ -7,6 +7,13 @@ from [Conventional Commits](https://www.conventionalcommits.org/).
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.6.2...causeway-v0.6.3) (2026-05-31)
+
+
+### Bug Fixes
+
+* **app:** start plugins before the app startup hook in lifespan ([cd96b50](https://github.com/tamimbinhakim/causeway/commit/cd96b5063116bce3bf03762b041c09810b4690d1))
+
 ## [0.6.2](https://github.com/tamimbinhakim/causeway/compare/causeway-v0.6.1...causeway-v0.6.2) (2026-05-29)
 
 

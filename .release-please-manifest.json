@@ -1,5 +1,5 @@
 {
-  "packages/causeway": "0.6.2",
+  "packages/causeway": "0.6.3",
   "packages/causeway-auth-jwt": "0.3.1",
   "packages/causeway-cache-redis": "0.4.1",
   "packages/causeway-db-sqlmodel": "0.7.0",
