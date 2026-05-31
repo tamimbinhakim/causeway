@@ -1,6 +1,7 @@
 export {
   CausewayProvider,
   useCausewayClient,
+  useOptionalCausewayClient,
   useMutation,
   useQuery,
   type CausewayFeedback,

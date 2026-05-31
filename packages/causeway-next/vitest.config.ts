@@ -7,6 +7,9 @@ export default defineConfig({
       "@causewayjs/client": fileURLToPath(
         new URL("../causeway-client/src/index.ts", import.meta.url),
       ),
+      "@causewayjs/react": fileURLToPath(
+        new URL("../causeway-react/src/index.ts", import.meta.url),
+      ),
       "@causewayjs/ts": fileURLToPath(new URL("../causeway-ts/src/index.ts", import.meta.url)),
     },
   },

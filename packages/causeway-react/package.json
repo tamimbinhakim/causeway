@@ -1,6 +1,6 @@
 {
   "name": "@causewayjs/react",
-  "version": "0.2.5-alpha.0",
+  "version": "0.2.6-alpha.0",
   "description": "React hooks for the Causeway route-key client runtime.",
   "keywords": [
     "python",

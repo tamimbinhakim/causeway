@@ -96,6 +96,10 @@ export function useCausewayClient(): CausewayClient {
   return value.client;
 }
 
+export function useOptionalCausewayClient(): CausewayClient | null {
+  return useContext(CausewayContext)?.client ?? null;
+}
+
 export function useQuery<K extends RegisteredQueryRouteKey>(
   options: QueryOptions<K, RegisteredRouteInput<K>>,
   hookOptions?: QueryHookOptions,

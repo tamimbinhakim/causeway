@@ -8,6 +8,13 @@ this file. Managed automatically by
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6-alpha.0](https://github.com/tamimbinhakim/causeway/compare/dyadpy-react-v0.2.5-alpha.0...causeway-react-v0.2.6-alpha.0) (2026-05-30)
+
+### Features
+
+- Publish the route-key React provider and hooks backed by `@causewayjs/client`.
+- Expose `useOptionalCausewayClient()` for integrations that can reuse a provider client when present.
+
 ## [0.2.5-alpha.0](https://github.com/tamimbinhakim/causeway/compare/dyadpy-react-v0.2.2-alpha.0...dyadpy-react-v0.2.5-alpha.0) (2026-05-25)
 
 ### ⚠ BREAKING CHANGES
