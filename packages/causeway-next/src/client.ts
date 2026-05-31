@@ -1,4 +1,4 @@
-import { Fragment, createElement, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Fragment, createElement, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 
 import type { CausewayClient, DehydratedClient } from "@causewayjs/client";
@@ -35,22 +35,18 @@ export function createHydrateClient<
 
     if (parentClient === null && fallbackClient.current === null) {
       const next = factory(options);
-      if (hydrationState != null && hydrationKey != null) {
-        next.hydrate(hydrationState);
-        lastHydration.current = { client: next, key: hydrationKey };
-      }
       fallbackClient.current = next;
     }
 
     const client = parentClient ?? fallbackClient.current!;
 
-    useHydrationEffect(() => {
-      if (hydrationState == null || hydrationKey == null) return;
+    if (hydrationState != null && hydrationKey != null) {
       const last = lastHydration.current;
-      if (last?.client === client && last.key === hydrationKey) return;
-      client.hydrate(hydrationState);
-      lastHydration.current = { client, key: hydrationKey };
-    }, [client, hydrationKey, hydrationState]);
+      if (last?.client !== client || last.key !== hydrationKey) {
+        client.hydrate(hydrationState);
+        lastHydration.current = { client, key: hydrationKey };
+      }
+    }
 
     if (parentClient !== null && feedback === undefined) {
       return createElement(Fragment, null, children);
@@ -58,8 +54,6 @@ export function createHydrateClient<
     return createElement(CausewayProvider, { client, feedback }, children);
   };
 }
-
-const useHydrationEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 function snapshotKey(snapshot: DehydratedClient | null | undefined): string | null {
   return snapshot == null ? null : JSON.stringify(snapshot);

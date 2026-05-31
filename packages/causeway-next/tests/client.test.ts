@@ -89,6 +89,29 @@ describe("createHydrateClient", () => {
     expect(customerData(parentClient)).toEqual({ id: "second" });
   });
 
+  it("hydrates the provider client before rendering boundary children", () => {
+    const parentClient = createGeneratedClient();
+    const factory = vi.fn(() => createGeneratedClient());
+    const HydrateClient = createHydrateClient(factory);
+    const seenDuringRender: Array<{ id: string } | undefined> = [];
+
+    function Probe() {
+      seenDuringRender.push(customerData(useCausewayClient()));
+      return null;
+    }
+
+    render(
+      createElement(
+        CausewayProvider,
+        { client: parentClient },
+        createElement(HydrateClient, { state: snapshot("c_1", "first", 1) }, createElement(Probe)),
+      ),
+    );
+
+    expect(factory).not.toHaveBeenCalled();
+    expect(seenDuringRender[0]).toEqual({ id: "first" });
+  });
+
   it("keeps one fallback boundary client and hydrates it when snapshots change", () => {
     const factory = vi.fn(() => createGeneratedClient());
     const HydrateClient = createHydrateClient(factory);
