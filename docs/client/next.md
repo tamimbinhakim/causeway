@@ -21,13 +21,28 @@ export const HydrateClient = createHydrateClient(createClient, {
 });
 ```
 
-Then prefetch on the server and wrap the client tree:
+Then create one server helper for your app. This keeps request headers, API URL, and the hydration boundary in one place instead of repeating them in every layout and page:
 
-```tsx
+```ts
+// lib/causeway/server.ts
 import { createServerHydration } from "@causewayjs/next";
 import { headers } from "next/headers";
 import { HydrateClient } from "./causeway-client";
 import { createClient } from "./generated/causeway/client";
+
+export async function getServerHydration() {
+  return createServerHydration(createClient, {
+    baseUrl: process.env.CAUSEWAY_API_URL!,
+    headers: await headers(),
+    HydrateClient,
+  });
+}
+```
+
+Now prefetch on the server and wrap the client tree:
+
+```tsx
+import { getServerHydration } from "@/lib/causeway/server";
 
 export default async function Page({
   params,
@@ -35,11 +50,7 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const causeway = createServerHydration(createClient, {
-    baseUrl: process.env.CAUSEWAY_API_URL!,
-    headers: await headers(),
-    HydrateClient,
-  });
+  const causeway = await getServerHydration();
 
   await causeway.prefetch("GET /customers/$id", { id });
 
@@ -59,6 +70,30 @@ You can also render the boundary as a function when that reads better:
 return causeway.hydrate(<CustomerPage id={id} />);
 ```
 
+For scoped apps, put the scope in the helper instead of repeating the full setup:
+
+```ts
+// lib/causeway/server.ts
+export async function getServerHydration(orgSlug: string) {
+  return createServerHydration(createClient, {
+    baseUrl: process.env.CAUSEWAY_API_URL!,
+    headers: await headers(),
+    scope: { orgSlug },
+    HydrateClient,
+  });
+}
+```
+
+Then page code stays small:
+
+```tsx
+const causeway = await getServerHydration(orgSlug);
+
+await causeway.prefetch("GET /staff/teams");
+
+return causeway.hydrate(<TeamsPage />);
+```
+
 ## Hydration Boundaries
 
 A root `CausewayProvider` is enough for the persistent browser client, but it is not enough to deliver every App Router payload into that client. Every server component that creates a request-scoped hydration helper and calls `causeway.prefetch(...)` must render the `causeway.HydrateClient` returned by that same helper around the subtree that consumes those queries.
@@ -67,10 +102,7 @@ During client navigation, Next streams the new layout/page payload into the alre
 
 ```tsx
 // app/[org]/layout.tsx
-import { createServerHydration } from "@causewayjs/next";
-import { headers } from "next/headers";
-import { HydrateClient } from "../causeway-client";
-import { createClient } from "../generated/causeway/client";
+import { getServerHydration } from "@/lib/causeway/server";
 
 export default async function OrgLayout({
   children,
@@ -80,11 +112,7 @@ export default async function OrgLayout({
   params: Promise<{ org: string }>;
 }) {
   const { org } = await params;
-  const causeway = createServerHydration(createClient, {
-    baseUrl: process.env.CAUSEWAY_API_URL!,
-    headers: await headers(),
-    HydrateClient,
-  });
+  const causeway = await getServerHydration(org);
 
   await causeway.prefetch("GET /orgs/$org", { org });
 
@@ -94,11 +122,8 @@ export default async function OrgLayout({
 
 ```tsx
 // app/[org]/customers/[id]/page.tsx
-import { createServerHydration } from "@causewayjs/next";
-import { headers } from "next/headers";
+import { getServerHydration } from "@/lib/causeway/server";
 import { CustomerPage } from "./CustomerPage";
-import { HydrateClient } from "../../../causeway-client";
-import { createClient } from "../../../generated/causeway/client";
 
 export default async function Page({
   params,
@@ -106,11 +131,7 @@ export default async function Page({
   params: Promise<{ org: string; id: string }>;
 }) {
   const { org, id } = await params;
-  const causeway = createServerHydration(createClient, {
-    baseUrl: process.env.CAUSEWAY_API_URL!,
-    headers: await headers(),
-    HydrateClient,
-  });
+  const causeway = await getServerHydration(org);
 
   await causeway.prefetch("GET /orgs/$org/customers/$id", { org, id });
 
