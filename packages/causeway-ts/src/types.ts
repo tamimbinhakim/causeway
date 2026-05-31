@@ -86,6 +86,11 @@ export interface DehydratedClient {
   queries: DehydratedQuery[];
 }
 
+export interface HydrateOptions {
+  notify?: boolean;
+  forceNotify?: boolean;
+}
+
 export interface CausewayClient {
   query<TData = unknown>(
     routeKey: string,
@@ -127,7 +132,7 @@ export interface CausewayClient {
   ): () => void;
   queryKey(routeKey: string, input?: Record<string, unknown> | void): string;
   dehydrate(): DehydratedClient;
-  hydrate(snapshot: DehydratedClient): void;
+  hydrate(snapshot: DehydratedClient, options?: HydrateOptions): void;
 }
 
 export interface CallOptions {

@@ -59,6 +59,79 @@ You can also render the boundary as a function when that reads better:
 return causeway.hydrate(<CustomerPage id={id} />);
 ```
 
+## Hydration Boundaries
+
+A root `CausewayProvider` is enough for the persistent browser client, but it is not enough to deliver every App Router payload into that client. Every server component that creates a request-scoped hydration helper and calls `causeway.prefetch(...)` must render the `causeway.HydrateClient` returned by that same helper around the subtree that consumes those queries.
+
+During client navigation, Next streams the new layout/page payload into the already-mounted app. Causeway boundaries merge their server snapshot into the nearest parent `CausewayProvider` client. They do not create an isolated client when a parent provider exists. This means nested layouts and pages compose naturally:
+
+```tsx
+// app/[org]/layout.tsx
+import { createServerHydration } from "@causewayjs/next";
+import { headers } from "next/headers";
+import { HydrateClient } from "../causeway-client";
+import { createClient } from "../generated/causeway/client";
+
+export default async function OrgLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ org: string }>;
+}) {
+  const { org } = await params;
+  const causeway = createServerHydration(createClient, {
+    baseUrl: process.env.CAUSEWAY_API_URL!,
+    headers: await headers(),
+    HydrateClient,
+  });
+
+  await causeway.prefetch("GET /orgs/$org", { org });
+
+  return <causeway.HydrateClient>{children}</causeway.HydrateClient>;
+}
+```
+
+```tsx
+// app/[org]/customers/[id]/page.tsx
+import { createServerHydration } from "@causewayjs/next";
+import { headers } from "next/headers";
+import { CustomerPage } from "./CustomerPage";
+import { HydrateClient } from "../../../causeway-client";
+import { createClient } from "../../../generated/causeway/client";
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ org: string; id: string }>;
+}) {
+  const { org, id } = await params;
+  const causeway = createServerHydration(createClient, {
+    baseUrl: process.env.CAUSEWAY_API_URL!,
+    headers: await headers(),
+    HydrateClient,
+  });
+
+  await causeway.prefetch("GET /orgs/$org/customers/$id", { org, id });
+
+  return (
+    <causeway.HydrateClient>
+      <CustomerPage org={org} id={id} />
+    </causeway.HydrateClient>
+  );
+}
+```
+
+Rules of thumb:
+
+- Keep one app-level browser client under `<CausewayProvider client={causewayClient}>`.
+- In a layout, wrap the layout subtree with the boundary returned from that layout's `createServerHydration(...)`.
+- In a page, wrap the page subtree with the boundary returned from that page's `createServerHydration(...)`.
+- Nested boundaries are expected. Each boundary merges its snapshot into the parent client and notifies subscribers after the navigation commit.
+- Use the exact same route key and input shape in `prefetch(...)` and `useQuery(...)`.
+
+In development, Causeway warns when `createServerHydration(...).prefetch()` was used but its returned boundary was never rendered. It also warns in the browser when a `useQuery(...)` route has a hydrated snapshot for the same route key but a different cache key, which usually means the server prefetched with one input shape and the hook subscribed with another.
+
 ## Client Hooks After Hydration
 
 Inside the boundary, React hooks read from the hydrated cache before they fetch:

@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createClient } from "@causewayjs/client";
 
-import { CausewayProvider, queryOptions, useMutation, useQuery } from "../src/index.js";
+import {
+  CausewayProvider,
+  queryOptions,
+  registerCausewayHydrationSnapshot,
+  useMutation,
+  useQuery,
+} from "../src/index.js";
 import type { RouteDescriptor, RouteMeta } from "@causewayjs/client";
 
 interface Customer {
@@ -131,6 +137,45 @@ describe("route-key React hooks", () => {
 
     await waitFor(() => expect(result.current?.pending).toBe(false));
     expect(result.current?.data).toEqual({ id: "c_1" });
+  });
+
+  it("warns when hook input misses a hydrated snapshot for the same route", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchMock = vi.fn<typeof fetch>();
+    const client = createClient({
+      fetch: fetchMock,
+      routeMeta,
+      loadRoute: (id) => {
+        const route = routes[id];
+        if (route === undefined) throw new Error(id);
+        return route;
+      },
+    });
+    registerCausewayHydrationSnapshot(client, {
+      version: 1,
+      queries: [
+        {
+          routeKey: "GET /customers/$id",
+          input: { id: "c_1" },
+          scope: null,
+          data: { id: "c_1" },
+          updatedAt: 1,
+        },
+      ],
+    });
+
+    renderHook(
+      () =>
+        useQuery("GET /customers/$id", { customerId: "c_1" } as unknown as { id: string }, {
+          enabled: false,
+        }),
+      ({ children }) => <CausewayProvider client={client}>{children}</CausewayProvider>,
+    );
+
+    await waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("did not match")),
+    );
+    warn.mockRestore();
   });
 
   it("emits app-owned mutation feedback", async () => {

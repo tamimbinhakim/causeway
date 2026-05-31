@@ -18,6 +18,7 @@ export type {
   HeaderRecordValue,
   HeaderSource,
   HeadersLike,
+  HydrateOptions,
   QueryState,
   RouteDescriptor,
   RouteMeta,

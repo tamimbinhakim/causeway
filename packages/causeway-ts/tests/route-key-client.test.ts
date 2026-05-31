@@ -17,6 +17,18 @@ const routes: Record<string, RouteDescriptor> = {
     params: [{ name: "id", alias: "id", in: "path" }],
     refreshes: ["GET /customers/$id"],
   },
+  getTeams: {
+    method: "GET",
+    path: "/staff/teams",
+    routeKey: "GET /staff/teams",
+  },
+  createTeam: {
+    method: "POST",
+    path: "/staff/teams",
+    routeKey: "POST /staff/teams",
+    params: [{ name: "body", alias: "body", in: "body" }],
+    refreshes: ["GET /staff/teams"],
+  },
 };
 
 const routeMeta: RouteMeta[] = Object.entries(routes).map(([id, route]) => ({
@@ -97,6 +109,60 @@ describe("createRouteKeyClient", () => {
       id: "c_1",
       screened: true,
     });
+  });
+
+  it("projects mutation input to the refreshed query route input", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (_url, init) => {
+      if (init?.method === "POST") {
+        return new Response(JSON.stringify({ id: "team_1" }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify([{ id: "team_1", name: "Platform" }]), {
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const client = makeClient(fetchMock);
+
+    await client.mutate("POST /staff/teams", { body: { name: "Platform" } });
+
+    expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.method, init?.body])).toEqual([
+      ["https://api.test/staff/teams", "POST", JSON.stringify({ name: "Platform" })],
+      ["https://api.test/staff/teams", "GET", undefined],
+    ]);
+    expect(client.getData("GET /staff/teams")).toEqual([{ id: "team_1", name: "Platform" }]);
+    expect(client.getData("GET /staff/teams", { body: { name: "Platform" } })).toBeUndefined();
+  });
+
+  it("does not notify subscribers when hydrating an unchanged snapshot", async () => {
+    const fetchMock = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ id: "c_1" }), {
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const client = makeClient(fetchMock);
+    const snapshot = {
+      version: 1 as const,
+      queries: [
+        {
+          routeKey: "GET /customers/$id",
+          input: { id: "c_1" },
+          scope: null,
+          data: { id: "c_1" },
+          updatedAt: 1,
+        },
+      ],
+    };
+    let calls = 0;
+    client.subscribe("GET /customers/$id", { id: "c_1" }, () => {
+      calls += 1;
+    });
+
+    client.hydrate(snapshot);
+    client.hydrate(snapshot);
+
+    expect(calls).toBe(1);
   });
 
   it("does not refresh after a failed mutation", async () => {

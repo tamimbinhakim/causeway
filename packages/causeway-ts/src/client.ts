@@ -5,6 +5,7 @@ import type {
   CausewayClient,
   ClientConfig,
   DehydratedClient,
+  HydrateOptions,
   QueryState,
   Result,
   RouteDescriptor,
@@ -93,7 +94,12 @@ export function createRouteKeyClient(config: ClientConfig): CausewayClient {
       const meta = metaByRouteKey.get(routeKey);
       const descriptor = meta === undefined ? undefined : await loadRoute(meta.id);
       const refreshes = descriptor?.refreshes ?? meta?.refreshes ?? [];
-      await Promise.all(refreshes.map((key) => client.refresh(key, input, opts)));
+      await Promise.all(
+        refreshes.map(async (key) => {
+          const refreshInput = await projectRefreshInput(key, input);
+          return await client.refresh(key, refreshInput, opts);
+        }),
+      );
       return data as TData;
     },
     stream<TEvent = unknown>(
@@ -150,25 +156,49 @@ export function createRouteKeyClient(config: ClientConfig): CausewayClient {
           })),
       };
     },
-    hydrate(snapshot: DehydratedClient) {
+    hydrate(snapshot: DehydratedClient, options: HydrateOptions = {}) {
       if (snapshot.version !== 1) return;
+      const shouldNotify = options.notify !== false;
       for (const query of snapshot.queries) {
         const key = cacheKey(query.routeKey, query.input, query.scope);
+        const previous = entries.get(key);
+        const nextState = {
+          data: query.data,
+          error: null,
+          pending: false,
+          updatedAt: query.updatedAt,
+        };
         entries.set(key, {
           routeKey: query.routeKey,
           input: query.input,
           scope: query.scope,
-          state: {
-            data: query.data,
-            error: null,
-            pending: false,
-            updatedAt: query.updatedAt,
-          },
+          state: nextState,
         });
-        notify(listeners, key);
+        if (
+          shouldNotify &&
+          (options.forceNotify === true || !queryStatesEqual(previous?.state, nextState))
+        ) {
+          notify(listeners, key);
+        }
       }
     },
   };
+
+  async function projectRefreshInput(
+    routeKey: string,
+    mutationInput: Record<string, unknown> | void | undefined,
+  ): Promise<Record<string, unknown> | void> {
+    const meta = requireRouteMeta(metaByRouteKey, routeKey);
+    const descriptor = await loadRoute(meta.id);
+    const params = descriptor.params ?? [];
+    if (params.length === 0) return undefined;
+    const source = (mutationInput ?? {}) as Record<string, unknown>;
+    const input: Record<string, unknown> = {};
+    for (const param of params) {
+      if (param.name in source) input[param.name] = source[param.name];
+    }
+    return input;
+  }
 
   async function runQuery(
     routeKey: string,
@@ -277,6 +307,16 @@ function notify(listeners: Map<string, Set<() => void>>, key: string): void {
   const bucket = listeners.get(key);
   if (bucket === undefined) return;
   for (const listener of bucket) listener();
+}
+
+function queryStatesEqual(left: QueryState | undefined, right: QueryState): boolean {
+  return (
+    left !== undefined &&
+    left.error === right.error &&
+    left.pending === right.pending &&
+    left.updatedAt === right.updatedAt &&
+    stableStringify(left.data) === stableStringify(right.data)
+  );
 }
 
 function stableStringify(value: unknown): string {

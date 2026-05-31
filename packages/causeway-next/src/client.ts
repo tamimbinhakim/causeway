@@ -1,9 +1,10 @@
-import { Fragment, createElement, useMemo, useRef } from "react";
+import { Fragment, createElement, useLayoutEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 
 import type { CausewayClient, DehydratedClient } from "@causewayjs/client";
 import {
   CausewayProvider,
+  registerCausewayHydrationSnapshot,
   useOptionalCausewayClient,
   type CausewayFeedback,
 } from "@causewayjs/react";
@@ -32,6 +33,7 @@ export function createHydrateClient<
     const parentClient = useOptionalCausewayClient();
     const fallbackClient = useRef<CausewayClient | null>(null);
     const lastHydration = useRef<{ client: CausewayClient; key: string } | null>(null);
+    const lastNotification = useRef<{ client: CausewayClient; key: string } | null>(null);
 
     if (parentClient === null && fallbackClient.current === null) {
       const next = factory(options);
@@ -43,10 +45,19 @@ export function createHydrateClient<
     if (hydrationState != null && hydrationKey != null) {
       const last = lastHydration.current;
       if (last?.client !== client || last.key !== hydrationKey) {
-        client.hydrate(hydrationState);
+        client.hydrate(hydrationState, { notify: false });
         lastHydration.current = { client, key: hydrationKey };
       }
     }
+
+    useLayoutEffect(() => {
+      if (hydrationState == null || hydrationKey == null) return;
+      const last = lastNotification.current;
+      if (last?.client === client && last.key === hydrationKey) return;
+      client.hydrate(hydrationState, { forceNotify: true });
+      registerCausewayHydrationSnapshot(client, hydrationState);
+      lastNotification.current = { client, key: hydrationKey };
+    }, [client, hydrationKey, hydrationState]);
 
     if (parentClient !== null && feedback === undefined) {
       return createElement(Fragment, null, children);

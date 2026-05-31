@@ -1,5 +1,6 @@
 export {
   CausewayProvider,
+  registerCausewayHydrationSnapshot,
   useCausewayClient,
   useOptionalCausewayClient,
   useMutation,

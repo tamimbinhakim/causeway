@@ -15,7 +15,7 @@ import type {
   RouteDescriptor,
   RouteMeta,
 } from "@causewayjs/client";
-import { CausewayProvider, useCausewayClient } from "@causewayjs/react";
+import { CausewayProvider, useCausewayClient, useQuery } from "@causewayjs/react";
 import { createHydrateClient } from "../src/client.js";
 
 const routes: Record<string, RouteDescriptor> = {
@@ -110,6 +110,32 @@ describe("createHydrateClient", () => {
 
     expect(factory).not.toHaveBeenCalled();
     expect(seenDuringRender[0]).toEqual({ id: "first" });
+  });
+
+  it("notifies already-mounted parent subscribers after a route snapshot arrives", () => {
+    const parentClient = createGeneratedClient();
+    const factory = vi.fn(() => createGeneratedClient());
+    const HydrateClient = createHydrateClient(factory);
+
+    function Probe() {
+      const customer = useQuery("GET /customers/$id", { id: "c_1" }, { enabled: false });
+      return createElement("span", null, customer.data?.id ?? "loading");
+    }
+
+    render(createElement(CausewayProvider, { client: parentClient }, createElement(Probe)));
+    expect(container.textContent).toBe("loading");
+
+    render(
+      createElement(
+        CausewayProvider,
+        { client: parentClient },
+        createElement(Probe),
+        createElement(HydrateClient, { state: snapshot("c_1", "first", 1) }),
+      ),
+    );
+
+    expect(factory).not.toHaveBeenCalled();
+    expect(container.textContent).toBe("first");
   });
 
   it("keeps one fallback boundary client and hydrates it when snapshots change", () => {

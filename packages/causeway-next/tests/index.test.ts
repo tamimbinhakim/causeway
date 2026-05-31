@@ -201,6 +201,29 @@ describe("@causewayjs/next hydration helpers", () => {
     expect((boundary.props as HydrateClientProps).state?.queries).toHaveLength(1);
   });
 
+  it("warns in dev when a server hydration scope prefetched but never rendered its boundary", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async (url) =>
+        new Response(JSON.stringify({ id: String(url).split("/").pop() }), {
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const causeway = createServerHydration(createGeneratedClient, {
+      baseUrl: "https://api.test",
+      fetch,
+      HydrateClient: TestHydrateClient,
+    });
+
+    await causeway.prefetch("GET /customers/$id", { id: "c_1" });
+    vi.runAllTimers();
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("HydrateClient"));
+    warn.mockRestore();
+    vi.useRealTimers();
+  });
+
   it("prepares a hydration snapshot and hydrates a browser client from a factory", async () => {
     const serverFetch = vi.fn<typeof globalThis.fetch>(
       async (url) =>

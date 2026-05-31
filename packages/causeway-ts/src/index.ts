@@ -14,6 +14,7 @@ export type {
   DehydratedClient,
   DehydratedQuery,
   Err,
+  HydrateOptions,
   HttpMethod,
   Ok,
   ParamDescriptor,

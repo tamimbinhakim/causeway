@@ -191,6 +191,24 @@ export function createServerHydration(
     typeof factoryOrConfig === "function"
       ? createServerClient(factoryOrConfig, clientOptions)
       : createServerClient(clientOptions as ServerClientConfig);
+  let prefetched = false;
+  let rendered = false;
+  let warningScheduled = false;
+  const markPrefetched = () => {
+    prefetched = true;
+    if (!isDevRuntime() || warningScheduled) return;
+    warningScheduled = true;
+    setTimeout(() => {
+      if (prefetched && !rendered) {
+        console.warn(
+          "Causeway createServerHydration(...).prefetch() was used, but the returned <causeway.HydrateClient> boundary was not rendered. Wrap the subtree that calls useQuery() with the boundary returned from the same server hydration helper.",
+        );
+      }
+    }, 1_000);
+  };
+  const markRendered = () => {
+    rendered = true;
+  };
   const scopedPrefetch = (async (
     routeKeyOrOptions: string | QueryOptions,
     input?: RouteInputValue,
@@ -199,15 +217,26 @@ export function createServerHydration(
     const request = normalizePrefetchRequest(
       typeof routeKeyOrOptions === "string" ? [routeKeyOrOptions, input, opts] : routeKeyOrOptions,
     );
-    return await client.query(request.routeKey, request.input, request.call);
+    const data = await client.query(request.routeKey, request.input, request.call);
+    markPrefetched();
+    return data;
   }) as Prefetcher;
   return {
     client,
     prefetch: scopedPrefetch,
-    prefetchMany: async (...requests) => await prefetchMany(client, ...requests),
-    HydrateClient: (props) => renderHydrateClient(client, ClientBoundary, feedback, props),
-    hydrate: (children, props = {}) =>
-      renderHydrateClient(client, ClientBoundary, feedback, { ...props, children }),
+    prefetchMany: async (...requests) => {
+      const hydratedClient = await prefetchMany(client, ...requests);
+      if (requests.length > 0) markPrefetched();
+      return hydratedClient;
+    },
+    HydrateClient: (props) => {
+      markRendered();
+      return renderHydrateClient(client, ClientBoundary, feedback, props);
+    },
+    hydrate: (children, props = {}) => {
+      markRendered();
+      return renderHydrateClient(client, ClientBoundary, feedback, { ...props, children });
+    },
     dehydrate: () => dehydrate(client),
     snapshot: () => dehydrate(client),
   };
@@ -318,6 +347,11 @@ function normalizePrefetchRequest(
     return { routeKey: request[0], input: request[1], call: request[2] };
   }
   return request as QueryOptions<string, RouteInputValue>;
+}
+
+function isDevRuntime(): boolean {
+  const env = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV;
+  return env !== "production";
 }
 
 export { queryOptions };

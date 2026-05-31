@@ -14,6 +14,7 @@ import type { ReactElement, ReactNode } from "react";
 import type {
   CallOptions,
   CausewayClient,
+  DehydratedClient,
   QueryOptions,
   QueryState,
   RegisteredMutationRouteKey,
@@ -80,6 +81,19 @@ export type MutationHookResult<
 };
 
 const CausewayContext = createContext<ProviderValue | null>(null);
+
+const HYDRATED_QUERIES = "__CAUSEWAY_HYDRATED_QUERIES__";
+
+interface HydratedQueryRecord {
+  client: CausewayClient;
+  routeKey: string;
+  input: RouteInputValue;
+  key: string;
+}
+
+interface CausewayGlobal {
+  [HYDRATED_QUERIES]?: HydratedQueryRecord[];
+}
 
 export function CausewayProvider({
   client,
@@ -150,6 +164,10 @@ export function useQuery<TData = unknown, TError = unknown>(
     return () => controller.abort();
   }, [client, routeKey, stableKey, options.enabled]);
 
+  useEffect(() => {
+    warnOnHydrationKeyMismatch(client, routeKey, input, stableKey, state.data);
+  }, [client, routeKey, stableKey, state.data]);
+
   const refresh = useCallback(
     (opts: CallOptions = {}) => client.refresh<TData>(routeKey, input, { ...call, ...opts }),
     [client, routeKey, stableKey],
@@ -171,6 +189,65 @@ export function useQuery<TData = unknown, TError = unknown>(
     refresh,
     setData,
   };
+}
+
+export function registerCausewayHydrationSnapshot(
+  client: CausewayClient,
+  snapshot: DehydratedClient,
+): void {
+  if (!isDevRuntime() || !isBrowserRuntime()) return;
+  const root = globalThis as CausewayGlobal;
+  const current = root[HYDRATED_QUERIES] ?? [];
+  root[HYDRATED_QUERIES] = [
+    ...current,
+    ...snapshot.queries.map((query) => ({
+      client,
+      routeKey: query.routeKey,
+      input: query.input as RouteInputValue,
+      key: client.queryKey(query.routeKey, query.input as Record<string, unknown> | void),
+    })),
+  ];
+}
+
+function warnOnHydrationKeyMismatch(
+  client: CausewayClient,
+  routeKey: string,
+  input: RouteInputValue,
+  stableKey: string,
+  data: unknown,
+): void {
+  if (!isDevRuntime() || !isBrowserRuntime() || data !== undefined) return;
+  const hydrated = (globalThis as CausewayGlobal)[HYDRATED_QUERIES] ?? [];
+  const mismatch = hydrated.find(
+    (query) => query.client === client && query.routeKey === routeKey && query.key !== stableKey,
+  );
+  if (mismatch === undefined) return;
+  console.warn(
+    [
+      `Causeway useQuery("${routeKey}") did not match a hydrated server snapshot.`,
+      `Prefetched input: ${formatDevValue(mismatch.input)}.`,
+      `Hook input: ${formatDevValue(input)}.`,
+      "Use the same route key and input shape for prefetch(...) and useQuery(...).",
+    ].join(" "),
+  );
+}
+
+function isBrowserRuntime(): boolean {
+  return typeof window !== "undefined";
+}
+
+function isDevRuntime(): boolean {
+  const env = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV;
+  return env !== "production";
+}
+
+function formatDevValue(value: unknown): string {
+  if (value === undefined) return "undefined";
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function isQueryOptions(value: unknown): value is QueryOptions {

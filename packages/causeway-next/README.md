@@ -42,6 +42,8 @@ The helpers keep request headers request-scoped, provide small hydration wrapper
 
 The default shape mirrors the React Query hydration flow: prefetch into a server client, then render a hydration boundary without passing cache state through every page. Lower-level helpers are still available: `createServerClient(createClient, ...)`, `prefetch`, `prefetchMany`, `dehydrate`, `hydrate`, and `queryOptions`.
 
+Boundary rule: keep one persistent browser client at the app root, then render the `causeway.HydrateClient` returned from every server layout/page helper that calls `causeway.prefetch(...)`. Nested boundaries are expected; each one merges its snapshot into the nearest parent client during App Router navigations. In development, Causeway warns when a prefetched server scope never renders its boundary or when a hydrated route key does not match a client hook's query input.
+
 Use this package on the server side of a Next app. The generated client and `@causewayjs/react` still own the browser-side hooks.
 
 ## Docs
