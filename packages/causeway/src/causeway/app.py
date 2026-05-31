@@ -113,11 +113,15 @@ def _assemble(
 
     @contextlib.asynccontextmanager
     async def lifespan(_: Any) -> AsyncIterator[None]:
+        # Plugins/adapters (DB, cache, …) start first so the app's own
+        # ``startup()`` hook can use them — otherwise an on_startup that touches
+        # the DB hits the adapter before its engine exists. Shutdown mirrors
+        # this: app shutdown runs while adapters are still alive, then plugins.
+        await _plugins.startup_all(settings)
         if app_lifespan is not None:
             startup = getattr(app_lifespan, "startup", None)
             if callable(startup):
                 await startup()
-        await _plugins.startup_all(settings)
         for hook in found.startup_hooks:
             await hook()
         try:
@@ -125,11 +129,11 @@ def _assemble(
         finally:
             for hook in found.shutdown_hooks:
                 await hook()
-            await _plugins.shutdown_all()
             if app_lifespan is not None:
                 shutdown = getattr(app_lifespan, "shutdown", None)
                 if callable(shutdown):
                     await shutdown()
+            await _plugins.shutdown_all()
 
     starlette = Starlette(
         routes=[Mount("/", app=inner)],
